@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Toddler Train Tracks</title>
+<style>
+    :root {
+        --grid-size: 5;
+        --cell-size: 80px;
+        --bg-color: #8ed081;
+        --track-color: #7b8e9c;
+        --wood-color: #d4a373;
+    }
+
+    * {
+        box-sizing: border-box;
+        user-select: none;
+        -webkit-user-drag: none;
+    }
+
+    body, html {
+        margin: 0;
+        padding: 0;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        font-family: 'Comic Sans MS', 'Chalkboard SE', sans-serif;
+        background-color: var(--bg-color);
+        background-image: radial-gradient(#a3df96 20%, transparent 20%),
+                          radial-gradient(#a3df96 20%, transparent 20%);
+        background-size: 40px 40px;
+        background-position: 0 0, 20px 20px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Top Bar */
+    #header {
+        height: 60px;
+        background: #fff0f3;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 15px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        z-index: 10;
+        border-bottom: 4px solid #ffb5a7;
+    }
+
+    select, button {
+        font-family: inherit;
+        font-size: 1.2rem;
+        padding: 8px 16px;
+        border-radius: 20px;
+        border: 3px solid #fec5bb;
+        background: white;
+        color: #d08c60;
+        font-weight: bold;
+        cursor: pointer;
+        outline: none;
+        box-shadow: 0 4px 0 #fec5bb;
+        transition: transform 0.1s, box-shadow 0.1s;
+    }
+
+    button:active {
+        transform: translateY(4px);
+        box-shadow: 0 0 0 #fec5bb;
+    }
+
+    button#go-btn { background: #d8f3dc; border-color: #74c69d; color: #1b4332; box-shadow: 0 4px 0 #74c69d; }
+    button#go-btn:active { box-shadow: 0 0 0 #74c69d; }
+
+    /* Game Area */
+    #game-area {
+        flex: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    #board {
+        display: grid;
+        grid-template-columns: repeat(var(--grid-size), var(--cell-size));
+        grid-template-rows: repeat(var(--grid-size), var(--cell-size));
+        background: rgba(255, 255, 255, 0.4);
+        border: 4px solid #52796f;
+        border-radius: 10px;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+        position: relative;
+    }
+
+    .cell {
+        width: var(--cell-size);
+        height: var(--cell-size);
+        border: 2px dashed rgba(82, 121, 111, 0.3);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+    }
+
+    .cell.drag-over { background: rgba(255, 255, 255, 0.8); border-color: #ffb5a7; }
+
+    /* Tracks */
+    .track {
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+        transition: transform 0.2s ease;
+    }
+    
+    .track:hover { filter: brightness(1.1); }
+
+    /* Toolbar */
+    #toolbar {
+        height: 100px;
+        background: #fff0f3;
+        border-top: 4px solid #ffb5a7;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 30px;
+        box-shadow: 0 -4px 8px rgba(0,0,0,0.1);
+        z-index: 10;
+    }
+
+    .tool {
+        width: 70px;
+        height: 70px;
+        background: white;
+        border: 3px solid #fec5bb;
+        border-radius: 12px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: grab;
+        box-shadow: 0 4px 0 #fec5bb;
+    }
+    .tool:active { cursor: grabbing; }
+
+    #trash {
+        width: 90px;
+        font-size: 2rem;
+        background: #ffe5d9;
+        border-color: #d8e2dc;
+        box-shadow: 0 4px 0 #d8e2dc;
+        text-align: center;
+        flex-direction: column;
+        line-height: 1.1;
+    }
+    #trash span { font-size: 0.8rem; font-weight: bold; color: #9d8189; }
+
+    /* Sprites */
+    .sprite {
+        position: absolute;
+        width: var(--cell-size);
+        height: var(--cell-size);
+        font-size: calc(var(--cell-size) * 0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 5;
+        pointer-events: none;
+        filter: drop-shadow(2px 4px 4px rgba(0,0,0,0.3));
+    }
+
+    #train {
+        transition: transform 0.4s linear; /* Smooth movement */
+        z-index: 6;
+    }
+
+    /* Track SVGs predefined to be used as innerHTML */
+</style>
+</head>
+<body>
+
+<div id="header">
+    <select id="grid-size" onchange="initGame()">
+        <option value="4">Small (4x4)</option>
+        <option value="5" selected>Medium (5x5)</option>
+        <option value="7">Large (7x7)</option>
+    </select>
+    <button id="go-btn" onclick="startTrain()">GO! 🚂</button>
+    <button onclick="initGame()">Reset 🔄</button>
+</div>
+
+<div id="game-area">
+    <div id="board">
+        </div>
+</div>
+
+<div id="toolbar">
+    <div class="tool" draggable="true" data-type="straight" ondragstart="handleDragStart(event)">
+        </div>
+    <div class="tool" draggable="true" data-type="corner" ondragstart="handleDragStart(event)">
+        </div>
+    <div class="tool" id="trash" ondragover="allowDrop(event)" ondrop="handleTrashDrop(event)">
+        🗑️
+        <span>Remove</span>
+    </div>
+</div>
+
+<script>
+    // --- SVG Assets for Tracks ---
+    const SVGS = {
+        straight: `
+            <svg viewBox="0 0 100 100" width="100%" height="100%">
+                <rect x="20" y="10" width="60" height="15" fill="var(--wood-color)" rx="4"/>
+                <rect x="20" y="42.5" width="60" height="15" fill="var(--wood-color)" rx="4"/>
+                <rect x="20" y="75" width="60" height="15" fill="var(--wood-color)" rx="4"/>
+                <rect x="30" y="0" width="10" height="100" fill="var(--track-color)"/>
+                <rect x="60" y="0" width="10" height="100" fill="var(--track-color)"/>
+            </svg>`,
+        corner: `
+            <svg viewBox="0 0 100 100" width="100%" height="100%">
+                <g stroke="var(--wood-color)" stroke-width="15" stroke-linecap="round">
+                    <line x1="40" y1="15" x2="80" y2="15" transform="rotate(20 100 0)"/>
+                    <line x1="40" y1="15" x2="80" y2="15" transform="rotate(45 100 0)"/>
+                    <line x1="40" y1="15" x2="80" y2="15" transform="rotate(70 100 0)"/>
+                </g>
+                <path d="M 35 0 A 65 65 0 0 0 100 65" fill="none" stroke="var(--track-color)" stroke-width="10"/>
+                <path d="M 65 0 A 35 35 0 0 0 100 35" fill="none" stroke="var(--track-color)" stroke-width="10"/>
+            </svg>`
+    };
+
+    // Initialize Tool icons
+    document.querySelector('.tool[data-type="straight"]').innerHTML = SVGS.straight;
+    document.querySelector('.tool[data-type="corner"]').innerHTML = SVGS.corner;
+
+    // --- Game State ---
+    let gridSize = 5;
+    let cellSize = 80;
+    let boardState = []; // 2D array: { type: 'straight'|'corner', rot: 0|90|180|270 }
+    let isPlaying = false;
+    let draggedType = null;
+    let dragSource = null; // To track if we are moving an existing track
+
+    // --- Directions ---
+    // 0: Up, 1: Right, 2: Down, 3: Left
+    // Ports define which edges a track connects.
+    const TRACK_PORTS = {
+        straight: { 0: [0, 2], 90: [1, 3], 180: [0, 2], 270: [1, 3] },
+        corner:   { 0: [0, 1], 90: [1, 2], 180: [2, 3], 270: [3, 0] }
+    };
+
+    function initGame() {
+        if (isPlaying) return;
+        
+        gridSize = parseInt(document.getElementById('grid-size').value);
+        document.documentElement.style.setProperty('--grid-size', gridSize);
+        
+        // Dynamically scale cells for smaller screens
+        const maxBoardSize = Math.min(window.innerWidth - 40, window.innerHeight - 200);
+        cellSize = Math.floor(maxBoardSize / gridSize);
+        document.documentElement.style.setProperty('--cell-size', `${cellSize}px`);
+
+        const boardEl = document.getElementById('board');
+        boardEl.innerHTML = '';
+        boardState = Array(gridSize).fill(null).map(() => Array(gridSize).fill(null));
+
+        for (let y = 0; y < gridSize; y++) {
+            for (let x = 0; x < gridSize; x++) {
+                let cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.dataset.x = x;
+                cell.dataset.y = y;
+                
+                // Drag and drop listeners
+                cell.ondragover = allowDrop;
+                cell.ondragenter = (e) => { e.preventDefault(); cell.classList.add('drag-over'); };
+                cell.ondragleave = () => cell.classList.remove('drag-over');
+                cell.ondrop = handleDrop;
+
+                boardEl.appendChild(cell);
+            }
+        }
+
+        // Add Train & Station
+        let trainEl = document.createElement('div');
+        trainEl.id = 'train';
+        trainEl.className = 'sprite';
+        trainEl.innerText = '🚂';
+        boardEl.appendChild(trainEl);
+
+        let stationEl = document.createElement('div');
+        stationEl.id = 'station';
+        stationEl.className = 'sprite';
+        stationEl.innerText = '🚉';
+        boardEl.appendChild(stationEl);
+
+        // Pre-place start and end tracks
+        placeTrack(0, 0, 'straight', 90);
+        placeTrack(gridSize-1, gridSize-1, 'straight', 90);
+
+        positionTrain(0, 0, 1); // Start at 0,0 facing Right(1)
+        positionSprite(stationEl, gridSize-1, gridSize-1);
+    }
+
+    // --- Drag and Drop Logic ---
+    function handleDragStart(e) {
+        if (isPlaying) return e.preventDefault();
+        draggedType = e.currentTarget.dataset.type;
+        dragSource = e.currentTarget.dataset.x ? e.currentTarget : null;
+        e.dataTransfer.setData('text/plain', draggedType);
+    }
+
+    function allowDrop(e) {
+        if (!isPlaying) e.preventDefault();
+    }
+
+    function handleDrop(e) {
+        e.preventDefault();
+        e.currentTarget.classList.remove('drag-over');
+        if (isPlaying || !draggedType) return;
+
+        let x = parseInt(e.currentTarget.dataset.x);
+        let y = parseInt(e.currentTarget.dataset.y);
+
+        // Don't overwrite start/end initially, but allow toddlers to change their mind!
+        placeTrack(x, y, draggedType, 0);
+
+        // If moved from another grid cell, clear the old one
+        if (dragSource) {
+            let oldX = parseInt(dragSource.dataset.x);
+            let oldY = parseInt(dragSource.dataset.y);
+            if (oldX !== x || oldY !== y) {
+                removeTrack(oldX, oldY);
+            }
+        }
+        draggedType = null;
+        dragSource = null;
+    }
+
+    function handleTrashDrop(e) {
+        e.preventDefault();
+        if (dragSource && !isPlaying) {
+            removeTrack(dragSource.dataset.x, dragSource.dataset.y);
+        }
+        draggedType = null;
+        dragSource = null;
+    }
+
+    // --- Grid Interaction ---
+    function placeTrack(x, y, type, rot) {
+        removeTrack(x, y); // Clean cell
+        
+        boardState[y][x] = { type, rot };
+        
+        let cell = getCell(x, y);
+        let track = document.createElement('div');
+        track.className = 'track';
+        track.innerHTML = SVGS[type];
+        track.draggable = true;
+        track.dataset.type = type;
+        track.dataset.x = x;
+        track.dataset.y = y;
+        track.style.transform = `rotate(${rot}deg)`;
+        
+        // Rotation and Drag setup for placed tracks
+        track.onclick = () => rotateTrack(x, y);
+        track.ondragstart = handleDragStart;
+
+        cell.appendChild(track);
+    }
+
+    function removeTrack(x, y) {
+        boardState[y][x] = null;
+        let cell = getCell(x, y);
+        let existing = cell.querySelector('.track');
+        if (existing) existing.remove();
+    }
+
+    function rotateTrack(x, y) {
+        if (isPlaying) return;
+        let trackData = boardState[y][x];
+        if (!trackData) return;
+        
+        trackData.rot = (trackData.rot + 90) % 360;
+        let trackEl = getCell(x, y).querySelector('.track');
+        trackEl.style.transform = `rotate(${trackData.rot}deg)`;
+    }
+
+    function getCell(x, y) {
+        return document.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`);
+    }
+
+    // --- Positioning & Animation ---
+    function positionSprite(el, x, y) {
+        el.style.left = `${x * cellSize}px`;
+        el.style.top = `${y * cellSize}px`;
+    }
+
+    function positionTrain(x, y, dir) {
+        let trainEl = document.getElementById('train');
+        let pxX = x * cellSize;
+        let pxY = y * cellSize;
+        
+        // Flip emoji based on direction. The natural emoji faces Left.
+        // 0: Up(rot90), 1: Right(flip), 2: Down(rot-90), 3: Left(normal)
+        let transformStr = `translate(${pxX}px, ${pxY}px) `;
+        if (dir === 0) transformStr += `rotate(90deg) scaleX(1)`;
+        if (dir === 1) transformStr += `rotate(0deg) scaleX(-1)`;
+        if (dir === 2) transformStr += `rotate(-90deg) scaleX(1)`;
+        if (dir === 3) transformStr += `rotate(0deg) scaleX(1)`;
+        
+        trainEl.style.transform = transformStr;
+    }
+
+    // --- Simulation ---
+    async function startTrain() {
+        if (isPlaying) return;
+        isPlaying = true;
+        
+        document.getElementById('go-btn').disabled = true;
+
+        let tx = 0;
+        let ty = 0;
+        let tDir = 1; // Start facing right
+        
+        positionTrain(tx, ty, tDir);
+
+        while (isPlaying) {
+            let currentTrack = boardState[ty][tx];
+            
+            // Reached Station?
+            if (tx === gridSize - 1 && ty === gridSize - 1) {
+                setTimeout(() => alert("🎉 Yay! The train made it! 🎉"), 500);
+                break;
+            }
+
+            if (!currentTrack) {
+                // Derail/Stop
+                break;
+            }
+
+            let ports = TRACK_PORTS[currentTrack.type][currentTrack.rot];
+            let entrancePort = (tDir + 2) % 4; // Where the train came from
+
+            if (!ports.includes(entrancePort)) {
+                // Track doesn't connect to where train came from
+                break;
+            }
+
+            // Figure out exit port
+            let exitPort = ports[0] === entrancePort ? ports[1] : ports[0];
+            tDir = exitPort; // Train now faces the exit direction
+
+            // Move to next cell
+            if (tDir === 0) ty--;
+            if (tDir === 1) tx++;
+            if (tDir === 2) ty++;
+            if (tDir === 3) tx--;
+
+            // Check bounds
+            if (tx < 0 || ty < 0 || tx >= gridSize || ty >= gridSize) {
+                break;
+            }
+
+            // Animate transition (Wait for CSS transition duration)
+            positionTrain(tx, ty, tDir);
+            await new Promise(r => setTimeout(r, 400));
+        }
+
+        isPlaying = false;
+        document.getElementById('go-btn').disabled = false;
+    }
+
+    // Initialize on load
+    window.onload = initGame;
+    window.addEventListener('resize', () => {
+        if (!isPlaying) initGame(); // Adjust scale on resize if not currently moving
+    });
+</script>
+</body>
+</html>
