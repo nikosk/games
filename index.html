@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Play Time! - Fun Games for Kids</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Fredoka', 'Comic Sans MS', cursive;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 50%, #A8EDEA 100%);
+            padding: 40px 20px;
+            overflow-x: hidden;
+        }
+        
+        .bg-decoration {
+            position: fixed;
+            font-size: 60px;
+            opacity: 0.15;
+            pointer-events: none;
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        .bg-decoration:nth-child(1) { top: 10%; left: 5%; animation-delay: 0s; }
+        .bg-decoration:nth-child(2) { top: 20%; right: 8%; animation-delay: 1s; }
+        .bg-decoration:nth-child(3) { bottom: 15%; left: 10%; animation-delay: 2s; }
+        .bg-decoration:nth-child(4) { bottom: 25%; right: 5%; animation-delay: 3s; }
+        .bg-decoration:nth-child(5) { top: 50%; left: 3%; animation-delay: 1.5s; }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(10deg); }
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        
+        h1 {
+            font-size: 4rem;
+            color: #FF6B6B;
+            text-shadow: 
+                4px 4px 0 #FFE66D,
+                8px 8px 0 rgba(0,0,0,0.1);
+            margin-bottom: 10px;
+            animation: bounce 2s ease-in-out infinite;
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .subtitle {
+            font-size: 1.5rem;
+            color: #4ECDC4;
+            font-weight: 600;
+        }
+        
+        .games-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            padding: 20px;
+        }
+        
+        .game-card {
+            background: white;
+            border-radius: 30px;
+            padding: 30px 20px;
+            text-align: center;
+            text-decoration: none;
+            color: inherit;
+            box-shadow: 
+                0 10px 0 rgba(0,0,0,0.1),
+                0 20px 40px rgba(0,0,0,0.15);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .game-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 8px;
+        }
+        
+        .game-card:nth-child(1)::before { background: linear-gradient(90deg, #E53935, #FF7043); }
+        .game-card:nth-child(2)::before { background: linear-gradient(90deg, #FF8FB1, #FF6B9D); }
+        .game-card:nth-child(3)::before { background: linear-gradient(90deg, #98D8C8, #4ECDC4); }
+        .game-card:nth-child(4)::before { background: linear-gradient(90deg, #7C4DFF, #B388FF); }
+        .game-card:nth-child(5)::before { background: linear-gradient(90deg, #4CAF50, #81C784); }
+        .game-card:nth-child(6)::before { background: linear-gradient(90deg, #FF8C42, #FFB74D); }
+        
+        .game-card:hover {
+            transform: translateY(-15px) scale(1.02);
+            box-shadow: 
+                0 20px 0 rgba(0,0,0,0.1),
+                0 40px 60px rgba(0,0,0,0.2);
+        }
+        
+        .game-card:active {
+            transform: translateY(-5px) scale(0.98);
+        }
+        
+        .game-icon {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 70px;
+            border-radius: 50%;
+            position: relative;
+        }
+        
+        .game-card:nth-child(1) .game-icon {
+            background: linear-gradient(135deg, #FFEB3B, #FFC107);
+            box-shadow: 0 8px 0 #FF9800;
+        }
+        
+        .game-card:nth-child(2) .game-icon {
+            background: linear-gradient(135deg, #E8F5E9, #A5D6A7);
+            box-shadow: 0 8px 0 #66BB6A;
+        }
+        
+        .game-card:nth-child(3) .game-icon {
+            background: linear-gradient(135deg, #E3F2FD, #90CAF9);
+            box-shadow: 0 8px 0 #42A5F5;
+        }
+        
+        .game-card:nth-child(4) .game-icon {
+            background: linear-gradient(135deg, #F3E5F5, #CE93D8);
+            box-shadow: 0 8px 0 #AB47BC;
+        }
+        
+        .game-card:nth-child(5) .game-icon {
+            background: linear-gradient(135deg, #E8F5E9, #A5D6A7);
+            box-shadow: 0 8px 0 #66BB6A;
+        }
+
+        .game-card:nth-child(6) .game-icon {
+            background: linear-gradient(135deg, #FFE0B2, #FFCC80);
+            box-shadow: 0 8px 0 #FF9800;
+        }
+        
+        .game-icon::after {
+            content: '▶';
+            position: absolute;
+            bottom: -5px;
+            right: -5px;
+            width: 35px;
+            height: 35px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: #333;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .game-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        
+        .game-card:nth-child(1) .game-title { color: #E53935; }
+        .game-card:nth-child(2) .game-title { color: #FF6B9D; }
+        .game-card:nth-child(3) .game-title { color: #26A69A; }
+        .game-card:nth-child(4) .game-title { color: #7C4DFF; }
+        .game-card:nth-child(5) .game-title { color: #2E7D32; }
+        .game-card:nth-child(6) .game-title { color: #E65100; }
+        
+        .game-desc {
+            font-size: 1.1rem;
+            color: #666;
+            line-height: 1.4;
+        }
+        
+        .age-badge {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 8px 20px;
+            background: #FFF3E0;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            color: #FF9800;
+            font-weight: 600;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            color: #888;
+            font-size: 1rem;
+        }
+        
+        footer span {
+            color: #FF6B6B;
+        }
+        
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 2.5rem;
+            }
+            
+            .games-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .game-card {
+                padding: 25px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-decoration">⭐</div>
+    <div class="bg-decoration">🎈</div>
+    <div class="bg-decoration">🌈</div>
+    <div class="bg-decoration">🎀</div>
+    <div class="bg-decoration">✨</div>
+    
+    <header>
+        <h1>🎮 Play Time! 🎮</h1>
+        <p class="subtitle">Pick a fun game to play!</p>
+    </header>
+    
+    <div class="games-container">
+        <a href="train-tracks.html" class="game-card">
+            <div class="game-icon">🚂</div>
+            <h2 class="game-title">Train Tracks</h2>
+            <p class="game-desc">Build track paths and watch the train go choo-choo!</p>
+            <span class="age-badge">Ages 2+</span>
+        </a>
+        
+        <a href="maze_game.html" class="game-card">
+            <div class="game-icon">🐰</div>
+            <h2 class="game-title">Bunny Maze</h2>
+            <p class="game-desc">Help the bunny find her way home through the maze!</p>
+            <span class="age-badge">Ages 2+</span>
+        </a>
+        
+        <a href="animal-memory.html" class="game-card">
+            <div class="game-icon">🐘</div>
+            <h2 class="game-title">Animal Memory</h2>
+            <p class="game-desc">Find matching animal pairs - can you remember where they are?</p>
+            <span class="age-badge">Ages 2+</span>
+        </a>
+        
+        <a href="mouse-adventure.html" class="game-card">
+            <div class="game-icon">🐭</div>
+            <h2 class="game-title">Mouse Adventure</h2>
+            <p class="game-desc">Help the mouse jump and climb through an exciting adventure!</p>
+            <span class="age-badge">Ages 3+</span>
+        </a>
+        
+        <a href="valley-explorer.html" class="game-card">
+            <div class="game-icon">🌸</div>
+            <h2 class="game-title">Valley Explorer</h2>
+            <p class="game-desc">Explore an infinite world with friendly animals, trees and flowers!</p>
+            <span class="age-badge">Ages 2+</span>
+        </a>
+
+        <a href="zoo-helper.html" class="game-card">
+            <div class="game-icon">🐱</div>
+            <h2 class="game-title">Zoo Helper</h2>
+            <p class="game-desc">Help the cat find its way by building commands!</p>
+            <span class="age-badge">Ages 3+</span>
+        </a>
+    </div>
+    
+    <footer>
+        Made with <span>❤️</span> for fun!
+    </footer>
+</body>
+</html>
