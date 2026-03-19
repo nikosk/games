@@ -1,146 +1,194 @@
-# Train Track Puzzle - Game Specification
+# Zoo Helper - Programming Game for Toddlers
 
-## Project Overview
-- **Project Name**: Train Track Puzzle
-- **Type**: Browser-based puzzle game for toddlers
-- **Core Functionality**: Drag-and-drop track tiles to create a path from train to station
-- **Target Users**: Toddlers (ages 2-5) and parents
+## Concept & Vision
 
-## UI/UX Specification
+A cheerful single-page HTML game where toddlers guide an orange cat through increasingly complex puzzles by tapping directional commands. The cat responds with delightful animations as each command executes, building an intuitive understanding of sequencing and loops. The tone is warm, celebratory, and playful — every interaction rewards with sound, motion, and sparkle.
 
-### Layout Structure
-- **Full viewport game** - takes 100vw x 100vh
-- **Header area** - 60px height with title and controls
-- **Game grid** - Central area, fills remaining space
-- **Toolbar** - Bottom dock, 120px height with track tiles
+## Design Language
 
-### Visual Design
+**Aesthetic Direction**: Soft, rounded, toy-like — like a Fisher-Price digital toy. High saturation, chunky shapes, no sharp edges.
 
-#### Color Palette
-- **Background**: `#87CEEB` (sky blue) with gradient to `#E0F4FF`
-- **Grass/Ground**: `#7CB342` (friendly green)
-- **Grid lines**: `#5D8A2F` (darker green)
-- **Track color**: `#8B4513` (wooden brown) with `#654321` (dark brown) rails
-- **Train**: `#E53935` (bright red) body, `#FFD600` (yellow) accents
-- **Station**: `#FF7043` (coral orange) roof, `#FFECB3` (cream) walls
-- **UI buttons**: `#FF9800` (orange) with `#FFF` text
-- **Toolbar background**: `#3E2723` (dark wood)
+**Color Palette**:
+- Background: `#f0f7e6` (soft grass green)
+- Play area: `#e8f5e0` (lighter green, the "floor")
+- Command cards: `#ffffff` with `#4a90d9` border (white with blue)
+- Directional arrows: `#4a90d9` (friendly blue)
+- Cat character: `#ff8c42` (warm orange)
+- Accent/celebration: `#ffd93d` (sunny yellow)
+- Success: `#6bcb77` (fresh green)
+- UI panel: `#fff9e6` (warm cream)
+- Text: `#5a4a3a` (soft brown)
 
-#### Typography
-- **Font**: "Fredoka One" (Google Fonts) - playful, rounded
-- **Title**: 32px, white with text shadow
-- **Buttons**: 20px, bold
-- **Labels**: 16px
+**Typography**: System fonts only for performance. Rounded sans-serif (`-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`). Large sizes throughout.
 
-#### Visual Effects
-- **Soft shadows** on all interactive elements
-- **Bounce animation** on button press
-- **Glow effect** on valid drop zones
-- **Smoke puffs** from train chimney when moving
-- **Stars/sparkles** when train reaches station
+**Spatial System**:
+- Command cards: 80x80px with 16px border-radius
+- Grid cells: 60x60px
+- Generous padding (20-40px) throughout
+- Landscape-first layout
 
-### Components
+**Motion Philosophy**:
+- Cat idle: gentle bounce (subtle translateY oscillation, 1s loop)
+- Cat walk: bouncy translate between cells (300ms ease-out)
+- Command card tap: scale down to 0.9 then back (100ms)
+- Command execution: card glows with yellow ring
+- Level complete: confetti burst, cat dance animation, stars radiate
 
-#### Track Tiles (in toolbar)
-1. **Straight track** - Horizontal orientation
-2. **Straight track** - Vertical orientation  
-3. **Corner track** - 4 rotations (NE, SE, SW, NW)
+**Visual Assets**:
+- Cat: CSS-drawn (rounded shapes, triangle ears, dot eyes)
+- Direction arrows: Unicode arrows (↑↓←→) rendered large and bold
+- Grid: subtle rounded squares with soft borders
+- Hats/accessories: CSS-drawn simple shapes (party hat, crown, bow)
 
-#### Grid Cell States
-- Empty: Grass texture
-- Track placed: Track graphic with wooden sleepers
-- Hover (when dragging): Highlight glow
-- Valid placement: Green tint
-- Invalid placement: Red tint
+## Layout & Structure
 
-#### Train Sprite
-- Cartoonish steam engine
-- Red body with yellow accents
-- Animated wheels
-- Smoke particles when moving
-- Size: 60x40px
+**Landscape layout** (min-width 800px, min-height 500px):
 
-#### Station Sprite
-- Cute cottage-style station
-- Orange/red roof with white cross (Swiss style)
-- Clock on front
-- "STATION" sign
-- Size: 80x80px
+```
+┌─────────────────────────────────────────────────────────┐
+│  [🐱 Zoo Helper]              Level 1    🔊 ON  │  <- Header (60px)
+├───────────────────────────────────┬─────────────────────┤
+│                                   │                     │
+│         PLAY AREA                 │   COMMAND PANEL     │
+│        (Grid + Cat)               │                     │
+│                                   │   [↑]  [↓]          │
+│                                   │   [←]  [→]          │
+│                                   │   [🔄 RUN]          │
+│                                   │                     │
+│                                   │   [🗑️ CLEAR]        │
+│                                   │                     │
+├───────────────────────────────────┴─────────────────────┤
+│              PROGRAM SEQUENCE BAR                        │  <- Shows built sequence
+│         [ → ] [ → ] [ ↓ ] [ ← ] [ ← ]                   │
+└─────────────────────────────────────────────────────────┘
+```
 
-### Responsive Behavior
-- Grid scales to fit viewport
-- Minimum cell size: 60px
-- Touch-friendly tap targets (minimum 60px)
+**Responsive**: On narrow screens, command panel moves below play area in portrait stack.
 
-## Functionality Specification
+## Features & Interactions
 
-### Core Features
+### Core Gameplay Loop
+1. Toddler views the puzzle (cat's starting position, goal position, obstacles)
+2. Toddler taps command cards to build a sequence in the program bar
+3. If same command tapped consecutively, cards merge with badge (→ → → becomes → x3)
+4. Toddler taps "RUN" to execute the sequence
+5. Each command highlights as it executes, cat moves accordingly
+6. If cat reaches goal: celebration! Hat unlocked or level advance
+7. If cat doesn't reach goal: gentle "try again" prompt, sequence clears
 
-1. **Grid System**
-   - Variable sizes: 4x4 (easy), 5x5 (medium), 6x6 (hard)
-   - Click size selector to change difficulty
-   - Grid resets when size changes
+### Command Cards
+- **Tap**: Add command to sequence (with tap animation)
+- **Visual merge**: Consecutive identical commands show badge count
+- **Available commands by level**:
+  - Levels 1-3: ↑ ↓ ← →
+  - Level 4+: + Jump (obstacles)
+  - Level 5+: + Beep (activates doors)
 
-2. **Track Placement**
-   - Drag track from toolbar to grid
-   - Click placed track to rotate (90° increments)
-   - Right-click or double-tap to remove track
-   - Tracks can be moved after placement
+### Run Button
+- Disabled (greyed) until at least one command in sequence
+- On tap: sequence locks, commands execute one by one (500ms per step)
+- During execution: RUN button shows "..." and is disabled
 
-3. **Pathfinding**
-   - Algorithm checks if continuous path exists from train to station
-   - Train only moves if valid path exists
-   - Highlights path when "Go" is pressed if valid
+### Clear Button
+- Removes all commands from sequence
+- Subtle shake animation on the program bar when tapped with empty sequence
 
-4. **Train Movement**
-   - Smooth animation along tracks (200ms per cell)
-   - Stops at junctions if no clear path
-   - Celebrates with animation when reaching station
+### Level Progression
+| Level | Grid | Goal | Commands | Special |
+|-------|------|------|----------|---------|
+| 1 | 3x3 | 1 step | ↑↓←→ | Straight path |
+| 2 | 3x3 | 2 steps | ↑↓←→ | One turn |
+| 3 | 4x4 | 3-4 steps | ↑↓←→ | Multiple turns |
+| 4 | 4x4 | 3-4 steps | +Jump | Puddle obstacle (must jump) |
+| 5 | 4x4 | 4-5 steps | +Beep | Bell obstacle (must beep to open) |
+| 6 | 5x5 | 6 steps | Loops | Repeat section needed |
+| 7 | 5x5 | 8 steps | All | Mixed challenge |
 
-5. **Level Randomization**
-   - Train start position: Random edge cell
-   - Station position: Random edge cell (opposite side preferred)
-   - Ensures at least one valid path exists for solvable puzzles
+### Loop Mechanic
+- Loop detection: same command sequence detected when building
+- Visual: merged badges only, no special loop card yet
+- When sequence runs: cat executes the merged count
 
-### User Interactions
-- **Drag**: Pick up track from toolbar
-- **Drop**: Place track on grid cell
-- **Click (on placed track)**: Rotate 90°
-- **Right-click/Double-tap**: Remove track
-- **Go button**: Start train movement
-- **Reset button**: Clear all tracks, randomize positions
+### Celebration (Heavy)
+- Confetti particles (CSS animation, 20-30 particles)
+- Cat does 3-second dance animation (bounce + spin)
+- Stars radiate outward from cat
+- Hat/accessory unlocked with sparkle effect
+- "Level Complete!" banner drops in
+- "Play More" button appears
+- Auto-advance after 3 seconds OR tap "Play More"
 
-### Edge Cases
-- Cannot place track on train or station
-- Cannot rotate train/station
-- Train stops if path blocked mid-way
-- Visual feedback for invalid actions
+### Hat Unlocks
+- Level 1: Party Hat (colorful cone)
+- Level 2: Bow (pink ribbon)
+- Level 3: Crown (gold)
+- Level 4: Astronaut helmet
+- Level 5: Flower crown
+- Level 6: Superhero cape
+- Level 7: Magic wand + star
 
-## Acceptance Criteria
+### Persistence (localStorage)
+- Current level saved
+- Hats unlocked saved
+- Sound/music preference saved
+- On load: resume from saved level, apply owned hats
 
-### Visual Checkpoints
-- [ ] Game fills entire viewport
-- [ ] Sky background with grass area
-- [ ] Toolbar visible at bottom with 5 track types
-- [ ] Train appears at starting position with idle animation
-- [ ] Station visible with welcoming appearance
-- [ ] All graphics are cartoonish and colorful
+### Audio
+- **Music**: Cheerful loop (base64 encoded or generated with Web Audio API)
+- **SFX**: Tap click, command execute beep, celebration fanfare, cat meow
+- **Toggle**: Music on/off button in header, persists to localStorage
 
-### Functional Checkpoints
-- [ ] Can drag tracks from toolbar to grid
-- [ ] Tracks snap to grid cells
-- [ ] Can rotate tracks by clicking
-- [ ] Can remove tracks by right-click
-- [ ] Can move placed tracks
-- [ ] Go button triggers train movement
-- [ ] Train follows track path smoothly
-- [ ] Train stops if no path forward
-- [ ] Celebration when train reaches station
-- [ ] Grid size can be changed (4x4, 5x5, 6x6)
-- [ ] Level randomizes on reset
+## Component Inventory
 
-### Technical Checkpoints
-- [ ] No console errors
-- [ ] Smooth animations (60fps)
-- [ ] Touch-friendly for tablets
-- [ ] Works in modern browsers
+### Header Bar
+- Game title with cat emoji icon
+- Current level indicator
+- Sound toggle button (speaker icon)
+- Music toggle button (music note icon)
+
+### Play Area
+- CSS grid of cells
+- Cat character (animated, positioned absolutely within grid)
+- Goal marker (fish bone icon or food bowl)
+- Obstacles (puddles, bells) with distinct visual
+
+### Command Panel
+- 2x2 grid of direction cards (↑↓←→)
+- Additional cards appear as levels unlock (Jump, Beep)
+- Large RUN button below
+- CLEAR button at bottom
+
+### Program Sequence Bar
+- Horizontal scrollable container
+- Command chips showing merged sequence
+- Empty state: subtle "Tap commands to build your program" text
+- Active execution: current command glows
+
+### Celebration Overlay
+- Full-screen semi-transparent overlay
+- Confetti canvas or CSS particle system
+- Central celebration card with level info
+- "Play More" button
+- Auto-dismisses after 3s
+
+### Hats/Accessories
+- Shown on cat during gameplay
+- Selected hat has sparkle indicator in any hat-selection UI
+
+## Technical Approach
+
+**Stack**: Single HTML file with embedded CSS and JavaScript. No frameworks, no build step.
+
+**Audio**: Web Audio API for generated tones and simple sounds (no external files). Music is a simple looping melody generated programmatically.
+
+**Animation**: CSS animations and transitions. JavaScript for sequencing and state management.
+
+**State Management**: Single game state object. Pure functions for state transitions.
+
+**Grid System**: CSS Grid for play area. Cat position tracked as {row, col} coordinates.
+
+**Persistence**: `localStorage.setItem('zoohelper', JSON.stringify(state))` on every state change.
+
+**Level Data**: Array of level objects with grid size, start/goal positions, obstacles, available commands.
+
+**Execution Loop**: `async` function with `await` delays between steps. Each step: highlight command, move cat, check win/lose.
