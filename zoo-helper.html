@@ -37,12 +37,14 @@
       display: flex;
       flex-direction: column;
       min-height: 100vh;
-      overflow-x: auto;
+      min-height: 100dvh;
+      overflow: hidden;
     }
 
     /* Header */
     .header {
       height: 60px;
+      min-height: 60px;
       background: var(--panel);
       display: flex;
       align-items: center;
@@ -50,6 +52,7 @@
       padding: 0 24px;
       box-shadow: 0 2px 8px var(--shadow);
       z-index: 10;
+      flex-shrink: 0;
     }
 
     .title {
@@ -575,6 +578,7 @@
     /* Program Sequence Bar */
     .program-bar {
       height: 100px;
+      min-height: 100px;
       background: var(--panel);
       border-top: 3px solid rgba(0,0,0,0.1);
       padding: 12px 20px;
@@ -582,6 +586,78 @@
       align-items: center;
       gap: 12px;
       overflow-x: auto;
+      flex-shrink: 0;
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 600px) {
+      .header {
+        height: 50px;
+        min-height: 50px;
+        padding: 0 12px;
+      }
+      .title {
+        font-size: 18px;
+      }
+      .title-icon {
+        font-size: 24px;
+      }
+      .level-indicator {
+        font-size: 14px;
+        padding: 4px 10px;
+      }
+      .header-controls {
+        gap: 10px;
+      }
+      .toggle-btn {
+        font-size: 20px;
+        padding: 4px;
+      }
+      .game-container {
+        flex-direction: column;
+      }
+      .command-panel {
+        width: 100%;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        padding: 10px;
+        gap: 8px;
+      }
+      .command-grid {
+        display: flex;
+        gap: 8px;
+      }
+      .command-card {
+        width: 60px;
+        height: 60px;
+        font-size: 28px;
+      }
+      .run-btn {
+        padding: 12px 20px;
+        font-size: 18px;
+      }
+      .clear-btn {
+        padding: 10px 16px;
+        font-size: 14px;
+      }
+      .program-bar {
+        height: 80px;
+        min-height: 80px;
+        padding: 8px 12px;
+      }
+      .program-chip {
+        width: 48px;
+        height: 48px;
+        font-size: 24px;
+      }
+      .play-area {
+        padding: 10px;
+      }
+      .cell {
+        width: 50px;
+        height: 50px;
+      }
     }
 
     .program-sequence {

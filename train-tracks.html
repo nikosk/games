@@ -30,6 +30,7 @@
         padding: 0;
         width: 100vw;
         height: 100vh;
+        height: 100dvh;
         overflow: hidden;
         font-family: 'Comic Sans MS', 'Chalkboard SE', sans-serif;
         background-color: var(--bg-color);
@@ -44,6 +45,7 @@
     /* Top Bar */
     #header {
         height: 60px;
+        min-height: 60px;
         background: #fff0f3;
         display: flex;
         justify-content: center;
@@ -52,6 +54,7 @@
         box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         z-index: 10;
         border-bottom: 4px solid #ffb5a7;
+        flex-shrink: 0;
     }
 
     select, button {
@@ -123,6 +126,7 @@
     /* Toolbar */
     #toolbar {
         height: 100px;
+        min-height: 100px;
         background: #fff0f3;
         border-top: 4px solid #ffb5a7;
         display: flex;
@@ -131,6 +135,7 @@
         gap: 30px;
         box-shadow: 0 -4px 8px rgba(0,0,0,0.1);
         z-index: 10;
+        flex-shrink: 0;
     }
 
     .tool {
@@ -158,6 +163,41 @@
         line-height: 1.1;
     }
     #trash span { font-size: 0.8rem; font-weight: bold; color: #9d8189; }
+
+    /* Mobile Responsive */
+    @media (max-width: 600px) {
+        #header {
+            height: 50px;
+            min-height: 50px;
+            gap: 8px;
+            padding: 0 10px;
+        }
+        #header select, #header button {
+            font-size: 1rem;
+            padding: 6px 12px;
+        }
+        #toolbar {
+            height: 80px;
+            min-height: 80px;
+            gap: 15px;
+            padding: 10px;
+        }
+        .tool {
+            width: 55px;
+            height: 55px;
+        }
+        #trash {
+            width: 70px;
+            font-size: 1.5rem;
+        }
+        #trash span {
+            font-size: 0.7rem;
+        }
+        select, button {
+            font-size: 1rem;
+            padding: 6px 12px;
+        }
+    }
 
     /* Sprites */
     .sprite {
