@@ -105,6 +105,8 @@
         .game-card:nth-child(4)::before { background: linear-gradient(90deg, #7C4DFF, #B388FF); }
         .game-card:nth-child(5)::before { background: linear-gradient(90deg, #4CAF50, #81C784); }
         .game-card:nth-child(6)::before { background: linear-gradient(90deg, #FF8C42, #FFB74D); }
+        .game-card:nth-child(7)::before { background: linear-gradient(90deg, #FFD93D, #FF9A3D); }
+        .game-card:nth-child(8)::before { background: linear-gradient(90deg, #6BCB77, #4ECDC4); }
         
         .game-card:hover {
             transform: translateY(-15px) scale(1.02);
@@ -158,6 +160,16 @@
             background: linear-gradient(135deg, #FFE0B2, #FFCC80);
             box-shadow: 0 8px 0 #FF9800;
         }
+
+        .game-card:nth-child(7) .game-icon {
+            background: linear-gradient(135deg, #FFF3B0, #FFE66D);
+            box-shadow: 0 8px 0 #FFB347;
+        }
+
+        .game-card:nth-child(8) .game-icon {
+            background: linear-gradient(135deg, #C8E6C9, #81C784);
+            box-shadow: 0 8px 0 #4CAF50;
+        }
         
         .game-icon::after {
             content: '▶';
@@ -194,6 +206,8 @@
         .game-card:nth-child(4) .game-title { color: #7C4DFF; }
         .game-card:nth-child(5) .game-title { color: #2E7D32; }
         .game-card:nth-child(6) .game-title { color: #E65100; }
+        .game-card:nth-child(7) .game-title { color: #F57C00; }
+        .game-card:nth-child(8) .game-title { color: #388E3C; }
         
         .game-desc {
             font-size: 1.1rem;
@@ -290,6 +304,20 @@
             <div class="game-icon">🐱</div>
             <h2 class="game-title">Zoo Helper</h2>
             <p class="game-desc">Help the cat find its way by building commands!</p>
+            <span class="age-badge">Ages 3+</span>
+        </a>
+        
+        <a href="tamagotchi.html" class="game-card">
+            <div class="game-icon">🐣</div>
+            <h2 class="game-title">Tamagotchi</h2>
+            <p class="game-desc">Take care of your very own virtual pet!</p>
+            <span class="age-badge">Ages 2+</span>
+        </a>
+
+        <a href="monster-chef.html" class="game-card">
+            <div class="game-icon">👨‍🍳</div>
+            <h2 class="game-title">Monster Chef</h2>
+            <p class="game-desc">Cook up crazy recipes with the monster chef!</p>
             <span class="age-badge">Ages 3+</span>
         </a>
     </div>

@@ -149,8 +149,13 @@
         align-items: center;
         cursor: grab;
         box-shadow: 0 4px 0 #fec5bb;
+        touch-action: none;
     }
     .tool:active { cursor: grabbing; }
+    
+    .track {
+        touch-action: none;
+    }
 
     #trash {
         width: 90px;
@@ -343,6 +348,8 @@
 
         positionTrain(0, 0, 1); // Start at 0,0 facing Right(1)
         positionSprite(stationEl, gridSize-1, gridSize-1);
+        
+        initTouchEvents();
     }
 
     // --- Drag and Drop Logic ---
@@ -389,6 +396,101 @@
         dragSource = null;
     }
 
+    // --- Touch Support for Mobile ---
+    let touchDragEl = null;
+    let touchClone = null;
+    let touchOffsetX = 0;
+    let touchOffsetY = 0;
+
+    function handleTouchStart(e) {
+        if (isPlaying) return;
+        let target = e.currentTarget;
+        if (!target.dataset.type) return;
+        
+        e.preventDefault();
+        touchDragEl = target;
+        draggedType = target.dataset.type;
+        dragSource = target.dataset.x ? target : null;
+        
+        let touch = e.touches[0];
+        let rect = target.getBoundingClientRect();
+        touchOffsetX = touch.clientX - rect.left;
+        touchOffsetY = touch.clientY - rect.top;
+        
+        touchClone = target.cloneNode(true);
+        touchClone.style.position = 'fixed';
+        touchClone.style.width = rect.width + 'px';
+        touchClone.style.height = rect.height + 'px';
+        touchClone.style.left = (touch.clientX - touchOffsetX) + 'px';
+        touchClone.style.top = (touch.clientY - touchOffsetY) + 'px';
+        touchClone.style.opacity = '0.8';
+        touchClone.style.pointerEvents = 'none';
+        touchClone.style.zIndex = '1000';
+        document.body.appendChild(touchClone);
+    }
+
+    function handleTouchMove(e) {
+        if (!touchDragEl || !touchClone) return;
+        e.preventDefault();
+        
+        let touch = e.touches[0];
+        touchClone.style.left = (touch.clientX - touchOffsetX) + 'px';
+        touchClone.style.top = (touch.clientY - touchOffsetY) + 'px';
+        
+        // Highlight drop target
+        document.querySelectorAll('.cell.drag-over').forEach(c => c.classList.remove('drag-over'));
+        let elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+        let cell = elementBelow?.closest('.cell');
+        if (cell) cell.classList.add('drag-over');
+    }
+
+    function handleTouchEnd(e) {
+        if (!touchDragEl) return;
+        e.preventDefault();
+        
+        document.querySelectorAll('.cell.drag-over').forEach(c => c.classList.remove('drag-over'));
+        
+        let touch = e.changedTouches[0];
+        let elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+        
+        if (elementBelow) {
+            let cell = elementBelow.closest('.cell');
+            let trash = elementBelow.closest('#trash');
+            
+            if (trash && dragSource) {
+                removeTrack(dragSource.dataset.x, dragSource.dataset.y);
+            } else if (cell) {
+                let x = parseInt(cell.dataset.x);
+                let y = parseInt(cell.dataset.y);
+                placeTrack(x, y, draggedType, 0);
+                
+                if (dragSource) {
+                    let oldX = parseInt(dragSource.dataset.x);
+                    let oldY = parseInt(dragSource.dataset.y);
+                    if (oldX !== x || oldY !== y) {
+                        removeTrack(oldX, oldY);
+                    }
+                }
+            }
+        }
+        
+        if (touchClone) {
+            touchClone.remove();
+            touchClone = null;
+        }
+        touchDragEl = null;
+        draggedType = null;
+        dragSource = null;
+    }
+
+    function initTouchEvents() {
+        document.querySelectorAll('.tool').forEach(tool => {
+            tool.addEventListener('touchstart', handleTouchStart, { passive: false });
+            tool.addEventListener('touchmove', handleTouchMove, { passive: false });
+            tool.addEventListener('touchend', handleTouchEnd, { passive: false });
+        });
+    }
+
     // --- Grid Interaction ---
     function placeTrack(x, y, type, rot) {
         removeTrack(x, y); // Clean cell
@@ -408,6 +510,11 @@
         // Rotation and Drag setup for placed tracks
         track.onclick = () => rotateTrack(x, y);
         track.ondragstart = handleDragStart;
+        
+        // Touch events for mobile
+        track.addEventListener('touchstart', handleTouchStart, { passive: false });
+        track.addEventListener('touchmove', handleTouchMove, { passive: false });
+        track.addEventListener('touchend', handleTouchEnd, { passive: false });
 
         cell.appendChild(track);
     }
