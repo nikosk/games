@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tamagotchi</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      overflow: hidden;
+    }
+    
+    .game-container {
+      background: rgba(255,255,255,0.95);
+      border-radius: 30px;
+      padding: 30px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      max-width: 100vw;
+      margin: 10px;
+    }
+    
+    .pet-name {
+      font-size: 28px;
+      font-weight: 700;
+      color: #333;
+      margin-bottom: 10px;
+    }
+    
+    .pet-stage {
+      width: min(280px, 80vw);
+      height: min(200px, 57vw);
+      background: linear-gradient(180deg, #e0f7fa 0%, #b2ebf2 100%);
+      border-radius: 20px;
+      margin: 15px auto;
+      position: relative;
+      overflow: hidden;
+      border: 4px solid #80deea;
+    }
+    
+    .ground {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      height: 40px;
+      background: linear-gradient(180deg, #81c784 0%, #66bb6a 100%);
+      border-radius: 0 0 16px 16px;
+    }
+    
+    .pet {
+      position: absolute;
+      bottom: 35px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100px;
+      height: 100px;
+      transition: transform 0.3s ease;
+    }
+    
+    .pet-body {
+      width: 100px;
+      height: 90px;
+      background: linear-gradient(180deg, #ffeb3b 0%, #ffc107 100%);
+      border-radius: 50% 50% 45% 45%;
+      position: relative;
+      box-shadow: inset -5px -5px 15px rgba(0,0,0,0.1), 0 5px 15px rgba(0,0,0,0.2);
+    }
+    
+    .pet-face {
+      position: absolute;
+      top: 20px;
+      width: 100%;
+      text-align: center;
+    }
+    
+    .eye {
+      display: inline-block;
+      width: 20px;
+      height: 24px;
+      background: #333;
+      border-radius: 50%;
+      margin: 0 8px;
+      position: relative;
+      animation: blink 4s infinite;
+    }
+    
+    .eye::after {
+      content: '';
+      position: absolute;
+      top: 5px;
+      left: 5px;
+      width: 8px;
+      height: 8px;
+      background: white;
+      border-radius: 50%;
+    }
+    
+    @keyframes blink {
+      0%, 96%, 100% { transform: scaleY(1); }
+      98% { transform: scaleY(0.1); }
+    }
+    
+    .mouth {
+      width: 20px;
+      height: 10px;
+      background: #e91e63;
+      border-radius: 0 0 20px 20px;
+      margin: 8px auto 0;
+      transition: all 0.3s;
+    }
+    
+    .cheek {
+      position: absolute;
+      width: 15px;
+      height: 10px;
+      background: rgba(255,138,128,0.5);
+      border-radius: 50%;
+      top: 40px;
+    }
+    
+    .cheek.left { left: 5px; }
+    .cheek.right { right: 5px; }
+    
+    .pet-feet {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-top: -5px;
+    }
+    
+    .foot {
+      width: 25px;
+      height: 15px;
+      background: #ff9800;
+      border-radius: 50%;
+    }
+    
+    .pet.idle {
+      animation: bounce 1s ease-in-out infinite;
+    }
+    
+    @keyframes bounce {
+      0%, 100% { transform: translateX(-50%) translateY(0); }
+      50% { transform: translateX(-50%) translateY(-15px); }
+    }
+    
+    .pet.eating .mouth {
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      animation: chew 0.2s infinite;
+    }
+    
+    @keyframes chew {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(0.8); }
+    }
+    
+    .pet.eating {
+      animation: wobble 0.15s infinite;
+    }
+    
+    @keyframes wobble {
+      0%, 100% { transform: translateX(-50%) rotate(-3deg); }
+      50% { transform: translateX(-50%) rotate(3deg); }
+    }
+    
+    .pet.playing {
+      animation: jump 0.4s ease-in-out infinite;
+    }
+    
+    @keyframes jump {
+      0%, 100% { transform: translateX(-50%) translateY(0) rotate(0deg); }
+      25% { transform: translateX(-50%) translateY(-30px) rotate(-10deg); }
+      75% { transform: translateX(-50%) translateY(-30px) rotate(10deg); }
+    }
+    
+    .pet.sleeping .eye {
+      height: 4px;
+      border-radius: 10px;
+      animation: none;
+    }
+    
+    .pet.sleeping .mouth {
+      width: 12px;
+      height: 8px;
+      background: transparent;
+      border: 2px solid #e91e63;
+      border-top: none;
+      border-radius: 0 0 12px 12px;
+    }
+    
+    .pet.sleeping {
+      animation: sleep-breathe 2s ease-in-out infinite;
+    }
+    
+    @keyframes sleep-breathe {
+      0%, 100% { transform: translateX(-50%) scale(1); }
+      50% { transform: translateX(-50%) scale(1.05); }
+    }
+    
+    .pet.sick .pet-body {
+      background: linear-gradient(180deg, #c8e6c9 0%, #a5d6a7 100%);
+    }
+    
+    .pet.sick {
+      animation: shiver 0.1s infinite;
+    }
+    
+    @keyframes shiver {
+      0%, 100% { transform: translateX(-50%) translateX(-2px); }
+      50% { transform: translateX(-50%) translateX(2px); }
+    }
+    
+    .pet.dead {
+      opacity: 0.3;
+      transform: translateX(-50%) rotate(180deg) !important;
+      animation: none;
+    }
+    
+    .zzz {
+      position: absolute;
+      top: -20px;
+      right: -10px;
+      font-size: 24px;
+      color: #9c27b0;
+      opacity: 0;
+      animation: float-zzz 2s ease-in-out infinite;
+    }
+    
+    .zzz:nth-child(2) { animation-delay: 0.5s; top: -30px; right: 5px; font-size: 20px; }
+    .zzz:nth-child(3) { animation-delay: 1s; top: -40px; right: 20px; font-size: 16px; }
+    
+    @keyframes float-zzz {
+      0%, 100% { opacity: 0; transform: translateY(0); }
+      50% { opacity: 1; transform: translateY(-10px); }
+    }
+    
+    .heart-particles, .star-particles, .food-particles {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+    
+    .particle {
+      position: absolute;
+      font-size: 20px;
+      animation: float-up 1s ease-out forwards;
+      opacity: 0;
+    }
+    
+    @keyframes float-up {
+      0% { opacity: 1; transform: translateY(0) scale(0.5); }
+      100% { opacity: 0; transform: translateY(-60px) scale(1.2); }
+    }
+    
+    .stats {
+      display: grid;
+      gap: 12px;
+      margin: 20px 0;
+    }
+    
+    .stat-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .stat-icon {
+      font-size: 20px;
+      width: 30px;
+    }
+    
+    .stat-bar {
+      flex: 1;
+      height: 20px;
+      background: #e0e0e0;
+      border-radius: 10px;
+      overflow: hidden;
+      position: relative;
+    }
+    
+    .stat-fill {
+      height: 100%;
+      border-radius: 10px;
+      transition: width 0.5s ease, background 0.3s;
+    }
+    
+    .stat-fill.hunger { background: linear-gradient(90deg, #ff5722, #ff9800); }
+    .stat-fill.happiness { background: linear-gradient(90deg, #e91e63, #ff4081); }
+    .stat-fill.energy { background: linear-gradient(90deg, #4caf50, #8bc34a); }
+    
+    .stat-value {
+      width: 40px;
+      font-weight: 600;
+      color: #666;
+    }
+    
+    .actions {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    
+    .action-btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 25px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .action-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+    }
+    
+    .action-btn:active {
+      transform: translateY(0);
+    }
+    
+    .action-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .btn-feed { background: linear-gradient(135deg, #ff9800, #ff5722); color: white; }
+    .btn-play { background: linear-gradient(135deg, #e91e63, #9c27b0); color: white; }
+    .btn-sleep { background: linear-gradient(135deg, #3f51b5, #2196f3); color: white; }
+    .btn-heal { background: linear-gradient(135deg, #4caf50, #8bc34a); color: white; }
+    .btn-reset { background: linear-gradient(135deg, #607d8b, #455a64); color: white; }
+    
+    .message {
+      margin-top: 15px;
+      padding: 10px 20px;
+      background: #f5f5f5;
+      border-radius: 15px;
+      font-size: 14px;
+      color: #666;
+      min-height: 40px;
+    }
+    
+    .age-info {
+      margin-top: 10px;
+      font-size: 12px;
+      color: #999;
+    }
+    
+    .clouds {
+      position: absolute;
+      top: 10px;
+      width: 100%;
+      height: 30px;
+    }
+    
+    .cloud {
+      position: absolute;
+      background: rgba(255,255,255,0.8);
+      border-radius: 20px;
+      animation: cloud-move 20s linear infinite;
+    }
+    
+    .cloud::before, .cloud::after {
+      content: '';
+      position: absolute;
+      background: inherit;
+      border-radius: 50%;
+    }
+    
+    .cloud.c1 { width: 40px; height: 15px; top: 5px; left: -40px; animation-duration: 15s; }
+    .cloud.c2 { width: 30px; height: 12px; top: 15px; left: -30px; animation-duration: 20s; animation-delay: 5s; }
+    
+    @keyframes cloud-move {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(320px); }
+    }
+    
+    .stars { display: none; }
+    .pet-stage.night {
+      background: linear-gradient(180deg, #1a237e 0%, #311b92 100%);
+    }
+    .pet-stage.night .ground {
+      background: linear-gradient(180deg, #1b5e20 0%, #2e7d32 100%);
+    }
+    .pet-stage.night .stars {
+      display: block;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+    .pet-stage.night .star {
+      position: absolute;
+      width: 3px;
+      height: 3px;
+      background: white;
+      border-radius: 50%;
+      animation: twinkle 2s ease-in-out infinite;
+    }
+    
+    @keyframes twinkle {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <div class="pet-name" id="petName">Blob</div>
+    
+    <div class="pet-stage" id="petStage">
+      <div class="clouds">
+        <div class="cloud c1"></div>
+        <div class="cloud c2"></div>
+      </div>
+      <div class="stars" id="stars"></div>
+      <div class="ground"></div>
+      
+      <div class="pet idle" id="pet">
+        <div class="pet-body">
+          <div class="cheek left"></div>
+          <div class="cheek right"></div>
+          <div class="pet-face">
+            <div class="eye"></div>
+            <div class="eye"></div>
+            <div class="mouth"></div>
+          </div>
+        </div>
+        <div class="pet-feet">
+          <div class="foot"></div>
+          <div class="foot"></div>
+        </div>
+        <div class="zzz">Z</div>
+        <div class="zzz">z</div>
+        <div class="zzz">z</div>
+      </div>
+      
+      <div class="heart-particles" id="heartParticles"></div>
+      <div class="star-particles" id="starParticles"></div>
+      <div class="food-particles" id="foodParticles"></div>
+    </div>
+    
+    <div class="stats">
+      <div class="stat-row">
+        <span class="stat-icon">🍖</span>
+        <div class="stat-bar">
+          <div class="stat-fill hunger" id="hungerBar"></div>
+        </div>
+        <span class="stat-value" id="hungerValue">100</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-icon">💖</span>
+        <div class="stat-bar">
+          <div class="stat-fill happiness" id="happinessBar"></div>
+        </div>
+        <span class="stat-value" id="happinessValue">100</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-icon">⚡</span>
+        <div class="stat-bar">
+          <div class="stat-fill energy" id="energyBar"></div>
+        </div>
+        <span class="stat-value" id="energyValue">100</span>
+      </div>
+    </div>
+    
+    <div class="actions">
+      <button class="action-btn btn-feed" onclick="feed()">🍖 Feed</button>
+      <button class="action-btn btn-play" onclick="play()">🎾 Play</button>
+      <button class="action-btn btn-sleep" onclick="sleep()">💤 Sleep</button>
+      <button class="action-btn btn-heal" onclick="heal()" id="healBtn" style="display:none">💊 Heal</button>
+      <button class="action-btn btn-reset" onclick="reset()">🔄 Reset</button>
+    </div>
+    
+    <div class="message" id="message">Your pet is happy and healthy!</div>
+    <div class="age-info" id="ageInfo">Age: 0 days</div>
+  </div>
+
+  <script>
+    const DEFAULT_STATE = {
+      hunger: 100,
+      happiness: 100,
+      energy: 100,
+      lastUpdate: Date.now(),
+      birthDate: Date.now(),
+      isSleeping: false,
+      isSick: false,
+      isDead: false
+    };
+
+    let state = loadState();
+    
+    function loadState() {
+      const saved = localStorage.getItem('tamagotchi_state');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return { ...DEFAULT_STATE, ...parsed };
+      }
+      return { ...DEFAULT_STATE };
+    }
+    
+    function saveState() {
+      state.lastUpdate = Date.now();
+      localStorage.setItem('tamagotchi_state', JSON.stringify(state));
+    }
+    
+    function updateStats() {
+      const now = Date.now();
+      const elapsed = now - state.lastUpdate;
+      const minutes = elapsed / 60000;
+      
+      if (!state.isDead && !state.isSleeping) {
+        state.hunger = Math.max(0, state.hunger - minutes * 0.5);
+        state.happiness = Math.max(0, state.happiness - minutes * 0.3);
+        state.energy = Math.max(0, state.energy - minutes * 0.2);
+      } else if (state.isSleeping) {
+        state.energy = Math.min(100, state.energy + minutes * 2);
+        if (state.energy >= 100) {
+          state.isSleeping = false;
+          showMessage("Your pet woke up refreshed!");
+        }
+      }
+      
+      if (state.hunger <= 0 && state.energy <= 0 && !state.isDead) {
+        state.isDead = true;
+        showMessage("Your pet has passed away... Reset to try again.");
+      } else if (state.hunger <= 20 && !state.isSick && !state.isDead) {
+        state.isSick = true;
+        showMessage("Your pet got sick from hunger! Heal it!");
+      }
+      
+      saveState();
+      render();
+    }
+    
+    function render() {
+      const pet = document.getElementById('pet');
+      const stage = document.getElementById('petStage');
+      
+      document.getElementById('hungerBar').style.width = state.hunger + '%';
+      document.getElementById('hungerValue').textContent = Math.round(state.hunger);
+      
+      document.getElementById('happinessBar').style.width = state.happiness + '%';
+      document.getElementById('happinessValue').textContent = Math.round(state.happiness);
+      
+      document.getElementById('energyBar').style.width = state.energy + '%';
+      document.getElementById('energyValue').textContent = Math.round(state.energy);
+      
+      const age = Math.floor((Date.now() - state.birthDate) / 86400000);
+      document.getElementById('ageInfo').textContent = `Age: ${age} day${age !== 1 ? 's' : ''}`;
+      
+      pet.className = 'pet';
+      stage.classList.remove('night');
+      
+      document.getElementById('healBtn').style.display = state.isSick ? 'inline-flex' : 'none';
+      
+      if (state.isDead) {
+        pet.classList.add('dead');
+        disableButtons(true);
+        return;
+      }
+      
+      disableButtons(false);
+      
+      if (state.isSleeping) {
+        pet.classList.add('sleeping');
+        stage.classList.add('night');
+      } else if (state.isSick) {
+        pet.classList.add('sick');
+        pet.classList.add('idle');
+      } else {
+        pet.classList.add('idle');
+      }
+    }
+    
+    function disableButtons(disabled) {
+      document.querySelectorAll('.action-btn:not(.btn-reset):not(.btn-heal)').forEach(btn => {
+        btn.disabled = disabled;
+      });
+    }
+    
+    function showMessage(msg) {
+      document.getElementById('message').textContent = msg;
+    }
+    
+    function spawnParticles(containerId, emoji, count = 5) {
+      const container = document.getElementById(containerId);
+      for (let i = 0; i < count; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        particle.textContent = emoji;
+        particle.style.left = (80 + Math.random() * 100) + 'px';
+        particle.style.top = (100 + Math.random() * 50) + 'px';
+        particle.style.animationDelay = (i * 0.1) + 's';
+        container.appendChild(particle);
+        setTimeout(() => particle.remove(), 1000);
+      }
+    }
+    
+    function feed() {
+      if (state.isDead || state.isSleeping) return;
+      
+      state.hunger = Math.min(100, state.hunger + 25);
+      state.happiness = Math.min(100, state.happiness + 5);
+      
+      const pet = document.getElementById('pet');
+      pet.className = 'pet eating';
+      spawnParticles('foodParticles', '🍎', 3);
+      
+      setTimeout(() => {
+        pet.className = state.isSick ? 'pet sick idle' : 'pet idle';
+        render();
+      }, 1000);
+      
+      showMessage("Yummy! Your pet enjoyed the food!");
+      saveState();
+      render();
+    }
+    
+    function play() {
+      if (state.isDead || state.isSleeping || state.energy < 10) {
+        if (state.energy < 10) showMessage("Your pet is too tired to play!");
+        return;
+      }
+      
+      state.happiness = Math.min(100, state.happiness + 20);
+      state.energy = Math.max(0, state.energy - 15);
+      state.hunger = Math.max(0, state.hunger - 5);
+      
+      const pet = document.getElementById('pet');
+      pet.className = 'pet playing';
+      spawnParticles('heartParticles', '💖', 4);
+      spawnParticles('starParticles', '⭐', 3);
+      
+      setTimeout(() => {
+        pet.className = state.isSick ? 'pet sick idle' : 'pet idle';
+        render();
+      }, 1500);
+      
+      showMessage("Wheee! Your pet had so much fun!");
+      saveState();
+      render();
+    }
+    
+    function sleep() {
+      if (state.isDead) return;
+      
+      if (state.isSleeping) {
+        state.isSleeping = false;
+        showMessage("Your pet woke up early!");
+      } else {
+        state.isSleeping = true;
+        showMessage("Shhh... Your pet is sleeping...");
+      }
+      
+      saveState();
+      render();
+    }
+    
+    function heal() {
+      if (!state.isSick || state.isDead) return;
+      
+      state.isSick = false;
+      state.hunger = Math.min(100, state.hunger + 20);
+      state.energy = Math.min(100, state.energy + 20);
+      
+      spawnParticles('heartParticles', '💚', 5);
+      showMessage("Your pet feels much better now!");
+      
+      document.getElementById('healBtn').style.display = 'none';
+      saveState();
+      render();
+    }
+    
+    function reset() {
+      if (confirm('Are you sure you want to reset your pet?')) {
+        state = { ...DEFAULT_STATE, birthDate: Date.now(), lastUpdate: Date.now() };
+        saveState();
+        showMessage("A new pet has arrived!");
+        render();
+      }
+    }
+    
+    function createStars() {
+      const container = document.getElementById('stars');
+      for (let i = 0; i < 20; i++) {
+        const star = document.createElement('div');
+        star.className = 'star';
+        star.style.left = Math.random() * 100 + '%';
+        star.style.top = Math.random() * 60 + '%';
+        star.style.animationDelay = Math.random() * 2 + 's';
+        container.appendChild(star);
+      }
+    }
+    
+    createStars();
+    render();
+    setInterval(updateStats, 1000);
+  </script>
+</body>
+</html>

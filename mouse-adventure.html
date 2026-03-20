@@ -27,11 +27,15 @@
             border-radius: 8px;
             box-shadow: 0 0 30px rgba(233, 69, 96, 0.5), 
                         inset 0 0 60px rgba(0, 0, 0, 0.3);
+            max-width: 100vw;
+            max-height: 100vh;
         }
         
         canvas {
             display: block;
             background: #87CEEB;
+            max-width: 100vw;
+            max-height: 100vh;
         }
         
         #instructions {
@@ -47,13 +51,33 @@
 </head>
 <body>
     <div id="gameContainer">
-        <canvas id="gameCanvas" width="800" height="500"></canvas>
+        <canvas id="gameCanvas"></canvas>
         <div id="instructions">Arrow Keys / WASD to move | SPACE to jump | P to pause</div>
     </div>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        
+        // Responsive canvas sizing
+        function resizeCanvas() {
+            const maxWidth = Math.min(window.innerWidth - 40, 800);
+            const maxHeight = Math.min(window.innerHeight - 60, 500);
+            const ratio = 800 / 500;
+            
+            let width = maxWidth;
+            let height = width / ratio;
+            
+            if (height > maxHeight) {
+                height = maxHeight;
+                width = height * ratio;
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
         
         // Game state
         let gameState = 'start'; // start, playing, gameover, levelcomplete, victory

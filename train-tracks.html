@@ -7,10 +7,16 @@
 <style>
     :root {
         --grid-size: 5;
-        --cell-size: 80px;
+        --cell-size: min(80px, calc((100vw - 80px) / 7));
         --bg-color: #8ed081;
         --track-color: #7b8e9c;
         --wood-color: #d4a373;
+    }
+    
+    @media (max-width: 600px) {
+        :root {
+            --cell-size: min(60px, calc((100vw - 60px) / 7));
+        }
     }
 
     * {
