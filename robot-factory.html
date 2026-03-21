@@ -49,8 +49,17 @@
             padding: 16px;
             display: flex;
             flex-direction: column;
-            gap: 16px;
-            min-height: 100vh;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+        }
+
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+            gap: 12px;
         }
 
         /* Header */
@@ -128,7 +137,8 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            min-height: 300px;
+            flex: 7;
+            min-height: 0;
             position: relative;
             overflow: hidden;
             box-shadow: inset 0 4px 20px rgba(0,0,0,0.1);
@@ -406,6 +416,10 @@
             border-radius: 20px;
             padding: 16px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            flex: 3;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
         }
 
         .belt-label {
@@ -606,9 +620,10 @@
         /* Block Bin */
         .block-bin {
             background: white;
-            border-radius: 20px;
-            padding: 16px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            border-radius: 20px 20px 0 0;
+            padding: 12px 16px;
+            box-shadow: 0 -4px 15px rgba(0,0,0,0.08);
+            flex-shrink: 0;
         }
 
         .bin-label {
@@ -900,6 +915,7 @@
             </div>
         </header>
 
+        <div class="main-content">
         <section class="robot-stage">
             <div class="state-indicators">
                 <div class="state-badge" id="moodBadge">😊 Mood: Happy</div>
@@ -932,6 +948,7 @@
                 <button class="btn btn-clear" id="clearBtn">🗑️</button>
             </div>
         </section>
+        </div>
 
         <section class="block-bin">
             <div class="bin-label">Command Blocks</div>
