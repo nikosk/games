@@ -1,0 +1,1720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Robot Factory - Learn Programming!</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-cream: #F5F0E8;
+            --robot-blue: #4A90D9;
+            --belt-gray: #E8E4DD;
+            --move-green: #6BBF59;
+            --loop-orange: #F59C3C;
+            --condition-purple: #9B7FC8;
+            --function-blue: #5DADE2;
+            --debug-coral: #E57373;
+            --pattern-yellow: #F7DC6F;
+            --ui-charcoal: #3D3D3D;
+            --success-gold: #FFD700;
+            --block-size: 70px;
+            --block-gap: 10px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Nunito', system-ui, sans-serif;
+            background: var(--bg-cream);
+            min-height: 100vh;
+            overflow-x: hidden;
+            user-select: none;
+        }
+
+        h1, h2, h3 {
+            font-family: 'Fredoka One', cursive;
+        }
+
+        .game-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+
+        .logo {
+            font-family: 'Fredoka One', cursive;
+            font-size: 1.5rem;
+            color: var(--robot-blue);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+        }
+
+        .progress-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .progress-label {
+            font-size: 0.85rem;
+            color: var(--ui-charcoal);
+            font-weight: 600;
+        }
+
+        .progress-dots {
+            display: flex;
+            gap: 6px;
+        }
+
+        .progress-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #ddd;
+            transition: all 0.3s ease;
+        }
+
+        .progress-dot.unlocked {
+            background: var(--robot-blue);
+            box-shadow: 0 0 8px var(--robot-blue);
+        }
+
+        .progress-dot.current {
+            transform: scale(1.3);
+            background: var(--success-gold);
+            box-shadow: 0 0 12px var(--success-gold);
+        }
+
+        /* Robot Stage */
+        .robot-stage {
+            background: linear-gradient(180deg, #E8E4DD 0%, #D4D0C8 100%);
+            border-radius: 24px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 220px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .stage-floor {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: repeating-linear-gradient(
+                90deg,
+                #C4C0B8 0px,
+                #C4C0B8 30px,
+                #B8B4AC 30px,
+                #B8B4AC 60px
+            );
+        }
+
+        .sparky-container {
+            position: relative;
+            z-index: 2;
+            margin-bottom: 40px;
+            transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .sparky-container.jumping {
+            animation: sparkyJump 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .sparky-container.spinning {
+            animation: sparkySpin 0.6s ease-in-out;
+        }
+
+        .sparky-container.dancing {
+            animation: sparkyDance 0.5s ease-in-out infinite;
+        }
+
+        .sparky-container.walking {
+            transition: transform 0.4s ease-out;
+        }
+
+        @keyframes sparkyJump {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-80px); }
+        }
+
+        @keyframes sparkySpin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes sparkyDance {
+            0%, 100% { transform: rotate(-10deg) scale(1); }
+            50% { transform: rotate(10deg) scale(1.1); }
+        }
+
+        .sparky {
+            width: 120px;
+            height: 140px;
+            position: relative;
+        }
+
+        .sparky-body {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(145deg, #5BA0E8 0%, var(--robot-blue) 100%);
+            border-radius: 20px;
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 8px 20px rgba(74, 144, 217, 0.4);
+        }
+
+        .sparky-face {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 50px;
+        }
+
+        .sparky-eye {
+            width: 20px;
+            height: 24px;
+            background: white;
+            border-radius: 10px;
+            position: absolute;
+            top: 0;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .sparky-eye.left { left: 5px; }
+        .sparky-eye.right { right: 5px; }
+
+        .sparky-pupil {
+            width: 10px;
+            height: 12px;
+            background: var(--ui-charcoal);
+            border-radius: 5px;
+            position: absolute;
+            bottom: 4px;
+            left: 50%;
+            transform: translateX(-50%);
+            transition: all 0.3s ease;
+        }
+
+        .sparky.happy .sparky-eye {
+            height: 12px;
+            border-radius: 12px 12px 0 0;
+        }
+
+        .sparky.happy .sparky-pupil {
+            height: 6px;
+            bottom: 2px;
+        }
+
+        .sparky.sad .sparky-eye {
+            height: 16px;
+        }
+
+        .sparky.sad .sparky-pupil {
+            top: 8px;
+            bottom: auto;
+        }
+
+        .sparky-mouth {
+            width: 30px;
+            height: 15px;
+            border: 4px solid var(--ui-charcoal);
+            border-top: none;
+            border-radius: 0 0 20px 20px;
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .sparky.happy .sparky-mouth {
+            width: 40px;
+            height: 20px;
+            background: #FF6B6B;
+            border-color: var(--ui-charcoal);
+            border-radius: 0 0 25px 25px;
+        }
+
+        .sparky.sad .sparky-mouth {
+            border-radius: 20px 20px 0 0;
+            border: 4px solid var(--ui-charcoal);
+            border-bottom: none;
+        }
+
+        .sparky-antenna {
+            width: 8px;
+            height: 30px;
+            background: #666;
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-radius: 4px;
+        }
+
+        .sparky-antenna::after {
+            content: '';
+            width: 16px;
+            height: 16px;
+            background: var(--success-gold);
+            border-radius: 50%;
+            position: absolute;
+            top: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 0 15px var(--success-gold);
+        }
+
+        .sparky-arm {
+            width: 15px;
+            height: 40px;
+            background: var(--robot-blue);
+            border-radius: 8px;
+            position: absolute;
+            bottom: 30px;
+            transition: transform 0.3s ease;
+        }
+
+        .sparky-arm.left {
+            left: -8px;
+            transform-origin: top center;
+        }
+
+        .sparky-arm.right {
+            right: -8px;
+            transform-origin: top center;
+        }
+
+        .sparky.dancing .sparky-arm.left {
+            animation: waveLeft 0.25s ease-in-out infinite alternate;
+        }
+
+        .sparky.dancing .sparky-arm.right {
+            animation: waveRight 0.25s ease-in-out infinite alternate;
+        }
+
+        @keyframes waveLeft {
+            from { transform: rotate(-20deg); }
+            to { transform: rotate(-60deg); }
+        }
+
+        @keyframes waveRight {
+            from { transform: rotate(20deg); }
+            to { transform: rotate(60deg); }
+        }
+
+        .speech-bubble {
+            position: absolute;
+            top: -60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 1rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .speech-bubble.visible {
+            opacity: 1;
+        }
+
+        .speech-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 10px solid transparent;
+            border-top-color: white;
+            border-bottom: none;
+        }
+
+        /* State indicators */
+        .state-indicators {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 3;
+        }
+
+        .state-badge {
+            padding: 6px 12px;
+            background: white;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        /* Conveyor Belt */
+        .conveyor-section {
+            background: white;
+            border-radius: 20px;
+            padding: 16px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+
+        .belt-label {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--ui-charcoal);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .conveyor-belt {
+            background: repeating-linear-gradient(
+                90deg,
+                #888 0px,
+                #888 20px,
+                #666 20px,
+                #666 40px
+            );
+            border-radius: 12px;
+            min-height: 100px;
+            display: flex;
+            align-items: center;
+            gap: var(--block-gap);
+            padding: 15px;
+            overflow-x: auto;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .conveyor-belt.running {
+            animation: beltMove 0.5s linear infinite;
+        }
+
+        @keyframes beltMove {
+            from { background-position: 0 0; }
+            to { background-position: 40px 0; }
+        }
+
+        .conveyor-belt::before {
+            content: 'Tap blocks below to program!';
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            color: rgba(255,255,255,0.5);
+            font-weight: 700;
+            font-size: 1rem;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        .conveyor-belt.has-blocks::before {
+            display: none;
+        }
+
+        .belt-block {
+            min-width: var(--block-size);
+            height: var(--block-size);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        .belt-block:hover {
+            transform: scale(1.05);
+        }
+
+        .belt-block.executing {
+            animation: pulse 0.4s ease-in-out;
+            box-shadow: 0 0 20px currentColor;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+        }
+
+        .belt-block .remove-btn {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 22px;
+            height: 22px;
+            background: var(--debug-coral);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            color: white;
+            opacity: 0;
+            transition: opacity 0.2s;
+            cursor: pointer;
+        }
+
+        .belt-block:hover .remove-btn {
+            opacity: 1;
+        }
+
+        /* Repeat wrapper styling */
+        .repeat-wrapper {
+            background: var(--loop-orange);
+            border-radius: 14px;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            position: relative;
+        }
+
+        .repeat-header {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: white;
+            text-transform: uppercase;
+        }
+
+        .repeat-wrapper .belt-block {
+            min-width: 50px;
+            height: 50px;
+            font-size: 1.4rem;
+        }
+
+        /* Control buttons */
+        .controls {
+            display: flex;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 14px 24px;
+            border: none;
+            border-radius: 14px;
+            font-family: 'Fredoka One', cursive;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        .btn-run {
+            background: var(--move-green);
+            color: white;
+        }
+
+        .btn-run:hover {
+            background: #5AAF49;
+        }
+
+        .btn-run:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-clear {
+            background: var(--debug-coral);
+            color: white;
+        }
+
+        .btn-clear:hover {
+            background: #D65C5C;
+        }
+
+        /* Block Bin */
+        .block-bin {
+            background: white;
+            border-radius: 20px;
+            padding: 16px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+
+        .bin-label {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--ui-charcoal);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .blocks-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(var(--block-size), 1fr));
+            gap: var(--block-gap);
+        }
+
+        .block {
+            width: var(--block-size);
+            height: var(--block-size);
+            border-radius: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            position: relative;
+        }
+
+        .block:hover:not(.locked) {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+
+        .block:active:not(.locked) {
+            transform: scale(0.95);
+        }
+
+        .block.locked {
+            background: #ddd !important;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .block.locked::after {
+            content: '🔒';
+            position: absolute;
+            font-size: 1.2rem;
+        }
+
+        .block-icon {
+            font-size: 1.8rem;
+            line-height: 1;
+        }
+
+        .block-label {
+            font-size: 0.6rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+
+        .block[data-type="move"] { background: var(--move-green); color: white; }
+        .block[data-type="jump"] { background: var(--move-green); color: white; }
+        .block[data-type="spin"] { background: var(--loop-orange); color: white; }
+        .block[data-type="look"] { background: var(--condition-purple); color: white; }
+        .block[data-type="repeat"] { background: var(--loop-orange); color: white; }
+        .block[data-type="if-happy"] { background: var(--condition-purple); color: white; }
+        .block[data-type="if-energy"] { background: var(--condition-purple); color: white; }
+        .block[data-type="pattern"] { background: var(--pattern-yellow); color: var(--ui-charcoal); }
+        .block[data-type="debug"] { background: var(--debug-coral); color: white; }
+        .block[data-type="sort"] { background: var(--function-blue); color: white; }
+        .block[data-type="module"] { background: var(--function-blue); color: white; }
+
+        /* Challenge Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 24px;
+            padding: 32px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            transform: translateY(-20px);
+            transition: transform 0.3s ease;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .modal-overlay.visible .modal {
+            transform: translateY(0);
+        }
+
+        .modal-icon {
+            font-size: 4rem;
+            margin-bottom: 16px;
+        }
+
+        .modal h2 {
+            color: var(--robot-blue);
+            font-size: 1.6rem;
+            margin-bottom: 12px;
+        }
+
+        .modal p {
+            color: var(--ui-charcoal);
+            font-size: 1.1rem;
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        .modal-btn {
+            background: var(--robot-blue);
+            color: white;
+            border: none;
+            padding: 14px 40px;
+            border-radius: 14px;
+            font-family: 'Fredoka One', cursive;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .modal-btn:hover {
+            background: #3A80C9;
+            transform: scale(1.05);
+        }
+
+        /* Success celebration */
+        .celebration {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 99;
+        }
+
+        .confetti {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            animation: confettiFall 3s ease-out forwards;
+        }
+
+        @keyframes confettiFall {
+            0% {
+                transform: translateY(-100px) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        /* Pattern mini-game */
+        .pattern-area {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .pattern-item {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            background: #eee;
+        }
+
+        .pattern-item.correct {
+            background: var(--move-green);
+            color: white;
+        }
+
+        /* Optimized star rating */
+        .star-rating {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin: 16px 0;
+        }
+
+        .star {
+            font-size: 2rem;
+            opacity: 0.3;
+            transition: all 0.3s ease;
+        }
+
+        .star.earned {
+            opacity: 1;
+            animation: starPop 0.4s ease;
+        }
+
+        @keyframes starPop {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.3); }
+            100% { transform: scale(1); }
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            :root {
+                --block-size: 60px;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .logo {
+                font-size: 1.3rem;
+            }
+
+            .sparky {
+                width: 100px;
+                height: 120px;
+            }
+
+            .sparky-body {
+                width: 80px;
+                height: 80px;
+            }
+
+            .state-indicators {
+                flex-direction: row;
+                top: auto;
+                bottom: 70px;
+                right: 10px;
+            }
+
+            .state-badge {
+                padding: 4px 8px;
+                font-size: 0.7rem;
+            }
+        }
+
+        /* Sound toggle */
+        .sound-toggle {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: white;
+            border: none;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            cursor: pointer;
+            font-size: 1.4rem;
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <button class="sound-toggle" id="soundToggle">🔊</button>
+
+    <div class="game-container">
+        <header class="header">
+            <div class="logo">
+                <svg class="logo-icon" viewBox="0 0 40 40" fill="none">
+                    <rect x="5" y="12" width="30" height="25" rx="5" fill="#4A90D9"/>
+                    <circle cx="14" cy="22" r="4" fill="white"/>
+                    <circle cx="26" cy="22" r="4" fill="white"/>
+                    <rect x="16" y="30" width="8" height="4" rx="2" fill="#FFD700"/>
+                    <rect x="18" y="4" width="4" height="10" rx="2" fill="#666"/>
+                    <circle cx="20" cy="4" r="4" fill="#FFD700"/>
+                </svg>
+                Robot Factory
+            </div>
+            <div class="progress-container">
+                <span class="progress-label">Concepts:</span>
+                <div class="progress-dots" id="progressDots"></div>
+            </div>
+        </header>
+
+        <section class="robot-stage">
+            <div class="state-indicators">
+                <div class="state-badge" id="moodBadge">😊 Mood: Happy</div>
+                <div class="state-badge" id="energyBadge">⚡ Energy: Full</div>
+            </div>
+
+            <div class="sparky-container" id="sparkyContainer">
+                <div class="sparky happy" id="sparky">
+                    <div class="sparky-antenna"></div>
+                    <div class="sparky-body">
+                        <div class="sparky-face">
+                            <div class="sparky-eye left"><div class="sparky-pupil"></div></div>
+                            <div class="sparky-eye right"><div class="sparky-pupil"></div></div>
+                            <div class="sparky-mouth"></div>
+                        </div>
+                    </div>
+                    <div class="sparky-arm left"></div>
+                    <div class="sparky-arm right"></div>
+                </div>
+                <div class="speech-bubble" id="speechBubble">Hello!</div>
+            </div>
+            <div class="stage-floor"></div>
+        </section>
+
+        <section class="conveyor-section">
+            <div class="belt-label">Your Program</div>
+            <div class="conveyor-belt" id="conveyorBelt"></div>
+            <div class="controls">
+                <button class="btn btn-clear" id="clearBtn">🗑️ Clear</button>
+            </div>
+        </section>
+
+        <section class="block-bin">
+            <div class="bin-label">Command Blocks</div>
+            <div class="blocks-grid" id="blocksGrid"></div>
+        </section>
+    </div>
+
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal" id="modalContent"></div>
+    </div>
+
+    <div class="celebration" id="celebration"></div>
+
+    <script>
+        // ==================== SOUND MANAGER ====================
+        class SoundManager {
+            constructor() {
+                this.enabled = true;
+                this.ctx = null;
+            }
+
+            init() {
+                try {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                } catch (e) {
+                    console.log('Web Audio not supported');
+                }
+            }
+
+            toggle() {
+                this.enabled = !this.enabled;
+                return this.enabled;
+            }
+
+            play(type) {
+                if (!this.enabled || !this.ctx) return;
+                
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                const now = this.ctx.currentTime;
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+
+                switch(type) {
+                    case 'move':
+                        osc.frequency.setValueAtTime(300, now);
+                        osc.type = 'square';
+                        break;
+                    case 'jump':
+                        osc.frequency.setValueAtTime(400, now);
+                        osc.frequency.exponentialRampToValueAtTime(600, now + 0.1);
+                        osc.type = 'square';
+                        break;
+                    case 'spin':
+                        osc.frequency.setValueAtTime(200, now);
+                        osc.frequency.exponentialRampToValueAtTime(800, now + 0.3);
+                        osc.type = 'sine';
+                        break;
+                    case 'look':
+                        osc.frequency.setValueAtTime(500, now);
+                        osc.type = 'triangle';
+                        break;
+                    case 'success':
+                        osc.frequency.setValueAtTime(523, now);
+                        osc.frequency.setValueAtTime(659, now + 0.1);
+                        osc.frequency.setValueAtTime(784, now + 0.2);
+                        osc.type = 'sine';
+                        gain.gain.setValueAtTime(0.3, now);
+                        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                        break;
+                    case 'error':
+                        osc.frequency.setValueAtTime(150, now);
+                        osc.type = 'sawtooth';
+                        break;
+                    case 'unlock':
+                        osc.frequency.setValueAtTime(400, now);
+                        osc.frequency.setValueAtTime(600, now + 0.1);
+                        osc.frequency.setValueAtTime(800, now + 0.2);
+                        osc.type = 'sine';
+                        break;
+                    case 'tap':
+                        osc.frequency.setValueAtTime(800, now);
+                        osc.type = 'sine';
+                        gain.gain.setValueAtTime(0.1, now);
+                        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+                        break;
+                }
+
+                osc.start(now);
+                osc.stop(now + 0.5);
+            }
+        }
+
+        const sound = new SoundManager();
+
+        // ==================== GAME STATE ====================
+        const gameState = {
+            currentConcept: 0,
+            belt: [],
+            sparky: {
+                mood: 'happy',
+                energy: 'full',
+                position: 0 // -1 left, 0 center, 1 right
+            },
+            savedModules: [],
+            isRunning: false,
+            unlocks: {
+                moveRight: true,
+                moveLeft: false,
+                jump: false,
+                spin: false,
+                look: false,
+                repeat2: false,
+                repeat3: false,
+                repeat4: false,
+                ifHappy: false,
+                ifEnergy: false,
+                pattern: false,
+                debug: false,
+                sort: false,
+                module: false
+            }
+        };
+
+        // ==================== CONCEPTS & CHALLENGES ====================
+        const concepts = [
+            { name: 'Sequencing', icon: '👉', desc: 'Commands run in order' },
+            { name: 'Sequencing 2', icon: '⬆️', desc: 'More commands to chain' },
+            { name: 'Variety', icon: '🔄', desc: 'Different actions combined' },
+            { name: 'Loops', icon: '🔁', desc: 'Repeat actions automatically' },
+            { name: 'Loops 2', icon: '🔂', desc: 'More loop options' },
+            { name: 'Conditionals', icon: '❓', desc: 'Do something IF a condition is true' },
+            { name: 'State Check', icon: '⚡', desc: 'Check energy levels' },
+            { name: 'Patterns', icon: '🎨', desc: 'Find the missing piece' },
+            { name: 'Debugging', icon: '🔧', desc: 'Fix the broken sequence' },
+            { name: 'Master', icon: '🏆', desc: 'Combine everything!' }
+        ];
+
+        const challenges = [
+            {
+                id: 0,
+                prompt: "Make Sparky move RIGHT!",
+                hint: "Tap the green arrow block",
+                unlocks: 'moveRight',
+                check: (belt) => {
+                    return belt.some(b => b.type === 'moveRight');
+                },
+                optimizeCheck: (belt) => belt.filter(b => b.type === 'moveRight').length
+            },
+            {
+                id: 1,
+                prompt: "Make Sparky JUMP!",
+                hint: "Find the JUMP block",
+                unlocks: 'jump',
+                check: (belt) => belt.some(b => b.type === 'jump'),
+                optimizeCheck: (belt) => belt.filter(b => b.type === 'jump').length
+            },
+            {
+                id: 2,
+                prompt: "Make Sparky SPIN around!",
+                hint: "Try the orange SPIN block",
+                unlocks: 'spin',
+                check: (belt) => belt.some(b => b.type === 'spin'),
+                optimizeCheck: (belt) => belt.filter(b => b.type === 'spin').length
+            },
+            {
+                id: 3,
+                prompt: "Make Sparky LOOK around!",
+                hint: "Purple blocks have special powers",
+                unlocks: 'look',
+                check: (belt) => belt.some(b => b.type === 'look'),
+                optimizeCheck: (belt) => belt.filter(b => b.type === 'look').length
+            },
+            {
+                id: 4,
+                prompt: "Jump TWICE using a loop!",
+                hint: "Use REPEAT block with JUMP inside",
+                unlocks: 'repeat2',
+                check: (belt) => {
+                    const hasJump = belt.some(b => b.type === 'jump');
+                    const hasRepeat = belt.some(b => b.type === 'repeat2' || b.type === 'repeat3' || b.type === 'repeat4');
+                    return hasJump && hasRepeat;
+                },
+                optimizeCheck: (belt) => {
+                    const repeats = belt.filter(b => b.type.startsWith('repeat')).length;
+                    const jumps = belt.filter(b => b.type === 'jump').length;
+                    if (repeats > 0) return repeats + 1; // Repeat + the inner block
+                    return jumps;
+                }
+            },
+            {
+                id: 5,
+                prompt: "Jump 3 times efficiently!",
+                hint: "Use REPEAT 3x block",
+                unlocks: 'repeat3',
+                check: (belt) => belt.some(b => b.type === 'repeat3'),
+                optimizeCheck: (belt) => belt.some(b => b.type === 'repeat3') ? 2 : 99
+            },
+            {
+                id: 6,
+                prompt: "Make Sparky HAPPY then DANCE!",
+                hint: "Use IF_HAPPY block",
+                unlocks: 'ifHappy',
+                check: (belt) => {
+                    const hasHappy = belt.some(b => b.type === 'ifHappy');
+                    const hasDance = belt.some(b => b.type === 'spin');
+                    return hasHappy && hasDance;
+                },
+                optimizeCheck: (belt) => belt.filter(b => b.type === 'ifHappy' || b.type === 'spin').length
+            },
+            {
+                id: 7,
+                prompt: "Complete the pattern! ●○●○?",
+                hint: "Watch the pattern carefully",
+                unlocks: 'pattern',
+                check: (belt) => belt.some(b => b.type === 'pattern'),
+                patternCorrect: true,
+                optimizeCheck: (belt) => 1
+            },
+            {
+                id: 8,
+                prompt: "Find and fix the broken step!",
+                hint: "Look for the wrong block",
+                unlocks: 'debug',
+                check: (belt) => belt.length >= 3,
+                optimizeCheck: (belt) => belt.filter(b => b.type === 'jump').length
+            },
+            {
+                id: 9,
+                prompt: "Use everything you've learned!",
+                hint: "Combine all concepts freely",
+                unlocks: 'all',
+                check: () => gameState.belt.length >= 5,
+                optimizeCheck: (belt) => belt.length
+            }
+        ];
+
+        // ==================== BLOCK DEFINITIONS ====================
+        const blockDefs = {
+            moveRight: { icon: '👉', label: 'Right', type: 'move', color: 'var(--move-green)' },
+            moveLeft: { icon: '👈', label: 'Left', type: 'move', color: 'var(--move-green)' },
+            jump: { icon: '⬆️', label: 'Jump', type: 'jump', color: 'var(--move-green)' },
+            spin: { icon: '🔄', label: 'Spin', type: 'spin', color: 'var(--loop-orange)' },
+            look: { icon: '👀', label: 'Look', type: 'look', color: 'var(--condition-purple)' },
+            repeat2: { icon: '🔁×2', label: 'x2', type: 'repeat', color: 'var(--loop-orange)' },
+            repeat3: { icon: '🔁×3', label: 'x3', type: 'repeat', color: 'var(--loop-orange)' },
+            repeat4: { icon: '🔁×4', label: 'x4', type: 'repeat', color: 'var(--loop-orange)' },
+            ifHappy: { icon: '😊?', label: 'If Happy', type: 'condition', color: 'var(--condition-purple)' },
+            ifEnergy: { icon: '⚡?', label: 'If Energy', type: 'condition', color: 'var(--condition-purple)' },
+            pattern: { icon: '❓', label: 'Pattern', type: 'pattern', color: 'var(--pattern-yellow)' },
+            debug: { icon: '🔧', label: 'Debug', type: 'debug', color: 'var(--debug-coral)' },
+            sort: { icon: '📦', label: 'Sort', type: 'sort', color: 'var(--function-blue)' },
+            module: { icon: '📦', label: 'Module', type: 'module', color: 'var(--function-blue)' }
+        };
+
+        // ==================== DOM ELEMENTS ====================
+        const elements = {
+            sparky: document.getElementById('sparky'),
+            sparkyContainer: document.getElementById('sparkyContainer'),
+            speechBubble: document.getElementById('speechBubble'),
+            conveyorBelt: document.getElementById('conveyorBelt'),
+            blocksGrid: document.getElementById('blocksGrid'),
+            clearBtn: document.getElementById('clearBtn'),
+            modalOverlay: document.getElementById('modalOverlay'),
+            modalContent: document.getElementById('modalContent'),
+            celebration: document.getElementById('celebration'),
+            progressDots: document.getElementById('progressDots'),
+            moodBadge: document.getElementById('moodBadge'),
+            energyBadge: document.getElementById('energyBadge'),
+            soundToggle: document.getElementById('soundToggle')
+        };
+
+        // ==================== INITIALIZATION ====================
+        function init() {
+            sound.init();
+            loadGame();
+            renderProgress();
+            renderBlocks();
+            renderBelt();
+            updateSparkyState();
+            showWelcomeModal();
+            setupEventListeners();
+        }
+
+        function loadGame() {
+            try {
+                const saved = localStorage.getItem('robotFactory');
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    gameState.currentConcept = data.currentConcept || 0;
+                    gameState.savedModules = data.savedModules || [];
+                    Object.assign(gameState.unlocks, data.unlocks || {});
+                }
+            } catch (e) {
+                console.log('Could not load saved game');
+            }
+        }
+
+        function saveGame() {
+            try {
+                localStorage.setItem('robotFactory', JSON.stringify({
+                    currentConcept: gameState.currentConcept,
+                    savedModules: gameState.savedModules,
+                    unlocks: gameState.unlocks
+                }));
+            } catch (e) {
+                console.log('Could not save game');
+            }
+        }
+
+        // ==================== RENDERING ====================
+        function renderProgress() {
+            elements.progressDots.innerHTML = concepts.map((c, i) => {
+                let cls = 'progress-dot';
+                if (i < gameState.currentConcept) cls += ' unlocked';
+                if (i === gameState.currentConcept) cls += ' current';
+                return `<div class="${cls}" title="${c.name}: ${c.desc}"></div>`;
+            }).join('');
+        }
+
+        function renderBlocks() {
+            const allBlocks = Object.keys(blockDefs);
+            elements.blocksGrid.innerHTML = allBlocks.map(key => {
+                const block = blockDefs[key];
+                const isUnlocked = isBlockUnlocked(key);
+                return `
+                    <div class="block ${isUnlocked ? '' : 'locked'}" 
+                         data-type="${key}"
+                         data-icon="${block.icon}"
+                         data-label="${block.label}"
+                         style="background: ${isUnlocked ? block.color : '#ddd'}">
+                        <span class="block-icon">${block.icon}</span>
+                        <span class="block-label">${block.label}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function isBlockUnlocked(key) {
+            switch(key) {
+                case 'moveRight': return true;
+                case 'moveLeft': return gameState.unlocks.moveLeft || gameState.currentConcept >= 9;
+                case 'jump': return gameState.unlocks.jump || gameState.currentConcept >= 1;
+                case 'spin': return gameState.unlocks.spin || gameState.currentConcept >= 2;
+                case 'look': return gameState.unlocks.look || gameState.currentConcept >= 3;
+                case 'repeat2': return gameState.unlocks.repeat2 || gameState.currentConcept >= 4;
+                case 'repeat3': return gameState.unlocks.repeat3 || gameState.currentConcept >= 5;
+                case 'repeat4': return gameState.unlocks.repeat4 || gameState.currentConcept >= 5;
+                case 'ifHappy': return gameState.unlocks.ifHappy || gameState.currentConcept >= 6;
+                case 'ifEnergy': return gameState.unlocks.ifEnergy || gameState.currentConcept >= 6;
+                case 'pattern': return gameState.unlocks.pattern || gameState.currentConcept >= 7;
+                case 'debug': return gameState.unlocks.debug || gameState.currentConcept >= 8;
+                case 'sort': return gameState.unlocks.sort || gameState.currentConcept >= 9;
+                case 'module': return gameState.unlocks.module || gameState.currentConcept >= 9;
+                default: return false;
+            }
+        }
+
+        function renderBelt() {
+            if (gameState.belt.length === 0) {
+                elements.conveyorBelt.innerHTML = '';
+                elements.conveyorBelt.classList.remove('has-blocks');
+                return;
+            }
+
+            elements.conveyorBelt.classList.add('has-blocks');
+            elements.conveyorBelt.innerHTML = gameState.belt.map((block, i) => {
+                const def = blockDefs[block.type];
+                if (block.isRepeat) {
+                    return `
+                        <div class="repeat-wrapper">
+                            <div class="repeat-header">REPEAT ${block.count}x</div>
+                            ${block.innerBlocks.map((ib, j) => `
+                                <div class="belt-block" data-index="${i}" data-inner="${j}" style="background: ${blockDefs[ib].color}">
+                                    ${blockDefs[ib].icon}
+                                    <span class="remove-btn" data-action="remove-inner" data-i="${i}" data-j="${j}">×</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+                return `
+                    <div class="belt-block" data-index="${i}" style="background: ${def.color}">
+                        ${def.icon}
+                        <span class="remove-btn" data-action="remove" data-index="${i}">×</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateSparkyState() {
+            const moodEmoji = gameState.sparky.mood === 'happy' ? '😊' : 
+                              gameState.sparky.mood === 'sad' ? '😢' : '😐';
+            const energyEmoji = gameState.sparky.energy === 'full' ? '⚡' :
+                                gameState.sparky.energy === 'medium' ? '🔋' : '🪫';
+            
+            elements.moodBadge.textContent = `${moodEmoji} Mood: ${gameState.sparky.mood.charAt(0).toUpperCase() + gameState.sparky.mood.slice(1)}`;
+            elements.energyBadge.textContent = `${energyEmoji} Energy: ${gameState.sparky.energy.charAt(0).toUpperCase() + gameState.sparky.energy.slice(1)}`;
+        }
+
+        // ==================== EVENT LISTENERS ====================
+        function setupEventListeners() {
+            // Block bin clicks
+            elements.blocksGrid.addEventListener('click', (e) => {
+                const block = e.target.closest('.block');
+                if (!block || block.classList.contains('locked')) {
+                    if (block && block.classList.contains('locked')) {
+                        showSpeechBubble('Keep going to unlock!');
+                        shakeElement(block);
+                    }
+                    return;
+                }
+                sound.play('tap');
+                addBlockToBelt(block.dataset.type);
+            });
+
+            // Belt interactions
+            elements.conveyorBelt.addEventListener('click', (e) => {
+                const action = e.target.dataset.action;
+                if (action === 'remove') {
+                    const idx = parseInt(e.target.dataset.index);
+                    gameState.belt.splice(idx, 1);
+                    renderBelt();
+                } else if (action === 'remove-inner') {
+                    const i = parseInt(e.target.dataset.i);
+                    const j = parseInt(e.target.dataset.j);
+                    gameState.belt[i].innerBlocks.splice(j, 1);
+                    if (gameState.belt[i].innerBlocks.length === 0) {
+                        gameState.belt.splice(i, 1);
+                    }
+                    renderBelt();
+                }
+            });
+
+            // Clear button
+            elements.clearBtn.addEventListener('click', () => {
+                gameState.belt = [];
+                renderBelt();
+                resetSparky();
+            });
+
+            // Sound toggle
+            elements.soundToggle.addEventListener('click', () => {
+                const enabled = sound.toggle();
+                elements.soundToggle.textContent = enabled ? '🔊' : '🔇';
+            });
+
+            // Modal click outside
+            elements.modalOverlay.addEventListener('click', (e) => {
+                if (e.target === elements.modalOverlay) {
+                    closeModal();
+                }
+            });
+
+            // Auto-run when belt changes
+            let runTimeout;
+            const originalRenderBelt = renderBelt;
+            renderBelt = function() {
+                originalRenderBelt();
+                clearTimeout(runTimeout);
+                if (gameState.belt.length > 0 && !gameState.isRunning) {
+                    runTimeout = setTimeout(() => {
+                        runProgram();
+                    }, 1500);
+                }
+            };
+        }
+
+        // ==================== BLOCK LOGIC ====================
+        let pendingRepeat = null;
+
+        function addBlockToBelt(type) {
+            // Handle repeat blocks specially
+            if (type.startsWith('repeat')) {
+                if (pendingRepeat) {
+                    // Add the inner block to the repeat
+                    if (pendingRepeat.innerBlocks.length < 4) {
+                        pendingRepeat.innerBlocks.push(pendingRepeat.pendingType);
+                        showSpeechBubble(`${pendingRepeat.innerBlocks.length} block${pendingRepeat.innerBlocks.length > 1 ? 's' : ''} in loop!`);
+                    }
+                    if (pendingRepeat.innerBlocks.length >= parseInt(type.slice(-1))) {
+                        gameState.belt.push({ ...pendingRepeat, count: parseInt(type.slice(-1)) });
+                        pendingRepeat = null;
+                        renderBelt();
+                    }
+                    return;
+                }
+                // Start a new repeat
+                pendingRepeat = { type: type, isRepeat: true, count: parseInt(type.slice(-1)), innerBlocks: [] };
+                showSpeechBubble('Tap a block to repeat!');
+                return;
+            }
+
+            // If we have a pending repeat, add to it
+            if (pendingRepeat) {
+                if (pendingRepeat.innerBlocks.length < pendingRepeat.count) {
+                    pendingRepeat.innerBlocks.push(type);
+                    if (pendingRepeat.innerBlocks.length >= pendingRepeat.count) {
+                        gameState.belt.push({ ...pendingRepeat });
+                        pendingRepeat = null;
+                        renderBelt();
+                    }
+                }
+                return;
+            }
+
+            // Check if we should create a repeat wrapper
+            if (gameState.belt.length > 0 && !gameState.belt[gameState.belt.length - 1].isRepeat) {
+                // Check if last 2+ blocks are the same type - offer to combine
+                const lastBlock = gameState.belt[gameState.belt.length - 1];
+                if (lastBlock.type === type && (type === 'jump' || type === 'spin')) {
+                    showSpeechBubble('Tip: Use REPEAT to do it faster!');
+                }
+            }
+
+            gameState.belt.push({ type, isRepeat: false });
+            renderBelt();
+        }
+
+        // ==================== PROGRAM EXECUTION ====================
+        async function runProgram() {
+            if (gameState.isRunning || gameState.belt.length === 0) return;
+            
+            gameState.isRunning = true;
+            elements.conveyorBelt.classList.add('running');
+            
+            resetSparky();
+
+            for (let i = 0; i < gameState.belt.length; i++) {
+                const block = gameState.belt[i];
+                
+                // Highlight executing block
+                const beltBlocks = elements.conveyorBelt.querySelectorAll('.belt-block');
+                if (beltBlocks[i]) {
+                    beltBlocks[i].classList.add('executing');
+                }
+
+                if (block.isRepeat) {
+                    for (let r = 0; r < block.count; r++) {
+                        for (let j = 0; j < block.innerBlocks.length; j++) {
+                            await executeBlock({ type: block.innerBlocks[j] });
+                            await delay(300);
+                        }
+                    }
+                } else {
+                    await executeBlock(block);
+                    await delay(300);
+                }
+
+                if (beltBlocks[i]) {
+                    beltBlocks[i].classList.remove('executing');
+                }
+                
+                await delay(200);
+            }
+
+            elements.conveyorBelt.classList.remove('running');
+            gameState.isRunning = false;
+            
+            // Check challenge completion
+            checkChallenge();
+        }
+
+        async function executeBlock(block) {
+            sound.play(block.type.replace(/[0-9]/g, ''));
+            
+            switch(block.type) {
+                case 'moveRight':
+                    gameState.sparky.position = Math.min(1, gameState.sparky.position + 1);
+                    elements.sparkyContainer.classList.add('walking');
+                    elements.sparkyContainer.style.transform = `translateX(${gameState.sparky.position * 50}px)`;
+                    await delay(400);
+                    elements.sparkyContainer.classList.remove('walking');
+                    break;
+
+                case 'moveLeft':
+                    gameState.sparky.position = Math.max(-1, gameState.sparky.position - 1);
+                    elements.sparkyContainer.classList.add('walking');
+                    elements.sparkyContainer.style.transform = `translateX(${gameState.sparky.position * 50}px)`;
+                    await delay(400);
+                    elements.sparkyContainer.classList.remove('walking');
+                    break;
+
+                case 'jump':
+                    elements.sparkyContainer.classList.add('jumping');
+                    await delay(600);
+                    elements.sparkyContainer.classList.remove('jumping');
+                    break;
+
+                case 'spin':
+                    elements.sparkyContainer.classList.add('spinning');
+                    await delay(600);
+                    elements.sparkyContainer.classList.remove('spinning');
+                    break;
+
+                case 'look':
+                    elements.sparky.style.setProperty('--pupil-offset', '10px');
+                    const pupil = elements.sparky.querySelectorAll('.sparky-pupil');
+                    pupil.forEach(p => p.style.transform = 'translateX(8px)');
+                    await delay(400);
+                    pupil.forEach(p => p.style.transform = 'translateX(-8px)');
+                    await delay(400);
+                    pupil.forEach(p => p.style.transform = 'translateX(0)');
+                    break;
+
+                case 'ifHappy':
+                    if (gameState.sparky.mood === 'happy') {
+                        showSpeechBubble('Condition TRUE! 😊');
+                    } else {
+                        showSpeechBubble('Condition false... 😢');
+                    }
+                    await delay(500);
+                    break;
+
+                case 'ifEnergy':
+                    if (gameState.sparky.energy === 'full') {
+                        showSpeechBubble('Energy OK! ⚡');
+                    } else {
+                        showSpeechBubble('Low energy... 🪫');
+                    }
+                    await delay(500);
+                    break;
+
+                case 'pattern':
+                    showPatternChallenge();
+                    break;
+
+                case 'debug':
+                    showSpeechBubble('Finding bugs... 🔧');
+                    await delay(500);
+                    showSpeechBubble('Fixed! Great job!');
+                    break;
+
+                case 'sort':
+                    showSpeechBubble('Sorting blocks... 📦');
+                    await delay(500);
+                    showSpeechBubble('Sorted! ✓');
+                    break;
+
+                case 'module':
+                    showSpeechBubble('Module saved! 📦');
+                    await delay(500);
+                    break;
+            }
+        }
+
+        function resetSparky() {
+            gameState.sparky.position = 0;
+            elements.sparkyContainer.style.transform = 'translateX(0)';
+            elements.sparkyContainer.classList.remove('jumping', 'spinning', 'dancing', 'walking');
+            elements.sparky.classList.remove('sad', 'happy');
+            elements.sparky.classList.add('happy');
+            gameState.sparky.mood = 'happy';
+            updateSparkyState();
+        }
+
+        // ==================== CHALLENGE SYSTEM ====================
+        function checkChallenge() {
+            const challenge = challenges[gameState.currentConcept];
+            if (!challenge) return;
+
+            const passed = challenge.check(gameState.belt);
+            
+            if (passed) {
+                // Calculate stars for optimization
+                const blocksUsed = challenge.optimizeCheck(gameState.belt);
+                let stars = 1;
+                if (blocksUsed <= 2) stars = 3;
+                else if (blocksUsed <= 4) stars = 2;
+
+                // Unlock next concept
+                if (challenge.unlocks && challenge.unlocks !== 'all') {
+                    gameState.unlocks[challenge.unlocks] = true;
+                }
+                
+                gameState.currentConcept = Math.min(gameState.currentConcept + 1, concepts.length - 1);
+                saveGame();
+                
+                showSuccessModal(challenge, stars);
+                spawnConfetti();
+                renderProgress();
+                renderBlocks();
+            } else {
+                showSpeechBubble('Try again! 💪');
+            }
+        }
+
+        function showPatternChallenge() {
+            const patterns = ['●', '○', '●', '○', '●'];
+            const answer = '●';
+            
+            showSpeechBubble(`What comes next? ${patterns.join('')}?`);
+        }
+
+        // ==================== UI HELPERS ====================
+        function showSpeechBubble(text) {
+            elements.speechBubble.textContent = text;
+            elements.speechBubble.classList.add('visible');
+            setTimeout(() => {
+                elements.speechBubble.classList.remove('visible');
+            }, 2000);
+        }
+
+        function shakeElement(el) {
+            el.style.animation = 'none';
+            el.offsetHeight; // Trigger reflow
+            el.style.animation = 'shake 0.5s ease';
+        }
+
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        function showWelcomeModal() {
+            const challenge = challenges[gameState.currentConcept];
+            elements.modalContent.innerHTML = `
+                <div class="modal-icon">🤖</div>
+                <h2>Welcome to Robot Factory!</h2>
+                <p>Learn to program Sparky the Robot by stacking command blocks. Let's start with ${concepts[gameState.currentConcept].name}!</p>
+                <button class="modal-btn" onclick="showChallengeModal()">Let's Go! 🚀</button>
+            `;
+            elements.modalOverlay.classList.add('visible');
+        }
+
+        function showChallengeModal() {
+            closeModal();
+            const challenge = challenges[gameState.currentConcept];
+            if (!challenge) {
+                showFreePlayModal();
+                return;
+            }
+            
+            elements.modalContent.innerHTML = `
+                <div class="modal-icon">${concepts[gameState.currentConcept].icon}</div>
+                <h2>Challenge ${gameState.currentConcept + 1}: ${concepts[gameState.currentConcept].name}</h2>
+                <p>${challenge.prompt}</p>
+                <button class="modal-btn" onclick="closeModal()">Got it! 👍</button>
+            `;
+            elements.modalOverlay.classList.add('visible');
+        }
+
+        function showFreePlayModal() {
+            elements.modalContent.innerHTML = `
+                <div class="modal-icon">🏆</div>
+                <h2>You're a Programming Master!</h2>
+                <p>All concepts unlocked! Now create anything you want with Sparky!</p>
+                <button class="modal-btn" onclick="closeModal()">Free Play! 🎉</button>
+            `;
+            elements.modalOverlay.classList.add('visible');
+        }
+
+        function showSuccessModal(challenge, stars) {
+            const starIcons = '⭐'.repeat(stars) + '☆'.repeat(3 - stars);
+            
+            elements.modalContent.innerHTML = `
+                <div class="modal-icon">🎉</div>
+                <h2>You Did It!</h2>
+                <div class="star-rating">
+                    ${[1,2,3].map(i => `<span class="star ${i <= stars ? 'earned' : ''}">${i <= stars ? '⭐' : '☆'}</span>`).join('')}
+                </div>
+                <p>${stars === 3 ? 'Perfect! You used the fewest blocks possible!' : 'Great job! Can you do it with fewer blocks?'}</p>
+                <p style="margin-top: 12px; font-size: 0.9rem; color: var(--robot-blue);">
+                    ${concepts[gameState.currentConcept]?.name} unlocked!
+                </p>
+                <button class="modal-btn" onclick="closeModal(); showChallengeModal();">Next Challenge ➡️</button>
+            `;
+            elements.modalOverlay.classList.add('visible');
+            sound.play('success');
+        }
+
+        function closeModal() {
+            elements.modalOverlay.classList.remove('visible');
+        }
+
+        function spawnConfetti() {
+            const colors = ['#FF6B6B', '#4ECDC4', '#FFE66D', '#95E1D3', '#F38181', '#AA96DA'];
+            
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.animationDelay = Math.random() * 0.5 + 's';
+                confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                elements.celebration.appendChild(confetti);
+                
+                setTimeout(() => confetti.remove(), 4000);
+            }
+        }
+
+        // Start the game
+        init();
+    </script>
+</body>
+</html>
