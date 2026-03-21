@@ -101,11 +101,17 @@
             border-radius: 50%;
             background: #ddd;
             transition: all 0.3s ease;
+            cursor: default;
         }
 
         .progress-dot.unlocked {
             background: var(--robot-blue);
             box-shadow: 0 0 8px var(--robot-blue);
+            cursor: pointer;
+        }
+
+        .progress-dot.unlocked:hover {
+            transform: scale(1.2);
         }
 
         .progress-dot.current {
@@ -1245,8 +1251,29 @@
                 let cls = 'progress-dot';
                 if (i < gameState.currentConcept) cls += ' unlocked';
                 if (i === gameState.currentConcept) cls += ' current';
-                return `<div class="${cls}" title="${c.name}: ${c.desc}"></div>`;
+                const clickable = i <= gameState.currentConcept ? `data-level="${i}"` : '';
+                return `<div class="${cls}" title="${c.name}: ${c.desc}" ${clickable}></div>`;
             }).join('');
+
+            // Add click handlers for level navigation
+            elements.progressDots.querySelectorAll('.progress-dot.unlocked').forEach(dot => {
+                dot.addEventListener('click', () => {
+                    const level = parseInt(dot.dataset.level);
+                    goToLevel(level);
+                });
+            });
+        }
+
+        function goToLevel(level) {
+            if (level > gameState.currentConcept) return;
+            gameState.currentConcept = level;
+            gameState.belt = [];
+            resetSparky();
+            saveGame();
+            renderProgress();
+            renderBlocks();
+            renderBelt();
+            showChallengeModal();
         }
 
         function renderBlocks() {
