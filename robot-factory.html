@@ -1405,6 +1405,13 @@
                 }
             });
 
+            // Close modal on any key press
+            document.addEventListener('keydown', (e) => {
+                if (elements.modalOverlay.classList.contains('visible')) {
+                    closeModal();
+                }
+            });
+
             // Manual run button
             document.getElementById('runBtn').addEventListener('click', () => {
                 if (gameState.belt.length > 0 && !gameState.isRunning) {
