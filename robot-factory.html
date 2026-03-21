@@ -536,15 +536,14 @@
             display: flex;
             gap: 12px;
             margin-top: 12px;
+            align-items: center;
+            justify-content: center;
         }
 
         .btn {
-            flex: 1;
-            padding: 14px 24px;
             border: none;
             border-radius: 14px;
             font-family: 'Fredoka One', cursive;
-            font-size: 1.1rem;
             cursor: pointer;
             transition: all 0.2s ease;
             display: flex;
@@ -558,26 +557,44 @@
         }
 
         .btn-run {
-            background: var(--move-green);
+            flex: 1;
+            padding: 20px 32px;
+            background: #DC2626;
             color: white;
+            font-size: 1.4rem;
+            border-radius: 20px;
+            box-shadow: 0 6px 0 #991B1B, 0 8px 20px rgba(220, 38, 38, 0.4);
+            max-width: 200px;
         }
 
         .btn-run:hover {
-            background: #5AAF49;
+            background: #B91C1C;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 0 #991B1B, 0 10px 25px rgba(220, 38, 38, 0.5);
+        }
+
+        .btn-run:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #991B1B, 0 4px 10px rgba(220, 38, 38, 0.3);
         }
 
         .btn-run:disabled {
             background: #ccc;
+            box-shadow: 0 4px 0 #999;
             cursor: not-allowed;
         }
 
         .btn-clear {
-            background: var(--debug-coral);
-            color: white;
+            flex: 0 0 auto;
+            padding: 10px 16px;
+            background: #E8E4DD;
+            color: var(--ui-charcoal);
+            font-size: 0.9rem;
+            border-radius: 10px;
         }
 
         .btn-clear:hover {
-            background: #D65C5C;
+            background: #D4D0C8;
         }
 
         /* Block Bin */
@@ -917,7 +934,8 @@
             <div class="belt-label">Your Program</div>
             <div class="conveyor-belt" id="conveyorBelt"></div>
             <div class="controls">
-                <button class="btn btn-clear" id="clearBtn">🗑️ Clear</button>
+                <button class="btn btn-run" id="runBtn">▶ GO!</button>
+                <button class="btn btn-clear" id="clearBtn">🗑️</button>
             </div>
         </section>
 
@@ -1377,18 +1395,12 @@
                 }
             });
 
-            // Auto-run when belt changes
-            let runTimeout;
-            const originalRenderBelt = renderBelt;
-            renderBelt = function() {
-                originalRenderBelt();
-                clearTimeout(runTimeout);
+            // Manual run button
+            document.getElementById('runBtn').addEventListener('click', () => {
                 if (gameState.belt.length > 0 && !gameState.isRunning) {
-                    runTimeout = setTimeout(() => {
-                        runProgram();
-                    }, 1500);
+                    runProgram();
                 }
-            };
+            });
         }
 
         // ==================== BLOCK LOGIC ====================
