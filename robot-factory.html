@@ -644,18 +644,6 @@
             transform: scale(0.95);
         }
 
-        .block.locked {
-            background: #ddd !important;
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-
-        .block.locked::after {
-            content: '🔒';
-            position: absolute;
-            font-size: 1.2rem;
-        }
-
         .block-icon {
             font-size: 1.8rem;
             line-height: 1;
@@ -1266,12 +1254,13 @@
             elements.blocksGrid.innerHTML = allBlocks.map(key => {
                 const block = blockDefs[key];
                 const isUnlocked = isBlockUnlocked(key);
+                if (!isUnlocked) return '';
                 return `
-                    <div class="block ${isUnlocked ? '' : 'locked'}" 
+                    <div class="block" 
                          data-type="${key}"
                          data-icon="${block.icon}"
                          data-label="${block.label}"
-                         style="background: ${isUnlocked ? block.color : '#ddd'}">
+                         style="background: ${block.color}">
                         <span class="block-icon">${block.icon}</span>
                         <span class="block-label">${block.label}</span>
                     </div>
@@ -1346,13 +1335,7 @@
             // Block bin clicks
             elements.blocksGrid.addEventListener('click', (e) => {
                 const block = e.target.closest('.block');
-                if (!block || block.classList.contains('locked')) {
-                    if (block && block.classList.contains('locked')) {
-                        showSpeechBubble('Keep going to unlock!');
-                        shakeElement(block);
-                    }
-                    return;
-                }
+                if (!block) return;
                 sound.play('tap');
                 addBlockToBelt(block.dataset.type);
             });
