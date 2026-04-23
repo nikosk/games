@@ -1,0 +1,2484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <title>Code Adventure - Learn to Program!</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #1a1a2e;
+            --bg-panel: #16213e;
+            --bg-light: #0f3460;
+            --accent-cyan: #00d9ff;
+            --accent-pink: #ff6b9d;
+            --accent-yellow: #ffd93d;
+            --accent-green: #6bcb77;
+            --accent-orange: #ff8c42;
+            --accent-purple: #b388ff;
+            --text-light: #f0f0f0;
+            --text-muted: #a0a0b0;
+            --tile-size: 48px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: var(--bg-deep);
+            font-family: 'Nunito', system-ui, sans-serif;
+            color: var(--text-light);
+        }
+
+        #gameContainer {
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ===== HEADER ===== */
+        .header {
+            height: 56px;
+            min-height: 56px;
+            background: var(--bg-panel);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            border-bottom: 2px solid var(--bg-light);
+            z-index: 100;
+        }
+
+        .logo {
+            font-family: 'Fredoka One', cursive;
+            font-size: 22px;
+            color: var(--accent-cyan);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            image-rendering: pixelated;
+        }
+
+        .header-center {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .level-badge {
+            background: var(--bg-light);
+            padding: 4px 14px;
+            border-radius: 16px;
+            font-weight: 700;
+            font-size: 14px;
+            color: var(--accent-yellow);
+            border: 2px solid var(--accent-yellow);
+        }
+
+        .world-badge {
+            background: var(--bg-light);
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-weight: 600;
+            font-size: 12px;
+            color: var(--accent-cyan);
+            border: 2px solid var(--accent-cyan);
+            display: none;
+        }
+
+        @media (min-width: 900px) {
+            .world-badge {
+                display: block;
+            }
+        }
+
+        .stars-display {
+            display: flex;
+            gap: 2px;
+            font-size: 18px;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: 10px;
+            background: var(--bg-light);
+            color: var(--text-light);
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+
+        .icon-btn:hover {
+            background: var(--accent-cyan);
+            color: var(--bg-deep);
+            transform: scale(1.1);
+        }
+
+        .icon-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* ===== MAIN LAYOUT ===== */
+        .main-layout {
+            flex: 1;
+            display: flex;
+            min-height: 0;
+            position: relative;
+        }
+
+        /* ===== GAME AREA ===== */
+        .game-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-deep);
+            position: relative;
+            overflow: hidden;
+        }
+
+        #gameCanvas {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            box-shadow: 0 0 40px rgba(0, 217, 255, 0.15);
+            border-radius: 8px;
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        .game-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ===== SIDE PANEL ===== */
+        .side-panel {
+            width: 280px;
+            min-width: 280px;
+            background: var(--bg-panel);
+            border-left: 2px solid var(--bg-light);
+            display: flex;
+            flex-direction: column;
+            padding: 12px;
+            gap: 10px;
+            overflow-y: auto;
+        }
+
+        .panel-title {
+            font-family: 'Fredoka One', cursive;
+            font-size: 16px;
+            color: var(--accent-cyan);
+            text-align: center;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--bg-light);
+        }
+
+        .command-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .command-btn {
+            aspect-ratio: 1;
+            border: 3px solid var(--bg-light);
+            border-radius: 12px;
+            background: var(--bg-deep);
+            color: var(--text-light);
+            font-family: 'Fredoka One', cursive;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            transition: all 0.15s;
+            position: relative;
+            padding: 4px;
+        }
+
+        .command-btn:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent-cyan);
+            box-shadow: 0 4px 12px rgba(0, 217, 255, 0.3);
+        }
+
+        .command-btn:active {
+            transform: scale(0.95);
+        }
+
+        .command-btn.locked {
+            opacity: 0.4;
+            cursor: not-allowed;
+            filter: grayscale(1);
+        }
+
+        .command-btn.locked:hover {
+            transform: none;
+            border-color: var(--bg-light);
+            box-shadow: none;
+        }
+
+        .cmd-icon {
+            font-size: 24px;
+            line-height: 1;
+        }
+
+        .cmd-label {
+            font-size: 10px;
+            text-align: center;
+            line-height: 1.1;
+        }
+
+        .cmd-type-move { border-color: var(--accent-cyan); }
+        .cmd-type-move .cmd-icon { color: var(--accent-cyan); }
+        .cmd-type-action { border-color: var(--accent-pink); }
+        .cmd-type-action .cmd-icon { color: var(--accent-pink); }
+        .cmd-type-control { border-color: var(--accent-yellow); }
+        .cmd-type-control .cmd-icon { color: var(--accent-yellow); }
+        .cmd-type-function { border-color: var(--accent-purple); }
+        .cmd-type-function .cmd-icon { color: var(--accent-purple); }
+
+        /* ===== PROGRAM SEQUENCE ===== */
+        .sequence-area {
+            background: var(--bg-deep);
+            border: 2px solid var(--bg-light);
+            border-radius: 12px;
+            padding: 10px;
+            min-height: 80px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .sequence-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-align: center;
+            margin-bottom: 6px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .command-count {
+            background: var(--bg-light);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            color: var(--accent-cyan);
+        }
+
+        .sequence-blocks {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: flex-start;
+        }
+
+        .seq-block {
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-family: 'Fredoka One', cursive;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            transition: all 0.15s;
+            border: 2px solid transparent;
+            position: relative;
+            user-select: none;
+        }
+
+        .seq-block:hover {
+            transform: scale(1.05);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        .seq-block:active {
+            transform: scale(0.95);
+        }
+
+        .seq-block.type-move { background: rgba(0, 217, 255, 0.2); border-color: var(--accent-cyan); color: var(--accent-cyan); }
+        .seq-block.type-action { background: rgba(255, 107, 157, 0.2); border-color: var(--accent-pink); color: var(--accent-pink); }
+        .seq-block.type-control { background: rgba(255, 217, 61, 0.2); border-color: var(--accent-yellow); color: var(--accent-yellow); }
+        .seq-block.type-function { background: rgba(179, 136, 255, 0.2); border-color: var(--accent-purple); color: var(--accent-purple); }
+
+        .seq-block.executing {
+            animation: pulse-glow 0.5s ease-in-out infinite alternate;
+            box-shadow: 0 0 15px currentColor;
+        }
+
+        @keyframes pulse-glow {
+            from { box-shadow: 0 0 5px currentColor; }
+            to { box-shadow: 0 0 20px currentColor; }
+        }
+
+        .seq-block .remove-x {
+            margin-left: 2px;
+            font-size: 10px;
+            opacity: 0.6;
+        }
+
+        .seq-empty {
+            color: var(--text-muted);
+            font-size: 12px;
+            text-align: center;
+            width: 100%;
+            padding: 10px;
+            font-style: italic;
+        }
+
+        /* ===== ACTION BUTTONS ===== */
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 14px 8px;
+            border: none;
+            border-radius: 12px;
+            font-family: 'Fredoka One', cursive;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.15s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .action-btn:active {
+            transform: scale(0.97);
+        }
+
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .btn-go {
+            background: linear-gradient(135deg, var(--accent-green), #4ade80);
+            color: white;
+            box-shadow: 0 4px 15px rgba(107, 203, 119, 0.4);
+        }
+
+        .btn-clear {
+            background: var(--bg-light);
+            color: var(--text-light);
+        }
+
+        .btn-speed {
+            background: var(--bg-light);
+            color: var(--accent-yellow);
+            font-size: 14px;
+            min-width: 60px;
+        }
+
+        /* ===== MODALS ===== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(10, 10, 30, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .modal-card {
+            background: var(--bg-panel);
+            border: 3px solid var(--accent-cyan);
+            border-radius: 20px;
+            padding: 32px;
+            max-width: 420px;
+            width: 90%;
+            text-align: center;
+            transform: scale(0.8);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+
+        .modal-overlay.active .modal-card {
+            transform: scale(1);
+        }
+
+        .modal-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            line-height: 1;
+        }
+
+        .modal-title {
+            font-family: 'Fredoka One', cursive;
+            font-size: 28px;
+            color: var(--accent-cyan);
+            margin-bottom: 12px;
+        }
+
+        .modal-text {
+            font-size: 16px;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        .modal-btn {
+            padding: 14px 32px;
+            border: none;
+            border-radius: 12px;
+            font-family: 'Fredoka One', cursive;
+            font-size: 18px;
+            cursor: pointer;
+            background: linear-gradient(135deg, var(--accent-cyan), #00a8cc);
+            color: white;
+            transition: all 0.15s;
+            box-shadow: 0 4px 15px rgba(0, 217, 255, 0.4);
+        }
+
+        .modal-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(0, 217, 255, 0.5);
+        }
+
+        .star-rating {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin: 16px 0;
+            font-size: 36px;
+        }
+
+        .star {
+            transition: transform 0.3s;
+            display: inline-block;
+        }
+
+        .star.pop {
+            animation: star-pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes star-pop {
+            0% { transform: scale(0) rotate(-30deg); }
+            70% { transform: scale(1.3) rotate(10deg); }
+            100% { transform: scale(1) rotate(0); }
+        }
+
+        /* ===== CONFETTI ===== */
+        .confetti-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 999;
+            overflow: hidden;
+        }
+
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            animation: confetti-fall 3s ease-out forwards;
+        }
+
+        @keyframes confetti-fall {
+            0% { transform: translateY(-10px) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+
+        /* ===== TOOLTIP ===== */
+        .tooltip {
+            position: absolute;
+            background: var(--bg-panel);
+            border: 2px solid var(--accent-cyan);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 12px;
+            color: var(--text-light);
+            pointer-events: none;
+            z-index: 500;
+            opacity: 0;
+            transition: opacity 0.2s;
+            white-space: nowrap;
+        }
+
+        .tooltip.visible {
+            opacity: 1;
+        }
+
+        /* ===== LEVEL SELECT ===== */
+        .level-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin: 16px 0;
+        }
+
+        .level-btn {
+            aspect-ratio: 1;
+            border: 3px solid var(--bg-light);
+            border-radius: 12px;
+            background: var(--bg-deep);
+            color: var(--text-light);
+            font-family: 'Fredoka One', cursive;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+            position: relative;
+        }
+
+        .level-btn:hover:not(:disabled) {
+            border-color: var(--accent-cyan);
+            transform: scale(1.1);
+        }
+
+        .level-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .level-btn.completed {
+            border-color: var(--accent-green);
+            background: rgba(107, 203, 119, 0.1);
+        }
+
+        .level-btn.current {
+            border-color: var(--accent-yellow);
+            box-shadow: 0 0 15px rgba(255, 217, 61, 0.3);
+            animation: level-pulse 2s infinite;
+        }
+
+        @keyframes level-pulse {
+            0%, 100% { box-shadow: 0 0 5px rgba(255, 217, 61, 0.3); }
+            50% { box-shadow: 0 0 20px rgba(255, 217, 61, 0.6); }
+        }
+
+        .level-stars {
+            font-size: 10px;
+            position: absolute;
+            bottom: 2px;
+        }
+
+        /* ===== MESSAGE TOAST ===== */
+        .toast {
+            position: fixed;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            background: var(--bg-panel);
+            border: 2px solid var(--accent-pink);
+            border-radius: 12px;
+            padding: 12px 24px;
+            font-family: 'Fredoka One', cursive;
+            font-size: 16px;
+            color: var(--accent-pink);
+            z-index: 900;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .toast.success {
+            border-color: var(--accent-green);
+            color: var(--accent-green);
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            .main-layout {
+                flex-direction: column;
+            }
+            
+            .side-panel {
+                width: 100%;
+                min-width: auto;
+                max-height: 45vh;
+                border-left: none;
+                border-top: 2px solid var(--bg-light);
+                flex-direction: row;
+                flex-wrap: wrap;
+                padding: 8px;
+            }
+            
+            .command-grid {
+                grid-template-columns: repeat(3, 1fr);
+                flex: 1;
+            }
+            
+            .command-btn {
+                aspect-ratio: auto;
+                padding: 8px;
+                flex-direction: row;
+                font-size: 11px;
+            }
+            
+            .cmd-icon {
+                font-size: 18px;
+            }
+            
+            .sequence-area {
+                width: 100%;
+                order: 3;
+                min-height: 60px;
+                max-height: 120px;
+            }
+            
+            .action-buttons {
+                width: 100%;
+                order: 4;
+            }
+            
+            .panel-title {
+                display: none;
+            }
+        }
+
+        /* ===== ANIMATIONS ===== */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            75% { transform: translateX(8px); }
+        }
+
+        .shake {
+            animation: shake 0.4s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <header class="header">
+            <div class="logo">
+                <canvas id="logoCanvas" class="logo-icon" width="32" height="32"></canvas>
+                Code Adventure
+            </div>
+            <div class="header-center">
+                <div class="level-badge" id="levelBadge">Level 1</div>
+                <div class="world-badge" id="worldBadge">World 1</div>
+                <div class="stars-display" id="starsDisplay"></div>
+            </div>
+            <div class="header-controls">
+                <button class="icon-btn" id="btnReset" title="Reset Level (R)">🔄</button>
+                <button class="icon-btn" id="btnLevels" title="Level Select (L)">🗺️</button>
+                <button class="icon-btn" id="btnMusic" title="Toggle Music">🎵</button>
+                <button class="icon-btn" id="btnSound" title="Toggle Sound (M)">🔊</button>
+                <button class="icon-btn" id="btnHelp" title="Help (H)">❓</button>
+            </div>
+        </header>
+
+        <div class="main-layout">
+            <div class="game-area">
+                <canvas id="gameCanvas"></canvas>
+            </div>
+
+            <div class="side-panel">
+                <div class="panel-title">Commands</div>
+                <div class="command-grid" id="commandGrid"></div>
+                
+                <div class="sequence-area">
+                    <div class="sequence-label">
+                        Your Program
+                        <span class="command-count" id="commandCount">0</span>
+                    </div>
+                    <div class="sequence-blocks" id="sequenceBlocks">
+                        <div class="seq-empty">Tap commands to build your program</div>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="action-btn btn-speed" id="btnSpeed" title="Speed">1x</button>
+                    <button class="action-btn btn-clear" id="btnClear" title="Clear (C)">🗑️ Clear</button>
+                    <button class="action-btn btn-go" id="btnGo" title="Run (Space)">▶ GO</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-card" id="modalCard"></div>
+    </div>
+
+    <div class="confetti-container" id="confettiContainer"></div>
+    <div class="toast" id="toast"></div>
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+    // ==========================================
+    // CODE ADVENTURE - Programming Game for Kids
+    // ==========================================
+
+    // ===== AUDIO ENGINE =====
+    class AudioEngine {
+        constructor() {
+            this.ctx = null;
+            this.enabled = true;
+            this.initialized = false;
+        }
+
+        init() {
+            if (this.initialized) return;
+            try {
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                this.initialized = true;
+            } catch(e) {
+                console.warn('Audio not supported');
+            }
+        }
+
+        playTone(freq, duration, type = 'square', volume = 0.15) {
+            if (!this.enabled || !this.ctx) return;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+            gain.gain.setValueAtTime(volume, this.ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+            osc.start(this.ctx.currentTime);
+            osc.stop(this.ctx.currentTime + duration);
+        }
+
+        playMelody(notes) {
+            if (!this.enabled || !this.ctx) return;
+            let time = this.ctx.currentTime;
+            notes.forEach(([freq, duration]) => {
+                if (freq > 0) {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(freq, time);
+                    gain.gain.setValueAtTime(0.1, time);
+                    gain.gain.exponentialRampToValueAtTime(0.01, time + duration - 0.02);
+                    osc.start(time);
+                    osc.stop(time + duration);
+                }
+                time += duration;
+            });
+        }
+
+        click() { this.playTone(880, 0.08, 'sine', 0.2); }
+        addBlock() { this.playTone(660, 0.1, 'square', 0.12); }
+        removeBlock() { this.playTone(440, 0.1, 'square', 0.12); }
+        step() { this.playTone(523, 0.12, 'square', 0.1); }
+        turn() { this.playTone(659, 0.12, 'square', 0.1); }
+        bump() { this.playTone(200, 0.2, 'sawtooth', 0.15); }
+        success() {
+            this.playMelody([
+                [523, 0.15], [659, 0.15], [784, 0.15], [1047, 0.4]
+            ]);
+        }
+        fail() {
+            this.playMelody([
+                [400, 0.2], [350, 0.2], [300, 0.4]
+            ]);
+        }
+        win() {
+            this.playMelody([
+                [523, 0.12], [659, 0.12], [784, 0.12], [1047, 0.12],
+                [784, 0.12], [1047, 0.4]
+            ]);
+        }
+        loop() { this.playTone(880, 0.08, 'sine', 0.1); }
+        
+        startMusic() {
+            if (!this.enabled || !this.ctx || this.musicPlaying) return;
+            this.musicPlaying = true;
+            
+            const melody = [
+                [523, 0.2], [659, 0.2], [784, 0.2], [0, 0.2],
+                [784, 0.2], [659, 0.2], [523, 0.2], [0, 0.2],
+                [659, 0.2], [784, 0.2], [880, 0.2], [0, 0.2],
+                [880, 0.2], [784, 0.2], [659, 0.2], [0, 0.4]
+            ];
+            
+            let noteIndex = 0;
+            const playNext = () => {
+                if (!this.musicPlaying) return;
+                const [freq, duration] = melody[noteIndex];
+                if (freq > 0) {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(0.04, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+                    osc.start(this.ctx.currentTime);
+                    osc.stop(this.ctx.currentTime + duration);
+                }
+                noteIndex = (noteIndex + 1) % melody.length;
+                this.musicTimeout = setTimeout(playNext, duration * 1000);
+            };
+            playNext();
+        }
+        
+        stopMusic() {
+            this.musicPlaying = false;
+            if (this.musicTimeout) {
+                clearTimeout(this.musicTimeout);
+                this.musicTimeout = null;
+            }
+        }
+    }
+
+    const audio = new AudioEngine();
+
+    // ===== PIXEL ART SPRITES =====
+    const SPRITES = {
+        robot: [
+            [0,0,0,1,1,1,1,0,0,0],
+            [0,0,1,1,2,2,1,1,0,0],
+            [0,1,1,2,2,2,2,1,1,0],
+            [0,1,2,3,2,2,3,2,1,0],
+            [0,1,2,2,2,2,2,2,1,0],
+            [0,0,1,2,2,2,2,1,0,0],
+            [0,0,1,1,1,1,1,1,0,0],
+            [0,1,1,4,1,1,4,1,1,0],
+            [1,1,4,4,1,1,4,4,1,1],
+            [1,4,4,4,1,1,4,4,4,1]
+        ],
+        robotWin: [
+            [0,0,0,1,1,1,1,0,0,0],
+            [0,0,1,1,5,5,1,1,0,0],
+            [0,1,1,5,5,5,5,1,1,0],
+            [0,1,5,3,5,5,3,5,1,0],
+            [0,1,5,5,5,5,5,5,1,0],
+            [0,0,1,5,5,5,5,1,0,0],
+            [0,0,1,1,1,1,1,1,0,0],
+            [0,1,1,4,1,1,4,1,1,0],
+            [1,1,4,4,1,1,4,4,1,1],
+            [1,4,4,4,1,1,4,4,4,1]
+        ],
+        star: [
+            [0,0,0,0,1,1,0,0,0,0],
+            [0,0,0,1,1,1,1,0,0,0],
+            [0,1,1,1,2,2,1,1,1,0],
+            [0,1,1,2,2,2,2,1,1,0],
+            [1,1,2,2,2,2,2,2,1,1],
+            [1,1,2,2,2,2,2,2,1,1],
+            [0,1,1,2,2,2,2,1,1,0],
+            [0,1,1,1,2,2,1,1,1,0],
+            [0,0,0,1,1,1,1,0,0,0],
+            [0,0,0,0,1,1,0,0,0,0]
+        ],
+        heart: [
+            [0,1,1,0,0,0,0,1,1,0],
+            [1,2,2,1,0,0,1,2,2,1],
+            [1,2,2,2,1,1,2,2,2,1],
+            [1,2,2,2,2,2,2,2,2,1],
+            [0,1,2,2,2,2,2,2,1,0],
+            [0,0,1,2,2,2,2,1,0,0],
+            [0,0,0,1,2,2,1,0,0,0],
+            [0,0,0,0,1,1,0,0,0,0]
+        ]
+    };
+
+    const PALETTE = {
+        0: null,
+        1: '#2c3e50',
+        2: '#00d9ff',
+        3: '#ffffff',
+        4: '#ff8c42',
+        5: '#ffd93d'
+    };
+
+    // ===== TILE TYPES =====
+    const TILES = {
+        FLOOR: { id: 0, color: '#2d3436', walkable: true },
+        WALL: { id: 1, color: '#636e72', walkable: false, border: '#2d3436' },
+        GOAL: { id: 2, color: '#2d3436', walkable: true, special: 'goal' },
+        WATER: { id: 3, color: '#0984e3', walkable: false },
+        BRIDGE: { id: 4, color: '#d35400', walkable: true },
+        BUTTON: { id: 5, color: '#e74c3c', walkable: true, special: 'button' },
+        GATE: { id: 6, color: '#f39c12', walkable: false, special: 'gate' },
+        GATE_OPEN: { id: 7, color: '#2d3436', walkable: true },
+        ICE: { id: 8, color: '#74b9ff', walkable: true, special: 'ice' },
+        START: { id: 9, color: '#2d3436', walkable: true, special: 'start' }
+    };
+
+    const DIRS = {
+        UP: { x: 0, y: -1, name: 'up' },
+        RIGHT: { x: 1, y: 0, name: 'right' },
+        DOWN: { x: 0, y: 1, name: 'down' },
+        LEFT: { x: -1, y: 0, name: 'left' }
+    };
+
+    const DIR_ORDER = ['UP', 'RIGHT', 'DOWN', 'LEFT'];
+
+    // ===== COMMANDS =====
+    const COMMANDS = {
+        forward: { id: 'forward', label: 'Forward', icon: '⬆️', type: 'move', desc: 'Move one step forward' },
+        left: { id: 'left', label: 'Turn Left', icon: '↺', type: 'move', desc: 'Turn left 90°' },
+        right: { id: 'right', label: 'Turn Right', icon: '↻', type: 'move', desc: 'Turn right 90°' },
+        jump: { id: 'jump', label: 'Jump', icon: '⬆️⬆️', type: 'action', desc: 'Jump over water' },
+        push: { id: 'push', label: 'Push', icon: '📦', type: 'action', desc: 'Push a block' },
+        activate: { id: 'activate', label: 'Activate', icon: '🔘', type: 'action', desc: 'Press a button' },
+        repeat2: { id: 'repeat2', label: 'Repeat 2', icon: '🔁2', type: 'control', desc: 'Repeat next command 2 times' },
+        repeat3: { id: 'repeat3', label: 'Repeat 3', icon: '🔁3', type: 'control', desc: 'Repeat next command 3 times' },
+        repeat4: { id: 'repeat4', label: 'Repeat 4', icon: '🔁4', type: 'control', desc: 'Repeat next command 4 times' },
+        ifwall: { id: 'ifwall', label: 'If Wall', icon: '🧱?', type: 'control', desc: 'Do next command only if wall ahead' },
+        ifgoal: { id: 'ifgoal', label: 'If Goal', icon: '⭐?', type: 'control', desc: 'Do next command only if goal ahead' }
+    };
+
+    // ===== LEVELS =====
+    const LEVELS = [
+        // World 1: First Steps (Basic movement)
+        {
+            id: 1, name: 'First Step', world: 1,
+            width: 5, height: 5,
+            map: [
+                [1,1,1,1,1],
+                [1,9,0,0,1],
+                [1,0,0,0,1],
+                [1,0,0,2,1],
+                [1,1,1,1,1]
+            ],
+            start: { x: 1, y: 1, dir: 'RIGHT' },
+            commands: ['forward', 'left', 'right'],
+            optimalMoves: 3,
+            intro: 'Welcome! Tap "Forward" to move Bit to the ⭐!'
+        },
+        {
+            id: 2, name: 'Around the Corner', world: 1,
+            width: 6, height: 6,
+            map: [
+                [1,1,1,1,1,1],
+                [1,9,0,0,0,1],
+                [1,1,1,1,0,1],
+                [1,2,0,0,0,1],
+                [1,1,1,1,1,1],
+                [1,1,1,1,1,1]
+            ],
+            start: { x: 1, y: 1, dir: 'RIGHT' },
+            commands: ['forward', 'left', 'right'],
+            optimalMoves: 5,
+            intro: 'Bit needs to turn to reach the star!'
+        },
+        {
+            id: 3, name: 'Zig Zag', world: 1,
+            width: 7, height: 5,
+            map: [
+                [1,1,1,1,1,1,1],
+                [1,9,0,1,0,2,1],
+                [1,1,0,1,0,1,1],
+                [1,0,0,0,0,0,1],
+                [1,1,1,1,1,1,1]
+            ],
+            start: { x: 1, y: 1, dir: 'RIGHT' },
+            commands: ['forward', 'left', 'right'],
+            optimalMoves: 7,
+            intro: 'Find the path through the maze!'
+        },
+        {
+            id: 4, name: 'The Long Road', world: 1,
+            width: 8, height: 4,
+            map: [
+                [1,1,1,1,1,1,1,1],
+                [1,9,0,0,0,0,2,1],
+                [1,1,1,1,1,1,1,1],
+                [1,1,1,1,1,1,1,1]
+            ],
+            start: { x: 1, y: 1, dir: 'RIGHT' },
+            commands: ['forward', 'left', 'right'],
+            optimalMoves: 5,
+            intro: 'How many Forward commands do you need?'
+        },
+        {
+            id: 5, name: 'Spiral', world: 1,
+            width: 6, height: 6,
+            map: [
+                [1,1,1,1,1,1],
+                [1,9,0,0,0,1],
+                [1,0,1,1,0,1],
+                [1,0,1,2,0,1],
+                [1,0,0,0,0,1],
+                [1,1,1,1,1,1]
+            ],
+            start: { x: 1, y: 1, dir: 'RIGHT' },
+            commands: ['forward', 'left', 'right'],
+            optimalMoves: 7,
+            intro: 'Follow the spiral to the star!'
+        },
+        // World 2: Long Journeys (More complex paths)
+        {
+            id: 6, name: 'The Maze', world: 2,
+            width: 7, height: 7,
+            map: [
+                [1,1,1,1,1,1,1],
+                [1,9,0,1,0,0,1],
+                [1,0,0,1,0,1,1],
+                [1,1,0,0,0,0,1],
+                [1,0,0,1,1,0,1],
+                [1,0,1,1,2,0,1],
+                [1,1,1,1,1,1,1]
+            ],
+            start: { x: 1, y: 1, dir: 'RIGHT' },
+            commands: ['forward', 'left', 'right'],
+            optimalMoves: 9,
+            intro: 'Can you find your way through?'
+        },
+        {
+            id: 7, name: 'Three Turns', world: 2,
+            width: 8, height: 5,
+            map: [
+                [1,1,1,1,1,1,1,1],
+                [1,9,0,0,1,0,2,1],
+                [1,1,1,0,1,0,1,1],
+                [1,0,0,0,0,0,0,1],
+                [1,1,1,1,1,1,1,1]
+            ],
+            start: { x: 1, y: 1, dir: 'RIGHT' },
+            commands: ['forward', 'left', 'right'],
+            optimalMoves: 8,
+            intro: 'Three turns stand between you and the goal!'
+        },
+        {
+            id: 8, name: 'Crossroads', world: 2,
+            width: 7, height: 7,
+            map: [
+                [1,1,1,1,1,1,1],
+                [1,0,0,1,0,0,1],
+                [1,0,9,0,0,0,1],
+                [1,1,0,1,1,0,1],
+                [1,0,0,0,1,0,1],
+                [1,0,1,2,0,0,1],
+                [1,1,1,1,1,1,1]
+            ],
+            start: { x: 2, y: 2, dir: 'RIGHT' },
+            commands: ['forward', 'left', 'right'],
+            optimalMoves: 7,
+            intro: 'Choose the right path at the crossroads!'
+        },
+        {
+            id: 9, name: 'The Corridor', world: 2,
+            width: 5, height: 8,
+            map: [
+                [1,1,1,1,1],
+                [1,9,0,0,1],
+                [1,1,1,0,1],
+                [1,0,0,0,1],
+                [1,0,1,1,1],
+                [1,0,0,0,1],
+                [1,1,1,2,1],
+                [1,1,1,1,1]
+            ],
+            start: { x: 1, y: 1, dir: 'RIGHT' },
+            commands: ['forward', 'left', 'right'],
+            optimalMoves: 9,
+            intro: 'Navigate the long corridor!'
+        },
+        {
+            id: 10, name: 'The Spiral In', world: 2,
+            width: 7, height: 7,
+            map: [
+                [1,1,1,1,1,1,1],
+                [1,0,0,0,0,0,1],
+                [1,0,1,1,1,0,1],
+                [1,0,1,2,1,0,1],
+                [1,0,1,0,0,0,1],
+                [1,0,0,0,1,9,1],
+                [1,1,1,1,1,1,1]
+            ],
+            start: { x: 5, y: 5, dir: 'LEFT' },
+            commands: ['forward', 'left', 'right'],
+            optimalMoves: 8,
+            intro: 'Spiral inward to reach the center!'
+        },
+        // World 3: Loops (Repeat commands)
+        {
+            id: 11, name: 'Repeat x2', world: 3,
+            width: 7, height: 4,
+            map: [
+                [1,1,1,1,1,1,1],
+                [1,9,0,0,0,2,1],
+                [1,1,1,1,1,1,1],
+                [1,1,1,1,1,1,1]
+            ],
+            start: { x: 1, y: 1, dir: 'RIGHT' },
+            commands: ['forward', 'left', 'right', 'repeat2'],
+            optimalMoves: 3,
+            intro: 'Use "Repeat 2" to repeat the next command 2 times!'
+        },
+        {
+            id: 12, name: 'Square Walk', world: 3,
+            width: 6, height: 6,
+            map: [
+                [1,1,1,1,1,1],
+                [1,9,0,0,0,1],
+                [1,0,1,1,0,1],
+                [1,0,1,2,0,1],
+                [1,0,0,0,0,1],
+                [1,1,1,1,1,1]
+            ],
+            start: { x: 1, y: 1, dir: 'RIGHT' },
+            commands: ['forward', 'left', 'right', 'repeat2', 'repeat3'],
+            optimalMoves: 6,
+            intro: 'Walk around the square using a loop!'
+        },
+        {
+            id: 13, name: 'The Long Hall', world: 3,
+            width: 9, height: 4,
+            map: [
+                [1,1,1,1,1,1,1,1,1],
+                [1,9,0,0,0,0,0,2,1],
+                [1,1,1,1,1,1,1,1,1],
+                [1,1,1,1,1,1,1,1,1]
+            ],
+            start: { x: 1, y: 1, dir: 'RIGHT' },
+            commands: ['forward', 'left', 'right', 'repeat2', 'repeat3', 'repeat4'],
+            optimalMoves: 3,
+            intro: 'That\'s a lot of Forward commands! Use Repeat!'
+        },
+        {
+            id: 14, name: 'Loop the Loop', world: 3,
+            width: 7, height: 7,
+            map: [
+                [1,1,1,1,1,1,1],
+                [1,9,0,0,0,0,1],
+                [1,0,1,1,1,0,1],
+                [1,0,1,2,1,0,1],
+                [1,0,1,1,1,0,1],
+                [1,0,0,0,0,0,1],
+                [1,1,1,1,1,1,1]
+            ],
+            start: { x: 1, y: 1, dir: 'RIGHT' },
+            commands: ['forward', 'left', 'right', 'repeat2', 'repeat3', 'repeat4'],
+            optimalMoves: 7,
+            intro: 'Go around the box with one Repeat!'
+        },
+        {
+            id: 15, name: 'Double Loop', world: 3,
+            width: 8, height: 6,
+            map: [
+                [1,1,1,1,1,1,1,1],
+                [1,9,0,0,0,0,0,1],
+                [1,1,1,1,1,1,0,1],
+                [1,2,0,0,0,0,0,1],
+                [1,1,1,1,1,1,1,1],
+                [1,1,1,1,1,1,1,1]
+            ],
+            start: { x: 1, y: 1, dir: 'RIGHT' },
+            commands: ['forward', 'left', 'right', 'repeat2', 'repeat3', 'repeat4'],
+            optimalMoves: 5,
+            intro: 'Can you use two loops to solve this?'
+        },
+        // World 4: Smart Moves (Conditions)
+        {
+            id: 16, name: 'If Wall', world: 4,
+            width: 6, height: 5,
+            map: [
+                [1,1,1,1,1,1],
+                [1,9,0,1,2,1],
+                [1,1,0,1,1,1],
+                [1,0,0,0,0,1],
+                [1,1,1,1,1,1]
+            ],
+            start: { x: 1, y: 1, dir: 'RIGHT' },
+            commands: ['forward', 'left', 'right', 'ifwall'],
+            optimalMoves: 5,
+            intro: '"If Wall" only does the next command if there\'s a wall ahead!'
+        },
+        {
+            id: 17, name: 'Wall Follower', world: 4,
+            width: 7, height: 7,
+            map: [
+                [1,1,1,1,1,1,1],
+                [1,9,0,0,0,0,1],
+                [1,1,1,1,1,0,1],
+                [1,0,0,0,0,0,1],
+                [1,0,1,1,1,1,1],
+                [1,0,0,0,0,2,1],
+                [1,1,1,1,1,1,1]
+            ],
+            start: { x: 1, y: 1, dir: 'RIGHT' },
+            commands: ['forward', 'left', 'right', 'ifwall'],
+            optimalMoves: 9,
+            intro: 'Follow the walls to find the star!'
+        },
+        {
+            id: 18, name: 'Smart Choice', world: 4,
+            width: 7, height: 5,
+            map: [
+                [1,1,1,1,1,1,1],
+                [1,9,0,1,0,2,1],
+                [1,1,0,1,0,1,1],
+                [1,0,0,0,0,0,1],
+                [1,1,1,1,1,1,1]
+            ],
+            start: { x: 1, y: 1, dir: 'RIGHT' },
+            commands: ['forward', 'left', 'right', 'ifwall', 'ifgoal'],
+            optimalMoves: 7,
+            intro: 'Use If Goal to check if the star is ahead!'
+        },
+        {
+            id: 19, name: 'The Bridge', world: 4,
+            width: 8, height: 5,
+            map: [
+                [1,1,1,1,1,1,1,1],
+                [1,9,0,0,3,3,2,1],
+                [1,1,1,0,1,1,1,1],
+                [1,0,0,0,0,0,0,1],
+                [1,1,1,1,1,1,1,1]
+            ],
+            start: { x: 1, y: 1, dir: 'RIGHT' },
+            commands: ['forward', 'left', 'right', 'jump', 'ifwall'],
+            optimalMoves: 5,
+            intro: 'Jump over the water to reach the star!'
+        },
+        {
+            id: 20, name: 'Master Maze', world: 4,
+            width: 8, height: 8,
+            map: [
+                [1,1,1,1,1,1,1,1],
+                [1,9,0,0,1,0,0,1],
+                [1,0,1,0,0,0,1,1],
+                [1,0,1,1,1,0,0,1],
+                [1,0,0,0,1,1,0,1],
+                [1,1,1,0,0,0,0,1],
+                [1,2,0,0,1,0,1,1],
+                [1,1,1,1,1,1,1,1]
+            ],
+            start: { x: 1, y: 1, dir: 'RIGHT' },
+            commands: ['forward', 'left', 'right', 'repeat2', 'repeat3', 'ifwall'],
+            optimalMoves: 11,
+            intro: 'Use everything you learned to solve this!'
+        }
+    ];
+
+    // ===== GAME STATE =====
+    const state = {
+        currentLevel: 1,
+        completedLevels: {},
+        stars: {},
+        soundEnabled: true,
+        musicEnabled: true,
+        speed: 1,
+        program: [],
+        isRunning: false,
+        robot: { x: 0, y: 0, dir: 'RIGHT' },
+        visualRobot: { x: 0, y: 0, dir: 'RIGHT' },
+        animating: false,
+        gateOpen: false
+    };
+
+    // ===== DOM ELEMENTS =====
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const logoCanvas = document.getElementById('logoCanvas');
+    const logoCtx = logoCanvas.getContext('2d');
+    const levelBadge = document.getElementById('levelBadge');
+    const starsDisplay = document.getElementById('starsDisplay');
+    const commandGrid = document.getElementById('commandGrid');
+    const sequenceBlocks = document.getElementById('sequenceBlocks');
+    const btnGo = document.getElementById('btnGo');
+    const btnClear = document.getElementById('btnClear');
+    const btnSpeed = document.getElementById('btnSpeed');
+    const btnSound = document.getElementById('btnSound');
+    const btnMusic = document.getElementById('btnMusic');
+    const btnReset = document.getElementById('btnReset');
+    const btnLevels = document.getElementById('btnLevels');
+    const btnHelp = document.getElementById('btnHelp');
+    const modalOverlay = document.getElementById('modalOverlay');
+    const modalCard = document.getElementById('modalCard');
+    const confettiContainer = document.getElementById('confettiContainer');
+    const toast = document.getElementById('toast');
+    const tooltip = document.getElementById('tooltip');
+
+    // ===== RENDERING =====
+    let tileSize = 48;
+    let camera = { x: 0, y: 0 };
+    let particles = [];
+
+    function resizeCanvas() {
+        const level = LEVELS[state.currentLevel - 1];
+        if (!level) return;
+        
+        const gameArea = document.querySelector('.game-area');
+        const maxWidth = gameArea.clientWidth - 32;
+        const maxHeight = gameArea.clientHeight - 32;
+        
+        tileSize = Math.min(
+            Math.floor(maxWidth / level.width),
+            Math.floor(maxHeight / level.height),
+            64
+        );
+        tileSize = Math.max(tileSize, 32);
+        
+        canvas.width = level.width * tileSize;
+        canvas.height = level.height * tileSize;
+        
+        draw();
+    }
+
+    function drawSprite(ctx, sprite, x, y, size) {
+        const pixelSize = size / sprite[0].length;
+        sprite.forEach((row, sy) => {
+            row.forEach((pixel, sx) => {
+                if (pixel !== 0 && PALETTE[pixel]) {
+                    ctx.fillStyle = PALETTE[pixel];
+                    ctx.fillRect(
+                        x + sx * pixelSize,
+                        y + sy * pixelSize,
+                        pixelSize + 0.5,
+                        pixelSize + 0.5
+                    );
+                }
+            });
+        });
+    }
+
+    function drawTile(x, y, tileId) {
+        const px = x * tileSize;
+        const py = y * tileSize;
+        const tile = Object.values(TILES).find(t => t.id === tileId) || TILES.FLOOR;
+        
+        // Base
+        ctx.fillStyle = tile.color;
+        ctx.fillRect(px, py, tileSize, tileSize);
+        
+        // Border for walls
+        if (tileId === 1) {
+            ctx.fillStyle = tile.border;
+            ctx.fillRect(px, py, tileSize, 3);
+            ctx.fillRect(px, py, 3, tileSize);
+            ctx.fillRect(px + tileSize - 3, py, 3, tileSize);
+            ctx.fillRect(px, py + tileSize - 3, tileSize, 3);
+            
+            // Brick pattern
+            ctx.fillStyle = 'rgba(0,0,0,0.2)';
+            ctx.fillRect(px + 8, py + 8, tileSize - 16, 3);
+            ctx.fillRect(px + 8, py + tileSize - 12, tileSize - 16, 3);
+        }
+        
+        // Goal
+        if (tile.special === 'goal') {
+            const time = Date.now() / 500;
+            const scale = 0.7 + Math.sin(time) * 0.1;
+            const starSize = tileSize * scale;
+            const offset = (tileSize - starSize) / 2;
+            
+            ctx.save();
+            ctx.globalAlpha = 0.8 + Math.sin(time * 2) * 0.2;
+            drawSprite(ctx, SPRITES.star, px + offset, py + offset, starSize);
+            ctx.restore();
+        }
+        
+        // Start marker
+        if (tile.special === 'start') {
+            ctx.fillStyle = 'rgba(0, 217, 255, 0.3)';
+            ctx.fillRect(px + 4, py + 4, tileSize - 8, tileSize - 8);
+        }
+        
+        // Water
+        if (tileId === 3) {
+            const wave = Math.sin(Date.now() / 300 + x) * 3;
+            ctx.fillStyle = 'rgba(255,255,255,0.2)';
+            ctx.fillRect(px + 4, py + tileSize/2 + wave, tileSize - 8, 3);
+        }
+        
+        // Button
+        if (tile.special === 'button') {
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.arc(px + tileSize/2, py + tileSize/2, tileSize/4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#c0392b';
+            ctx.beginPath();
+            ctx.arc(px + tileSize/2, py + tileSize/2, tileSize/6, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // Gate
+        if (tile.special === 'gate' && !state.gateOpen) {
+            ctx.fillStyle = '#f39c12';
+            ctx.fillRect(px + 4, py + 4, tileSize - 8, tileSize - 8);
+            ctx.fillStyle = '#e67e22';
+            ctx.fillRect(px + tileSize/2 - 2, py + 4, 4, tileSize - 8);
+        }
+        
+        // Ice
+        if (tileId === 8) {
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.fillRect(px + 8, py + 8, 6, 6);
+            ctx.fillRect(px + tileSize - 16, py + tileSize - 16, 6, 6);
+        }
+        
+        // Grid lines
+        ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px, py, tileSize, tileSize);
+    }
+
+    function drawRobot() {
+        const { x, y, dir } = state.visualRobot;
+        const px = x * tileSize;
+        const py = y * tileSize;
+        const bob = Math.sin(Date.now() / 300) * 2;
+        
+        ctx.save();
+        
+        // Shadow
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.beginPath();
+        ctx.ellipse(
+            px + tileSize/2,
+            py + tileSize - 4,
+            tileSize/3,
+            tileSize/6,
+            0, 0, Math.PI * 2
+        );
+        ctx.fill();
+        
+        // Robot sprite
+        const sprite = state.isRunning && state.animating ? SPRITES.robotWin : SPRITES.robot;
+        const spriteSize = tileSize * 0.8;
+        const offset = (tileSize - spriteSize) / 2;
+        
+        ctx.translate(px + tileSize/2, py + tileSize/2 + bob);
+        
+        // Rotation based on direction
+        let rotation = 0;
+        if (dir === 'RIGHT') rotation = Math.PI / 2;
+        if (dir === 'DOWN') rotation = Math.PI;
+        if (dir === 'LEFT') rotation = -Math.PI / 2;
+        ctx.rotate(rotation);
+        
+        ctx.translate(-spriteSize/2, -spriteSize/2);
+        drawSprite(ctx, sprite, 0, 0, spriteSize);
+        
+        ctx.restore();
+    }
+
+    function drawParticles() {
+        particles = particles.filter(p => {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.life -= 0.02;
+            p.vy += 0.1;
+            
+            if (p.life <= 0) return false;
+            
+            ctx.globalAlpha = p.life;
+            ctx.fillStyle = p.color;
+            ctx.fillRect(p.x, p.y, p.size, p.size);
+            ctx.globalAlpha = 1;
+            
+            return true;
+        });
+    }
+
+    function draw() {
+        const level = LEVELS[state.currentLevel - 1];
+        if (!level) return;
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Background
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Tiles
+        for (let y = 0; y < level.height; y++) {
+            for (let x = 0; x < level.width; x++) {
+                drawTile(x, y, level.map[y][x]);
+            }
+        }
+        
+        // Robot
+        drawRobot();
+        
+        // Particles
+        drawParticles();
+        
+        requestAnimationFrame(draw);
+    }
+
+    function spawnParticles(x, y, color, count = 10) {
+        const px = x * tileSize + tileSize/2;
+        const py = y * tileSize + tileSize/2;
+        for (let i = 0; i < count; i++) {
+            particles.push({
+                x: px,
+                y: py,
+                vx: (Math.random() - 0.5) * 6,
+                vy: (Math.random() - 0.5) * 6 - 2,
+                life: 1,
+                color: color,
+                size: Math.random() * 4 + 2
+            });
+        }
+    }
+
+    // ===== UI UPDATES =====
+    function updateLevelBadge() {
+        const level = LEVELS[state.currentLevel - 1];
+        levelBadge.textContent = `Level ${state.currentLevel}`;
+        
+        const worldBadge = document.getElementById('worldBadge');
+        if (worldBadge && level) {
+            worldBadge.textContent = `World ${level.world}`;
+        }
+        
+        const stars = state.stars[state.currentLevel] || 0;
+        starsDisplay.innerHTML = '⭐'.repeat(stars) + '☆'.repeat(3 - stars);
+    }
+
+    function renderCommands() {
+        const level = LEVELS[state.currentLevel - 1];
+        if (!level) return;
+        
+        commandGrid.innerHTML = '';
+        
+        Object.values(COMMANDS).forEach(cmd => {
+            const btn = document.createElement('button');
+            btn.className = `command-btn cmd-type-${cmd.type}`;
+            
+            const isLocked = !level.commands.includes(cmd.id);
+            if (isLocked) {
+                btn.classList.add('locked');
+            }
+            
+            btn.innerHTML = `
+                <span class="cmd-icon">${cmd.icon}</span>
+                <span class="cmd-label">${cmd.label}</span>
+            `;
+            
+            if (!isLocked) {
+                btn.addEventListener('click', () => addCommand(cmd.id));
+                btn.addEventListener('mouseenter', (e) => showTooltip(e, cmd.desc));
+                btn.addEventListener('mouseleave', hideTooltip);
+            }
+            
+            commandGrid.appendChild(btn);
+        });
+    }
+
+    function renderSequence() {
+        // Update GO button state
+        btnGo.disabled = state.program.length === 0 || state.isRunning;
+        
+        // Update command count
+        const countEl = document.getElementById('commandCount');
+        if (countEl) {
+            countEl.textContent = state.program.length;
+        }
+        
+        if (state.program.length === 0) {
+            sequenceBlocks.innerHTML = '<div class="seq-empty">Tap commands to build your program</div>';
+            return;
+        }
+        
+        sequenceBlocks.innerHTML = '';
+        state.program.forEach((cmdId, index) => {
+            const cmd = COMMANDS[cmdId];
+            const block = document.createElement('div');
+            block.className = `seq-block type-${cmd.type}`;
+            block.dataset.index = index;
+            block.innerHTML = `
+                <span>${cmd.icon}</span>
+                <span>${cmd.label}</span>
+                <span class="remove-x">✕</span>
+            `;
+            block.addEventListener('click', () => removeCommand(index));
+            sequenceBlocks.appendChild(block);
+        });
+        
+        // Scroll to bottom
+        sequenceBlocks.scrollTop = sequenceBlocks.scrollHeight;
+    }
+
+    function highlightCommand(index) {
+        const blocks = sequenceBlocks.querySelectorAll('.seq-block');
+        blocks.forEach((b, i) => {
+            b.classList.toggle('executing', i === index);
+        });
+        if (blocks[index]) {
+            blocks[index].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }
+
+    function clearHighlight() {
+        sequenceBlocks.querySelectorAll('.seq-block').forEach(b => {
+            b.classList.remove('executing');
+        });
+    }
+
+    // ===== PROGRAM MANAGEMENT =====
+    function addCommand(cmdId) {
+        if (state.isRunning) return;
+        
+        const cmd = COMMANDS[cmdId];
+        state.program.push(cmdId);
+        audio.addBlock();
+        renderSequence();
+    }
+
+    function removeCommand(index) {
+        if (state.isRunning) return;
+        
+        state.program.splice(index, 1);
+        audio.removeBlock();
+        renderSequence();
+    }
+
+    function clearProgram() {
+        if (state.isRunning) return;
+        
+        state.program = [];
+        audio.removeBlock();
+        renderSequence();
+        
+        if (sequenceBlocks.children.length === 0) {
+            sequenceBlocks.classList.add('shake');
+            setTimeout(() => sequenceBlocks.classList.remove('shake'), 400);
+        }
+    }
+
+    // ===== EXECUTION ENGINE =====
+    async function runProgram() {
+        if (state.isRunning || state.program.length === 0) return;
+        
+        state.isRunning = true;
+        btnGo.disabled = true;
+        btnClear.disabled = true;
+        btnGo.textContent = '⏸ Running...';
+        
+        const level = LEVELS[state.currentLevel - 1];
+        state.robot = { ...level.start };
+        state.visualRobot = { ...level.start };
+        state.gateOpen = false;
+        
+        try {
+            let pc = 0;
+            while (pc < state.program.length) {
+                highlightCommand(pc);
+                const cmdId = state.program[pc];
+                const cmd = COMMANDS[cmdId];
+                
+                if (cmd.type === 'control') {
+                    pc = await executeControl(pc);
+                } else {
+                    await executeCommand(cmdId);
+                    pc++;
+                }
+                
+                // Check win after EVERY command
+                const goalPos = findTile(level, 2);
+                if (goalPos && state.robot.x === goalPos.x && state.robot.y === goalPos.y) {
+                    clearHighlight();
+                    await winLevel();
+                    return;
+                }
+                
+                // Delay between commands
+                if (pc < state.program.length) {
+                    await new Promise(r => setTimeout(r, 400 / state.speed));
+                }
+            }
+            
+            // Program ended without reaching goal
+            clearHighlight();
+            await failLevel();
+        } catch (e) {
+            console.error(e);
+        } finally {
+            state.isRunning = false;
+            btnGo.disabled = false;
+            btnClear.disabled = false;
+            btnGo.textContent = '▶ GO';
+        }
+    }
+
+    async function executeCommand(cmdId) {
+        state.animating = true;
+        
+        switch (cmdId) {
+            case 'forward':
+                await moveForward();
+                break;
+            case 'left':
+                turnLeft();
+                audio.turn();
+                break;
+            case 'right':
+                turnRight();
+                audio.turn();
+                break;
+            case 'jump':
+                await jump();
+                break;
+            case 'push':
+                await moveForward();
+                break;
+            case 'activate':
+                await activate();
+                break;
+        }
+        
+        state.animating = false;
+    }
+
+    async function executeControl(pc) {
+        const cmdId = state.program[pc];
+        const level = LEVELS[state.currentLevel - 1];
+        
+        switch (cmdId) {
+            case 'repeat2':
+            case 'repeat3':
+            case 'repeat4': {
+                const repeatCount = parseInt(cmdId.replace('repeat', ''));
+                
+                if (pc + 1 >= state.program.length) {
+                    return pc + 1; // Nothing to repeat
+                }
+                
+                const targetCmd = state.program[pc + 1];
+                
+                for (let i = 0; i < repeatCount; i++) {
+                    highlightCommand(pc + 1);
+                    
+                    if (COMMANDS[targetCmd].type === 'control') {
+                        await executeControl(pc + 1);
+                    } else {
+                        await executeCommand(targetCmd);
+                    }
+                    
+                    // Check win after each repetition
+                    const goalPos = findTile(level, 2);
+                    if (goalPos && state.robot.x === goalPos.x && state.robot.y === goalPos.y) {
+                        return pc + 2;
+                    }
+                    
+                    if (i < repeatCount - 1) {
+                        await new Promise(r => setTimeout(r, 300 / state.speed));
+                    }
+                }
+                
+                return pc + 2;
+            }
+            case 'ifwall': {
+                if (isWallAhead()) {
+                    if (pc + 1 < state.program.length) {
+                        highlightCommand(pc + 1);
+                        await executeCommand(state.program[pc + 1]);
+                    }
+                }
+                return pc + 2;
+            }
+            case 'ifgoal': {
+                if (isGoalAhead()) {
+                    if (pc + 1 < state.program.length) {
+                        highlightCommand(pc + 1);
+                        await executeCommand(state.program[pc + 1]);
+                    }
+                }
+                return pc + 2;
+            }
+        }
+        return pc + 1;
+    }
+
+    function getDirVector(dir) {
+        return DIRS[dir];
+    }
+
+    function isWallAhead() {
+        const level = LEVELS[state.currentLevel - 1];
+        const dir = getDirVector(state.robot.dir);
+        const nx = state.robot.x + dir.x;
+        const ny = state.robot.y + dir.y;
+        return !isWalkable(level, nx, ny);
+    }
+
+    function isGoalAhead() {
+        const level = LEVELS[state.currentLevel - 1];
+        const dir = getDirVector(state.robot.dir);
+        const nx = state.robot.x + dir.x;
+        const ny = state.robot.y + dir.y;
+        return isInBounds(level, nx, ny) && level.map[ny][nx] === 2;
+    }
+
+    function isInBounds(level, x, y) {
+        return x >= 0 && x < level.width && y >= 0 && y < level.height;
+    }
+
+    function isWalkable(level, x, y) {
+        if (!isInBounds(level, x, y)) return false;
+        const tileId = level.map[y][x];
+        const tile = Object.values(TILES).find(t => t.id === tileId);
+        if (!tile) return false;
+        if (tile.special === 'gate' && !state.gateOpen) return false;
+        return tile.walkable;
+    }
+
+    function easeOutCubic(t) {
+        return 1 - Math.pow(1 - t, 3);
+    }
+
+    async function moveForward() {
+        const level = LEVELS[state.currentLevel - 1];
+        const dir = getDirVector(state.robot.dir);
+        const nx = state.robot.x + dir.x;
+        const ny = state.robot.y + dir.y;
+        
+        if (isWalkable(level, nx, ny)) {
+            // Update logical position immediately
+            state.robot.x = nx;
+            state.robot.y = ny;
+            
+            // Animate visual position
+            const startX = state.visualRobot.x;
+            const startY = state.visualRobot.y;
+            const duration = 300 / state.speed;
+            const startTime = Date.now();
+            
+            await new Promise(resolve => {
+                function animate() {
+                    const elapsed = Date.now() - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    const ease = easeOutCubic(progress);
+                    
+                    state.visualRobot.x = startX + dir.x * ease;
+                    state.visualRobot.y = startY + dir.y * ease;
+                    
+                    if (progress < 1) {
+                        requestAnimationFrame(animate);
+                    } else {
+                        state.visualRobot.x = state.robot.x;
+                        state.visualRobot.y = state.robot.y;
+                        resolve();
+                    }
+                }
+                animate();
+            });
+            
+            audio.step();
+            
+            // Check ice
+            if (isInBounds(level, state.robot.x, state.robot.y) && 
+                level.map[state.robot.y][state.robot.x] === 8) {
+                await new Promise(r => setTimeout(r, 150 / state.speed));
+                await moveForward();
+            }
+        } else {
+            audio.bump();
+            canvas.classList.add('shake');
+            setTimeout(() => canvas.classList.remove('shake'), 400);
+            spawnParticles(state.visualRobot.x, state.visualRobot.y, '#ff6b6b', 5);
+        }
+    }
+
+    function turnLeft() {
+        const idx = DIR_ORDER.indexOf(state.robot.dir);
+        state.robot.dir = DIR_ORDER[(idx + 3) % 4];
+        state.visualRobot.dir = state.robot.dir;
+    }
+
+    function turnRight() {
+        const idx = DIR_ORDER.indexOf(state.robot.dir);
+        state.robot.dir = DIR_ORDER[(idx + 1) % 4];
+        state.visualRobot.dir = state.robot.dir;
+    }
+
+    async function jump() {
+        const level = LEVELS[state.currentLevel - 1];
+        const dir = getDirVector(state.robot.dir);
+        const nx = state.robot.x + dir.x;
+        const ny = state.robot.y + dir.y;
+        
+        if (isInBounds(level, nx, ny) && level.map[ny][nx] === 3) {
+            const nx2 = state.robot.x + dir.x * 2;
+            const ny2 = state.robot.y + dir.y * 2;
+            
+            if (isWalkable(level, nx2, ny2)) {
+                // Update logical position
+                state.robot.x = nx2;
+                state.robot.y = ny2;
+                
+                // Jump animation
+                const startX = state.visualRobot.x;
+                const startY = state.visualRobot.y;
+                const duration = 400 / state.speed;
+                const startTime = Date.now();
+                
+                await new Promise(resolve => {
+                    function animate() {
+                        const elapsed = Date.now() - startTime;
+                        const progress = Math.min(elapsed / duration, 1);
+                        const ease = easeOutCubic(progress);
+                        
+                        state.visualRobot.x = startX + dir.x * 2 * ease;
+                        state.visualRobot.y = startY + dir.y * 2 * ease;
+                        
+                        if (progress < 1) {
+                            requestAnimationFrame(animate);
+                        } else {
+                            state.visualRobot.x = state.robot.x;
+                            state.visualRobot.y = state.robot.y;
+                            resolve();
+                        }
+                    }
+                    animate();
+                });
+                
+                audio.step();
+                spawnParticles(state.visualRobot.x, state.visualRobot.y, '#00d9ff', 8);
+            } else {
+                audio.bump();
+                canvas.classList.add('shake');
+                setTimeout(() => canvas.classList.remove('shake'), 400);
+            }
+        } else {
+            await moveForward();
+        }
+    }
+
+    async function activate() {
+        const level = LEVELS[state.currentLevel - 1];
+        const dir = getDirVector(state.robot.dir);
+        const nx = state.robot.x + dir.x;
+        const ny = state.robot.y + dir.y;
+        
+        if (isInBounds(level, nx, ny) && level.map[ny][nx] === 5) {
+            state.gateOpen = true;
+            audio.success();
+            spawnParticles(nx, ny, '#ffd93d', 12);
+            showToast('Gate opened!', 'success');
+        }
+    }
+
+    function findTile(level, tileId) {
+        for (let y = 0; y < level.height; y++) {
+            for (let x = 0; x < level.width; x++) {
+                if (level.map[y][x] === tileId) {
+                    return { x, y };
+                }
+            }
+        }
+        return null;
+    }
+
+    // ===== LEVEL MANAGEMENT =====
+    function loadLevel(levelNum) {
+        state.currentLevel = levelNum;
+        state.program = [];
+        state.isRunning = false;
+        state.gateOpen = false;
+        
+        const level = LEVELS[levelNum - 1];
+        if (!level) return;
+        
+        state.robot = { ...level.start };
+        state.visualRobot = { ...level.start };
+        
+        updateLevelBadge();
+        renderCommands();
+        renderSequence();
+        resizeCanvas();
+        
+        // Show intro for first time
+        if (!state.completedLevels[levelNum]) {
+            showModal('🤖', level.name, level.intro, 'Start! 🚀', () => {
+                closeModal();
+            });
+        }
+    }
+
+    async function winLevel() {
+        audio.win();
+        spawnParticles(state.visualRobot.x, state.visualRobot.y, '#ffd93d', 20);
+        spawnParticles(state.visualRobot.x, state.visualRobot.y, '#6bcb77', 15);
+        spawnConfetti();
+        
+        // Calculate stars based on optimal solution
+        const level = LEVELS[state.currentLevel - 1];
+        const commandCount = state.program.length;
+        const optimal = level.optimalMoves || 5;
+        
+        let stars = 3;
+        if (commandCount > optimal) stars = 2;
+        if (commandCount > optimal + 3) stars = 1;
+        
+        const currentStars = state.stars[state.currentLevel] || 0;
+        if (stars > currentStars) {
+            state.stars[state.currentLevel] = stars;
+        }
+        state.completedLevels[state.currentLevel] = true;
+        saveProgress();
+        
+        updateLevelBadge();
+        
+        const isLast = state.currentLevel >= LEVELS.length;
+        
+        // Build star HTML
+        let starsHtml = '<div class="star-rating">';
+        for (let i = 1; i <= 3; i++) {
+            starsHtml += `<span class="star ${i <= stars ? 'pop' : ''}">${i <= stars ? '⭐' : '☆'}</span>`;
+        }
+        starsHtml += '</div>';
+        
+        showModal(
+            '🎉',
+            'Level Complete!',
+            `Amazing! Bit reached the star!${starsHtml}`,
+            isLast ? 'Play Again! 🔄' : 'Next Level ➡️',
+            () => {
+                closeModal();
+                if (isLast) {
+                    loadLevel(1);
+                } else {
+                    loadLevel(state.currentLevel + 1);
+                }
+            }
+        );
+    }
+
+    async function failLevel() {
+        audio.fail();
+        canvas.classList.add('shake');
+        setTimeout(() => canvas.classList.remove('shake'), 400);
+        
+        // Show failure modal with clear feedback
+        showModal(
+            '🤖',
+            'Oops! Try Again!',
+            'Bit didn\'t reach the star. Check your program and try a different sequence!',
+            'Try Again 🔄',
+            () => {
+                closeModal();
+                // Reset robot position
+                const level = LEVELS[state.currentLevel - 1];
+                state.robot = { ...level.start };
+                state.visualRobot = { ...level.start };
+                state.gateOpen = false;
+            }
+        );
+    }
+
+    // ===== MODALS =====
+    function showModal(icon, title, text, btnText, onClick) {
+        modalCard.innerHTML = `
+            <div class="modal-icon">${icon}</div>
+            <div class="modal-title">${title}</div>
+            <div class="modal-text">${text}</div>
+            <button class="modal-btn" id="modalBtn">${btnText}</button>
+        `;
+        modalOverlay.classList.add('active');
+        
+        document.getElementById('modalBtn').addEventListener('click', onClick);
+    }
+
+    function closeModal() {
+        modalOverlay.classList.remove('active');
+    }
+
+    function showLevelSelect() {
+        let html = `
+            <div class="modal-icon">🗺️</div>
+            <div class="modal-title">Select Level</div>
+            <div class="level-grid">
+        `;
+        
+        for (let i = 1; i <= LEVELS.length; i++) {
+            const completed = state.completedLevels[i];
+            const current = i === state.currentLevel;
+            const stars = state.stars[i] || 0;
+            const unlocked = i === 1 || state.completedLevels[i - 1];
+            
+            html += `
+                <button class="level-btn ${completed ? 'completed' : ''} ${current ? 'current' : ''}" 
+                        data-level="${i}" ${!unlocked ? 'disabled' : ''}>
+                    ${i}
+                    ${completed ? `<div class="level-stars">${'⭐'.repeat(stars)}</div>` : ''}
+                </button>
+            `;
+        }
+        
+        html += '</div>';
+        html += '<button class="modal-btn" style="margin-top:16px" onclick="closeModal()">Close</button>';
+        
+        modalCard.innerHTML = html;
+        modalOverlay.classList.add('active');
+        
+        modalCard.querySelectorAll('.level-btn:not(:disabled)').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const level = parseInt(btn.dataset.level);
+                closeModal();
+                loadLevel(level);
+            });
+        });
+    }
+
+    function showHelp() {
+        showModal(
+            '❓',
+            'How to Play',
+            `Tap commands to build a program for Bit the robot.<br><br>
+             Press <b>GO</b> to run the program.<br><br>
+             Help Bit reach the ⭐ star!<br><br>
+             <b>Keyboard:</b><br>
+             ↑↓←→ = commands<br>
+             Space = GO<br>
+             C = Clear | R = Reset<br>
+             L = Levels | M = Sound`,
+            'Got it! 👍',
+            closeModal
+        );
+    }
+
+    // ===== TOAST =====
+    function showToast(message, type = '') {
+        toast.textContent = message;
+        toast.className = `toast ${type}`;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    // ===== TOOLTIP =====
+    function showTooltip(e, text) {
+        tooltip.textContent = text;
+        tooltip.classList.add('visible');
+        const rect = e.target.getBoundingClientRect();
+        tooltip.style.left = rect.left + rect.width/2 - tooltip.offsetWidth/2 + 'px';
+        tooltip.style.top = rect.top - tooltip.offsetHeight - 8 + 'px';
+    }
+
+    function hideTooltip() {
+        tooltip.classList.remove('visible');
+    }
+
+    // ===== CONFETTI =====
+    function spawnConfetti() {
+        const colors = ['#ff6b6b', '#4ecdc4', '#ffe66d', '#95e1d3', '#f38181', '#aa96da', '#ffd93d', '#6bcb77'];
+        
+        for (let i = 0; i < 50; i++) {
+            const confetti = document.createElement('div');
+            confetti.className = 'confetti';
+            confetti.style.left = Math.random() * 100 + 'vw';
+            confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+            confetti.style.animationDelay = Math.random() * 0.5 + 's';
+            confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+            confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+            confettiContainer.appendChild(confetti);
+            
+            setTimeout(() => confetti.remove(), 4000);
+        }
+    }
+
+    // ===== PERSISTENCE =====
+    function saveProgress() {
+        try {
+            localStorage.setItem('codeAdventure', JSON.stringify({
+                currentLevel: state.currentLevel,
+                completedLevels: state.completedLevels,
+                stars: state.stars,
+                soundEnabled: state.soundEnabled,
+                musicEnabled: state.musicEnabled
+            }));
+        } catch(e) {}
+    }
+
+    function loadProgress() {
+        try {
+            const data = JSON.parse(localStorage.getItem('codeAdventure'));
+            if (data) {
+                state.currentLevel = data.currentLevel || 1;
+                state.completedLevels = data.completedLevels || {};
+                state.stars = data.stars || {};
+                state.soundEnabled = data.soundEnabled !== false;
+                state.musicEnabled = data.musicEnabled !== false;
+            }
+        } catch(e) {}
+    }
+
+    // ===== EVENT LISTENERS =====
+    btnGo.addEventListener('click', () => {
+        audio.init();
+        audio.click();
+        runProgram();
+    });
+
+    btnClear.addEventListener('click', () => {
+        audio.click();
+        clearProgram();
+    });
+
+    btnSpeed.addEventListener('click', () => {
+        audio.click();
+        const speeds = [1, 2, 4];
+        const idx = speeds.indexOf(state.speed);
+        state.speed = speeds[(idx + 1) % speeds.length];
+        btnSpeed.textContent = state.speed + 'x';
+    });
+
+    btnSound.addEventListener('click', () => {
+        audio.init();
+        state.soundEnabled = !state.soundEnabled;
+        audio.enabled = state.soundEnabled;
+        btnSound.textContent = state.soundEnabled ? '🔊' : '🔇';
+        saveProgress();
+    });
+
+    btnMusic.addEventListener('click', () => {
+        audio.init();
+        state.musicEnabled = !state.musicEnabled;
+        btnMusic.textContent = state.musicEnabled ? '🎵' : '🎶';
+        if (state.musicEnabled) {
+            audio.startMusic();
+        } else {
+            audio.stopMusic();
+        }
+        saveProgress();
+    });
+
+    btnReset.addEventListener('click', () => {
+        audio.click();
+        if (state.isRunning) return;
+        const level = LEVELS[state.currentLevel - 1];
+        state.robot = { ...level.start };
+        state.visualRobot = { ...level.start };
+        state.gateOpen = false;
+        state.program = [];
+        renderSequence();
+        showToast('Level reset! 🔄');
+    });
+
+    btnLevels.addEventListener('click', () => {
+        audio.click();
+        showLevelSelect();
+    });
+
+    btnHelp.addEventListener('click', () => {
+        audio.click();
+        showHelp();
+    });
+
+    // Keyboard
+    document.addEventListener('keydown', (e) => {
+        if (state.isRunning) {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                // Could add pause here
+            }
+            return;
+        }
+        
+        audio.init();
+        
+        switch (e.key) {
+            case 'ArrowUp':
+            case 'w':
+            case 'W':
+                e.preventDefault();
+                addCommand('forward');
+                break;
+            case 'ArrowLeft':
+            case 'a':
+            case 'A':
+                e.preventDefault();
+                addCommand('left');
+                break;
+            case 'ArrowRight':
+            case 'd':
+            case 'D':
+                e.preventDefault();
+                addCommand('right');
+                break;
+            case ' ':
+                e.preventDefault();
+                runProgram();
+                break;
+            case 'c':
+            case 'C':
+                e.preventDefault();
+                clearProgram();
+                break;
+            case 'r':
+            case 'R':
+                e.preventDefault();
+                btnReset.click();
+                break;
+            case 'l':
+            case 'L':
+                e.preventDefault();
+                showLevelSelect();
+                break;
+            case 'm':
+            case 'M':
+                e.preventDefault();
+                btnSound.click();
+                break;
+            case 'h':
+            case 'H':
+                e.preventDefault();
+                showHelp();
+                break;
+            case 'Backspace':
+            case 'Delete':
+                e.preventDefault();
+                if (state.program.length > 0) {
+                    removeCommand(state.program.length - 1);
+                }
+                break;
+        }
+    });
+
+    // Touch support for canvas
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    canvas.addEventListener('touchstart', (e) => {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    canvas.addEventListener('touchend', (e) => {
+        const dx = e.changedTouches[0].clientX - touchStartX;
+        const dy = e.changedTouches[0].clientY - touchStartY;
+        
+        if (Math.abs(dx) < 20 && Math.abs(dy) < 20) return;
+        
+        if (Math.abs(dx) > Math.abs(dy)) {
+            addCommand(dx > 0 ? 'right' : 'left');
+        } else {
+            addCommand('forward');
+        }
+    }, { passive: true });
+
+    // Resize
+    window.addEventListener('resize', resizeCanvas);
+
+    // ===== LOGO =====
+    function drawLogo() {
+        drawSprite(logoCtx, SPRITES.robot, 0, 0, 32);
+    }
+
+    // ===== INIT =====
+    function init() {
+        loadProgress();
+        drawLogo();
+        
+        // Update button states
+        btnSound.textContent = state.soundEnabled ? '🔊' : '🔇';
+        btnMusic.textContent = state.musicEnabled ? '🎵' : '🎶';
+        
+        // Start animation loop
+        requestAnimationFrame(draw);
+        
+        // Check if first time player
+        const hasPlayed = localStorage.getItem('codeAdventurePlayed');
+        if (!hasPlayed) {
+            showWelcomeScreen();
+            localStorage.setItem('codeAdventurePlayed', 'true');
+        } else {
+            loadLevel(state.currentLevel);
+            // Start music if enabled
+            if (state.musicEnabled) {
+                audio.init();
+                audio.startMusic();
+            }
+        }
+    }
+    
+    function showWelcomeScreen() {
+        showModal(
+            '🤖',
+            'Code Adventure',
+            `Welcome, little coder!<br><br>
+             Meet <b>Bit</b> the robot!<br><br>
+             Tap commands to tell Bit where to go.<br>
+             Help Bit reach the ⭐ star!<br><br>
+             <small>Use keyboard: Arrows = commands, Space = GO</small>`,
+            'Let\'s Go! 🚀',
+            () => {
+                closeModal();
+                audio.init();
+                if (state.musicEnabled) {
+                    audio.startMusic();
+                }
+                loadLevel(1);
+            }
+        );
+    }
+
+    init();
+    </script>
+</body>
+</html>

@@ -110,7 +110,8 @@
         .game-card:nth-child(9)::before { background: linear-gradient(90deg, #5C6BC0, #7986CB); }
         .game-card:nth-child(10)::before { background: linear-gradient(90deg, #8D6E63, #A1887F); }
         .game-card:nth-child(11)::before { background: linear-gradient(90deg, #00ACC1, #26C6DA); }
-        
+        .game-card:nth-child(12)::before { background: linear-gradient(90deg, #E53935, #FF7043); }
+
         .game-card:hover {
             transform: translateY(-15px) scale(1.02);
             box-shadow: 
@@ -188,7 +189,12 @@
             background: linear-gradient(135deg, #B2EBF2, #80DEEA);
             box-shadow: 0 8px 0 #00ACC1;
         }
-        
+
+        .game-card:nth-child(12) .game-icon {
+            background: linear-gradient(135deg, #FFEB3B, #FF7043);
+            box-shadow: 0 8px 0 #E53935;
+        }
+
         .game-icon::after {
             content: '▶';
             position: absolute;
@@ -229,7 +235,8 @@
         .game-card:nth-child(9) .game-title { color: #3F51B5; }
         .game-card:nth-child(10) .game-title { color: #6D4C41; }
         .game-card:nth-child(11) .game-title { color: #00838F; }
-        
+        .game-card:nth-child(12) .game-title { color: #C62828; }
+
         .game-desc {
             font-size: 1.1rem;
             color: #666;
@@ -360,6 +367,13 @@
             <div class="game-icon">🤖</div>
             <h2 class="game-title">Robot Factory</h2>
             <p class="game-desc">Build and program robots in the factory!</p>
+            <span class="age-badge">Ages 3+</span>
+        </a>
+
+        <a href="code-adventure.html" class="game-card">
+            <div class="game-icon">👾</div>
+            <h2 class="game-title">Code Adventure</h2>
+            <p class="game-desc">Learn programming with Bit the robot! Code, loops, and conditions!</p>
             <span class="age-badge">Ages 3+</span>
         </a>
     </div>
