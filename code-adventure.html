@@ -984,17 +984,17 @@
 
     // ===== COMMANDS =====
     const COMMANDS = {
-        forward: { id: 'forward', label: 'Forward', icon: '⬆️', type: 'move', desc: 'Move one step forward' },
-        left: { id: 'left', label: 'Turn Left', icon: '↺', type: 'move', desc: 'Turn left 90°' },
-        right: { id: 'right', label: 'Turn Right', icon: '↻', type: 'move', desc: 'Turn right 90°' },
-        jump: { id: 'jump', label: 'Jump', icon: '⬆️⬆️', type: 'action', desc: 'Jump over water' },
-        push: { id: 'push', label: 'Push', icon: '📦', type: 'action', desc: 'Push a block' },
-        activate: { id: 'activate', label: 'Activate', icon: '🔘', type: 'action', desc: 'Press a button' },
-        repeat2: { id: 'repeat2', label: 'Repeat 2', icon: '🔁2', type: 'control', desc: 'Repeat next command 2 times' },
-        repeat3: { id: 'repeat3', label: 'Repeat 3', icon: '🔁3', type: 'control', desc: 'Repeat next command 3 times' },
-        repeat4: { id: 'repeat4', label: 'Repeat 4', icon: '🔁4', type: 'control', desc: 'Repeat next command 4 times' },
-        ifwall: { id: 'ifwall', label: 'If Wall', icon: '🧱?', type: 'control', desc: 'Do next command only if wall ahead' },
-        ifgoal: { id: 'ifgoal', label: 'If Goal', icon: '⭐?', type: 'control', desc: 'Do next command only if goal ahead' }
+        forward: { id: 'forward', label: 'Forward', icon: '⬆️', type: 'move', desc: 'Move one step forward', unlockWorld: 1 },
+        left: { id: 'left', label: 'Turn Left', icon: '↺', type: 'move', desc: 'Turn left 90°', unlockWorld: 1 },
+        right: { id: 'right', label: 'Turn Right', icon: '↻', type: 'move', desc: 'Turn right 90°', unlockWorld: 1 },
+        jump: { id: 'jump', label: 'Jump', icon: '⬆️⬆️', type: 'action', desc: 'Jump over water', unlockWorld: 4 },
+        push: { id: 'push', label: 'Push', icon: '📦', type: 'action', desc: 'Push a block', unlockWorld: 99 },
+        activate: { id: 'activate', label: 'Activate', icon: '🔘', type: 'action', desc: 'Press a button', unlockWorld: 99 },
+        repeat2: { id: 'repeat2', label: 'Repeat 2', icon: '🔁2', type: 'control', desc: 'Repeat next command 2 times', unlockWorld: 3 },
+        repeat3: { id: 'repeat3', label: 'Repeat 3', icon: '🔁3', type: 'control', desc: 'Repeat next command 3 times', unlockWorld: 3 },
+        repeat4: { id: 'repeat4', label: 'Repeat 4', icon: '🔁4', type: 'control', desc: 'Repeat next command 4 times', unlockWorld: 3 },
+        ifwall: { id: 'ifwall', label: 'If Wall', icon: '🧱?', type: 'control', desc: 'Do next command only if wall ahead', unlockWorld: 4 },
+        ifgoal: { id: 'ifgoal', label: 'If Goal', icon: '⭐?', type: 'control', desc: 'Do next command only if goal ahead', unlockWorld: 4 }
     };
 
     // ===== LEVELS =====
@@ -1624,6 +1624,12 @@
                 btn.addEventListener('click', () => addCommand(cmd.id));
                 btn.addEventListener('mouseenter', (e) => showTooltip(e, cmd.desc));
                 btn.addEventListener('mouseleave', hideTooltip);
+            } else {
+                const currentWorld = level.world;
+                if (cmd.unlockWorld && cmd.unlockWorld > currentWorld) {
+                    btn.addEventListener('mouseenter', (e) => showTooltip(e, `🔒 Unlocks in World ${cmd.unlockWorld}`));
+                    btn.addEventListener('mouseleave', hideTooltip);
+                }
             }
             
             commandGrid.appendChild(btn);
@@ -2086,6 +2092,7 @@
         updateLevelBadge();
         
         const isLast = state.currentLevel >= LEVELS.length;
+        const isLastInWorld = !isLast && LEVELS[state.currentLevel].world > level.world;
         
         // Build star HTML
         let starsHtml = '<div class="star-rating">';
@@ -2094,10 +2101,20 @@
         }
         starsHtml += '</div>';
         
+        let extraMessage = '';
+        if (isLastInWorld) {
+            const nextWorld = LEVELS[state.currentLevel].world;
+            const newCommands = Object.values(COMMANDS).filter(c => c.unlockWorld === nextWorld);
+            if (newCommands.length > 0) {
+                const cmdNames = newCommands.map(c => c.label).join(', ');
+                extraMessage = `<br><br><b style="color: var(--accent-yellow)">🎉 New commands in World ${nextWorld}:</b><br>${cmdNames}`;
+            }
+        }
+        
         showModal(
             '🎉',
             'Level Complete!',
-            `Amazing! Bit reached the star!${starsHtml}`,
+            `Amazing! Bit reached the star!${starsHtml}${extraMessage}`,
             isLast ? 'Play Again! 🔄' : 'Next Level ➡️',
             () => {
                 closeModal();
@@ -2187,6 +2204,23 @@
     }
 
     function showHelp() {
+        const currentWorld = LEVELS[state.currentLevel - 1].world;
+        const unlockedCommands = Object.values(COMMANDS).filter(c => c.unlockWorld <= currentWorld);
+        const lockedCommands = Object.values(COMMANDS).filter(c => c.unlockWorld > currentWorld);
+        
+        let lockedHtml = '';
+        if (lockedCommands.length > 0) {
+            const byWorld = {};
+            lockedCommands.forEach(c => {
+                if (!byWorld[c.unlockWorld]) byWorld[c.unlockWorld] = [];
+                byWorld[c.unlockWorld].push(c.label);
+            });
+            lockedHtml = '<br><b style="color: var(--accent-yellow)">🔒 Coming Soon:</b><br>';
+            Object.entries(byWorld).forEach(([world, cmds]) => {
+                lockedHtml += `World ${world}: ${cmds.join(', ')}<br>`;
+            });
+        }
+        
         showModal(
             '❓',
             'How to Play',
@@ -2197,7 +2231,7 @@
              ↑↓←→ = commands<br>
              Space = GO<br>
              C = Clear | R = Reset<br>
-             L = Levels | M = Sound`,
+             L = Levels | M = Sound${lockedHtml}`,
             'Got it! 👍',
             closeModal
         );
@@ -2465,6 +2499,7 @@
              Meet <b>Bit</b> the robot!<br><br>
              Tap commands to tell Bit where to go.<br>
              Help Bit reach the ⭐ star!<br><br>
+             <b>New commands unlock as you play!</b><br>
              <small>Use keyboard: Arrows = commands, Space = GO</small>`,
             'Let\'s Go! 🚀',
             () => {
