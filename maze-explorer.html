@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Maze Explorer</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@600;800&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Nunito', sans-serif;
+      position: fixed;
+      top: 0;
+      left: 0;
+    }
+
+    body {
+      background: linear-gradient(135deg, #a8e6cf 0%, #88d8b0 50%, #ffeaa7 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .game-container {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      height: 100%;
+      padding: 6px;
+      gap: 6px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      padding: 4px 10px;
+      background: rgba(255,255,255,0.85);
+      border-radius: 14px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+      flex-shrink: 0;
+    }
+
+    .title {
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(18px, 4vw, 28px);
+      background: linear-gradient(135deg, #ff6b9d, #c44569);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .stats {
+      display: flex;
+      gap: 12px;
+      font-size: clamp(12px, 2.5vw, 16px);
+      font-weight: 800;
+      color: #5a6578;
+    }
+
+    .stat {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .stat-icon {
+      width: 18px;
+      height: 18px;
+    }
+
+    .level-select {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .level-btn {
+      padding: 6px 16px;
+      border: none;
+      border-radius: 20px;
+      font-family: 'Nunito', sans-serif;
+      font-size: clamp(11px, 2vw, 14px);
+      font-weight: 800;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+    }
+
+    .level-btn.easy {
+      background: linear-gradient(135deg, #74b9ff, #0984e3);
+      color: white;
+    }
+
+    .level-btn.medium {
+      background: linear-gradient(135deg, #ffeaa7, #fdcb6e);
+      color: #6c5ce7;
+    }
+
+    .level-btn.hard {
+      background: linear-gradient(135deg, #ff7675, #d63031);
+      color: white;
+    }
+
+    .level-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+    }
+
+    .level-btn.active {
+      transform: scale(1.05);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+    }
+
+    .maze-wrapper {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 0;
+      position: relative;
+      overflow: hidden;
+      border-radius: 16px;
+      background: linear-gradient(145deg, #81ecec, #00cec9);
+    }
+
+    .maze-container {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      background: linear-gradient(135deg, #81ecec 0%, #00cec9 100%);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .maze-cell {
+      position: absolute;
+      background: linear-gradient(135deg, #a29bfe, #6c5ce7);
+      border-radius: 4px;
+      box-shadow: 
+        inset 2px 2px 4px rgba(255,255,255,0.3),
+        inset -1px -1px 3px rgba(0,0,0,0.2);
+    }
+
+    .maze-cell.wall {
+      background: linear-gradient(135deg, #55a3ff, #0984e3);
+      box-shadow: 
+        inset 2px 2px 4px rgba(255,255,255,0.4),
+        inset -1px -1px 3px rgba(0,0,0,0.2),
+        0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .maze-cell.goal {
+      background: linear-gradient(135deg, #ffeaa7, #fdcb6e);
+      animation: goalPulse 1s ease-in-out infinite;
+    }
+
+    @keyframes goalPulse {
+      0%, 100% { transform: scale(1); filter: brightness(1); }
+      50% { transform: scale(1.05); filter: brightness(1.2); }
+    }
+
+    .player {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      z-index: 100;
+      filter: drop-shadow(0 3px 6px rgba(0,0,0,0.3));
+      transition: left 0.08s ease-out, top 0.08s ease-out;
+    }
+
+    .goal-decoration {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      z-index: 50;
+      animation: goalFloat 2s ease-in-out infinite;
+    }
+
+    @keyframes goalFloat {
+      0%, 100% { transform: translate(-50%, -50%) rotate(-5deg); }
+      50% { transform: translate(-50%, -50%) rotate(5deg); }
+    }
+
+    .carrot {
+      width: 100%;
+      height: 100%;
+    }
+
+    .bunny-svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .start-screen, .win-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255,255,255,0.95);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 1;
+      transition: opacity 0.5s ease;
+    }
+
+    .start-screen.hidden, .win-screen.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .start-title {
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(36px, 10vw, 72px);
+      background: linear-gradient(135deg, #ff6b9d, #c44569, #f8a5c2);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-align: center;
+      margin-bottom: 20px;
+      text-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    .start-mascot {
+      width: 150px;
+      height: 150px;
+      margin-bottom: 30px;
+      animation: bounce 1s ease-in-out infinite;
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-15px); }
+    }
+
+    .start-btn, .win-btn {
+      padding: 18px 50px;
+      border: none;
+      border-radius: 35px;
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(20px, 5vw, 28px);
+      background: linear-gradient(135deg, #74b9ff, #0984e3);
+      color: white;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(9, 132, 227, 0.4);
+      transition: all 0.2s ease;
+    }
+
+    .start-btn:hover, .win-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 30px rgba(9, 132, 227, 0.5);
+    }
+
+    .record-banner {
+      font-family: 'Fredoka One', cursive;
+      font-size: clamp(24px, 6vw, 42px);
+      color: #fdcb6e;
+      text-shadow: 
+        2px 2px 0 #c44569,
+        -2px -2px 0 #c44569,
+        2px -2px 0 #c44569,
+        -2px 2px 0 #c44569;
+      margin: 20px 0;
+      animation: recordPop 0.5s ease-out;
+    }
+
+    @keyframes recordPop {
+      0% { transform: scale(0); }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(1); }
+    }
+
+    .win-time {
+      font-size: clamp(18px, 4vw, 28px);
+      color: #5a6578;
+      margin-bottom: 10px;
+    }
+
+    .best-time {
+      font-size: clamp(14px, 3vw, 20px);
+      color: #a0a0a0;
+      margin-bottom: 20px;
+    }
+
+    .confetti-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 999;
+      overflow: hidden;
+    }
+
+    .confetti {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      animation: confettiFall 3s ease-out forwards;
+    }
+
+    @keyframes confettiFall {
+      0% {
+        transform: translateY(0) rotate(0deg);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(100vh) rotate(720deg);
+        opacity: 0;
+      }
+    }
+
+    .high-score-display {
+      position: absolute;
+      bottom: 6px;
+      right: 6px;
+      background: rgba(255,255,255,0.9);
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: clamp(9px, 1.8vw, 12px);
+      font-weight: 800;
+      color: #6c5ce7;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .instructions {
+      font-size: clamp(10px, 2vw, 14px);
+      color: #888;
+      text-align: center;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <div class="header">
+      <div class="title">Maze Explorer</div>
+      <div class="stats">
+        <div class="stat">
+          <svg class="stat-icon" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="10" fill="#74b9ff"/>
+            <path d="M12 6v6l4 2" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <span id="timer">0.0</span>s
+        </div>
+        <div class="stat">
+          <svg class="stat-icon" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="#fdcb6e"/>
+          </svg>
+          <span id="level-display">Easy</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="level-select">
+      <button class="level-btn easy active" data-level="easy">Easy</button>
+      <button class="level-btn medium" data-level="medium">Medium</button>
+      <button class="level-btn hard" data-level="hard">Hard</button>
+    </div>
+
+    <div class="maze-wrapper">
+      <div class="maze-container" id="maze-container">
+        <div class="player" id="player">
+          <svg class="bunny-svg" viewBox="0 0 64 64">
+            <ellipse cx="22" cy="14" rx="8" ry="16" fill="#f8f9fa"/>
+            <ellipse cx="22" cy="14" rx="5" ry="12" fill="#ffc8d0"/>
+            <ellipse cx="42" cy="14" rx="8" ry="16" fill="#f8f9fa"/>
+            <ellipse cx="42" cy="14" rx="5" ry="12" fill="#ffc8d0"/>
+            <circle cx="32" cy="38" r="22" fill="#f8f9fa"/>
+            <circle cx="24" cy="34" r="4" fill="#2d3436"/>
+            <circle cx="40" cy="34" r="4" fill="#2d3436"/>
+            <circle cx="25" cy="33" r="1.5" fill="white"/>
+            <circle cx="41" cy="33" r="1.5" fill="white"/>
+            <ellipse cx="32" cy="42" rx="4" ry="3" fill="#ffb8c0"/>
+            <path d="M28 47 Q32 52 36 47" stroke="#2d3436" stroke-width="2" fill="none" stroke-linecap="round"/>
+            <circle cx="16" cy="42" r="5" fill="#ffb8c0" opacity="0.6"/>
+            <circle cx="48" cy="42" r="5" fill="#ffb8c0" opacity="0.6"/>
+          </svg>
+        </div>
+      </div>
+      <div class="high-score-display" id="high-score-display">
+        Best: --s
+      </div>
+    </div>
+
+    <div class="instructions">Touch or click to move the bunny!</div>
+  </div>
+
+  <div class="start-screen" id="start-screen">
+    <div class="start-mascot">
+      <svg viewBox="0 0 150 150">
+        <ellipse cx="50" cy="35" rx="18" ry="40" fill="#f8f9fa"/>
+        <ellipse cx="50" cy="35" rx="12" ry="32" fill="#ffb8c0"/>
+        <ellipse cx="100" cy="35" rx="18" ry="40" fill="#f8f9fa"/>
+        <ellipse cx="100" cy="35" rx="12" ry="32" fill="#ffb8c0"/>
+        <circle cx="75" cy="90" r="50" fill="#f8f9fa"/>
+        <circle cx="55" cy="80" r="9" fill="#2d3436"/>
+        <circle cx="95" cy="80" r="9" fill="#2d3436"/>
+        <circle cx="58" cy="77" r="3" fill="white"/>
+        <circle cx="98" cy="77" r="3" fill="white"/>
+        <ellipse cx="75" cy="98" rx="8" ry="6" fill="#ffb8c0"/>
+        <path d="M65 108 Q75 120 85 108" stroke="#2d3436" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <circle cx="40" cy="95" r="12" fill="#ffb8c0" opacity="0.5"/>
+        <circle cx="110" cy="95" r="12" fill="#ffb8c0" opacity="0.5"/>
+        <ellipse cx="45" cy="135" rx="15" ry="10" fill="#f8f9fa"/>
+        <ellipse cx="105" cy="135" rx="15" ry="10" fill="#f8f9fa"/>
+      </svg>
+    </div>
+    <div class="start-title">Maze Explorer</div>
+    <button class="start-btn" id="start-btn">Let's Go!</button>
+  </div>
+
+  <div class="win-screen hidden" id="win-screen">
+    <div class="start-mascot">
+      <svg viewBox="0 0 150 150">
+        <ellipse cx="50" cy="35" rx="18" ry="40" fill="#f8f9fa"/>
+        <ellipse cx="50" cy="35" rx="12" ry="32" fill="#ffb8c0"/>
+        <ellipse cx="100" cy="35" rx="18" ry="40" fill="#f8f9fa"/>
+        <ellipse cx="100" cy="35" rx="12" ry="32" fill="#ffb8c0"/>
+        <circle cx="75" cy="90" r="50" fill="#f8f9fa"/>
+        <circle cx="55" cy="75" r="9" fill="#2d3436"/>
+        <circle cx="95" cy="75" r="9" fill="#2d3436"/>
+        <circle cx="58" cy="72" r="3" fill="white"/>
+        <circle cx="98" cy="72" r="3" fill="white"/>
+        <ellipse cx="75" cy="98" rx="8" ry="6" fill="#ffb8c0"/>
+        <path d="M60 108 Q75 125 90 108" stroke="#2d3436" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <circle cx="40" cy="95" r="12" fill="#ffb8c0" opacity="0.5"/>
+        <circle cx="110" cy="95" r="12" fill="#ffb8c0" opacity="0.5"/>
+        <ellipse cx="45" cy="135" rx="15" ry="10" fill="#f8f9fa"/>
+        <ellipse cx="105" cy="135" rx="15" ry="10" fill="#f8f9fa"/>
+      </svg>
+    </div>
+    <div class="record-banner" id="record-banner" style="display:none;">NEW RECORD!</div>
+    <div class="win-time" id="win-time">Time: 0.0s</div>
+    <div class="best-time" id="best-time">Best: --s</div>
+    <button class="win-btn" id="next-btn">Play Again</button>
+  </div>
+
+  <div class="confetti-container" id="confetti-container"></div>
+
+  <script>
+    const LEVELS = {
+      easy: { cols: 7, rows: 7 },
+      medium: { cols: 11, rows: 11 },
+      hard: { cols: 15, rows: 15 }
+    };
+
+    const COLORS = [
+      '#ff6b9d', '#c44569', '#f8a5c2', '#ffeaa7', '#fdcb6e',
+      '#74b9ff', '#0984e3', '#a29bfe', '#6c5ce7', '#55a3ff',
+      '#00cec9', '#81ecec', '#ff7675', '#d63031', '#fd79a8'
+    ];
+
+    let currentLevel = 'easy';
+    let maze = [];
+    let cellW = 0;
+    let cellH = 0;
+    let mazePixelW = 0;
+    let mazePixelH = 0;
+    let playerX = 0;
+    let playerY = 0;
+    let goalX = 0;
+    let goalY = 0;
+    let gameStarted = false;
+    let startTime = 0;
+    let timerInterval = null;
+    let currentTime = 0;
+    let audioContext = null;
+
+    const mazeContainer = document.getElementById('maze-container');
+    const player = document.getElementById('player');
+    const timerDisplay = document.getElementById('timer');
+    const levelDisplay = document.getElementById('level-display');
+    const startScreen = document.getElementById('start-screen');
+    const winScreen = document.getElementById('win-screen');
+    const startBtn = document.getElementById('start-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const confettiContainer = document.getElementById('confetti-container');
+    const highScoreDisplay = document.getElementById('high-score-display');
+    const winTimeDisplay = document.getElementById('win-time');
+    const bestTimeDisplay = document.getElementById('best-time');
+    const recordBanner = document.getElementById('record-banner');
+
+    function initAudio() {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+
+    function playRecordSound() {
+      if (!audioContext) return;
+      
+      const notes = [523.25, 659.25, 783.99, 1046.50];
+      notes.forEach((freq, i) => {
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+        osc.frequency.value = freq;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0.15, audioContext.currentTime + i * 0.12);
+        gain.gain.exponentialDecayTo?.(0.01, audioContext.currentTime + i * 0.12 + 0.3) ||
+          gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + i * 0.12 + 0.3);
+        osc.start(audioContext.currentTime + i * 0.12);
+        osc.stop(audioContext.currentTime + i * 0.12 + 0.3);
+      });
+    }
+
+    function generateMaze(cols, rows) {
+      const grid = [];
+      for (let y = 0; y < rows; y++) {
+        grid[y] = [];
+        for (let x = 0; x < cols; x++) {
+          grid[y][x] = { visited: false, isWall: true };
+        }
+      }
+
+      function carve(x, y) {
+        grid[y][x].visited = true;
+        grid[y][x].isWall = false;
+
+        const dirs = [
+          { dx: 0, dy: -2 }, { dx: 2, dy: 0 },
+          { dx: 0, dy: 2 }, { dx: -2, dy: 0 }
+        ];
+
+        for (let i = dirs.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [dirs[i], dirs[j]] = [dirs[j], dirs[i]];
+        }
+
+        for (const { dx, dy } of dirs) {
+          const nx = x + dx;
+          const ny = y + dy;
+          if (nx > 0 && nx < cols - 1 && ny > 0 && ny < rows - 1 && !grid[ny][nx].visited) {
+            grid[y + dy / 2][x + dx / 2].isWall = false;
+            carve(nx, ny);
+          }
+        }
+      }
+
+      carve(1, 1);
+
+      let attempts = 0;
+      while (grid[rows - 2][cols - 2].isWall && attempts < 100) {
+        grid[rows - 2][cols - 2].isWall = false;
+        if (grid[rows - 3][cols - 2].isWall && grid[rows - 2][cols - 3].isWall) {
+          grid[rows - 3][cols - 2].isWall = false;
+        }
+        attempts++;
+      }
+
+      return grid;
+    }
+
+    function renderMaze() {
+      const wrapper = mazeContainer.parentElement;
+      const wrapperWidth = wrapper.clientWidth;
+      const wrapperHeight = wrapper.clientHeight;
+
+      const { cols, rows } = LEVELS[currentLevel];
+      
+      cellW = Math.floor(wrapperWidth / cols);
+      cellH = Math.floor(wrapperHeight / rows);
+
+      cellW = Math.max(cellW, 10);
+      cellH = Math.max(cellH, 10);
+
+      mazePixelW = cols * cellW;
+      mazePixelH = rows * cellH;
+
+      mazeContainer.style.width = mazePixelW + 'px';
+      mazeContainer.style.height = mazePixelH + 'px';
+
+      mazeContainer.innerHTML = '';
+
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          if (maze[y][x].isWall) {
+            const cell = document.createElement('div');
+            cell.className = 'maze-cell wall';
+            cell.style.left = x * cellW + 'px';
+            cell.style.top = y * cellH + 'px';
+            cell.style.width = cellW + 'px';
+            cell.style.height = cellH + 'px';
+            mazeContainer.appendChild(cell);
+          }
+        }
+      }
+
+      goalX = (cols - 2) * cellW + cellW / 2;
+      goalY = (rows - 2) * cellH + cellH / 2;
+
+      const goalDecor = document.createElement('div');
+      goalDecor.className = 'goal-decoration';
+      goalDecor.style.left = goalX + 'px';
+      goalDecor.style.top = goalY + 'px';
+      const carrotW = cellW * 1.2;
+      const carrotH = cellH * 1.2;
+      goalDecor.innerHTML = `
+        <svg class="carrot" viewBox="0 0 64 64" style="width:${carrotW}px;height:${carrotH}px;">
+          <path d="M32 60 L20 25 Q32 20 44 25 Z" fill="linear-gradient(135deg, #ff9f43, #ee5a24)"/>
+          <path d="M32 60 L22 28 Q32 24 42 28 Z" fill="#ff9f43"/>
+          <ellipse cx="32" cy="26" rx="12" ry="6" fill="#26de81"/>
+          <path d="M28 22 Q32 8 32 2" stroke="#26de81" stroke-width="4" fill="none" stroke-linecap="round"/>
+          <path d="M36 22 Q38 10 42 4" stroke="#26de1" stroke-width="4" fill="none" stroke-linecap="round"/>
+          <path d="M32 24 Q30 14 26 6" stroke="#26de81" stroke-width="3" fill="none" stroke-linecap="round"/>
+        </svg>
+      `;
+      mazeContainer.appendChild(goalDecor);
+
+      playerX = 1.5 * cellW;
+      playerY = 1.5 * cellH;
+      updatePlayerPosition();
+    }
+
+    function updatePlayerPosition() {
+      let playerEl = document.getElementById('player');
+      if (!playerEl) {
+        playerEl = document.createElement('div');
+        playerEl.className = 'player';
+        playerEl.id = 'player';
+        playerEl.innerHTML = `
+          <svg class="bunny-svg" viewBox="0 0 64 64">
+            <ellipse cx="22" cy="14" rx="8" ry="16" fill="#f8f9fa"/>
+            <ellipse cx="22" cy="14" rx="5" ry="12" fill="#ffb8c0"/>
+            <ellipse cx="42" cy="14" rx="8" ry="16" fill="#f8f9fa"/>
+            <ellipse cx="42" cy="14" rx="5" ry="12" fill="#ffb8c0"/>
+            <circle cx="32" cy="38" r="22" fill="#f8f9fa"/>
+            <circle cx="24" cy="34" r="4" fill="#2d3436"/>
+            <circle cx="40" cy="34" r="4" fill="#2d3436"/>
+            <circle cx="25" cy="33" r="1.5" fill="white"/>
+            <circle cx="41" cy="33" r="1.5" fill="white"/>
+            <ellipse cx="32" cy="42" rx="4" ry="3" fill="#ffb8c0"/>
+            <path d="M28 47 Q32 52 36 47" stroke="#2d3436" stroke-width="2" fill="none" stroke-linecap="round"/>
+            <circle cx="16" cy="42" r="5" fill="#ffb8c0" opacity="0.6"/>
+            <circle cx="48" cy="42" r="5" fill="#ffb8c0" opacity="0.6"/>
+          </svg>
+        `;
+        mazeContainer.appendChild(playerEl);
+      }
+      const pw = cellW * 0.9;
+      const ph = cellH * 0.9;
+      playerEl.style.width = pw + 'px';
+      playerEl.style.height = ph + 'px';
+      playerEl.style.left = playerX + 'px';
+      playerEl.style.top = playerY + 'px';
+    }
+
+    function getHighScore(level) {
+      const scores = JSON.parse(localStorage.getItem('mazeExplorerScores') || '{}');
+      return scores[level] || null;
+    }
+
+    function setHighScore(level, time) {
+      const scores = JSON.parse(localStorage.getItem('mazeExplorerScores') || '{}');
+      scores[level] = time;
+      localStorage.setItem('mazeExplorerScores', JSON.stringify(scores));
+    }
+
+    function updateHighScoreDisplay() {
+      const best = getHighScore(currentLevel);
+      highScoreDisplay.textContent = best ? `Best: ${best.toFixed(1)}s` : 'Best: --s';
+    }
+
+    function startGame() {
+      initAudio();
+      maze = generateMaze(LEVELS[currentLevel].cols, LEVELS[currentLevel].rows);
+      renderMaze();
+      gameStarted = false;
+      currentTime = 0;
+      timerDisplay.textContent = '0.0';
+      updateHighScoreDisplay();
+      levelDisplay.textContent = currentLevel.charAt(0).toUpperCase() + currentLevel.slice(1);
+      
+      startScreen.classList.add('hidden');
+      winScreen.classList.add('hidden');
+    }
+
+    function startTimer() {
+      if (timerInterval) clearInterval(timerInterval);
+      startTime = Date.now();
+      gameStarted = true;
+      timerInterval = setInterval(() => {
+        currentTime = (Date.now() - startTime) / 1000;
+        timerDisplay.textContent = currentTime.toFixed(1);
+      }, 100);
+    }
+
+    function stopTimer() {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+    }
+
+    function checkWin() {
+      const { cols, rows } = LEVELS[currentLevel];
+      const playerCol = Math.floor(playerX / cellW);
+      const playerRow = Math.floor(playerY / cellH);
+      
+      if (playerCol === cols - 2 && playerRow === rows - 2) {
+        stopTimer();
+        
+        const finalTime = currentTime;
+        const previousBest = getHighScore(currentLevel);
+        const isNewRecord = !previousBest || finalTime < previousBest;
+        
+        if (isNewRecord) {
+          setHighScore(currentLevel, finalTime);
+          playRecordSound();
+          createConfetti();
+          recordBanner.style.display = 'block';
+        } else {
+          recordBanner.style.display = 'none';
+        }
+
+        winTimeDisplay.textContent = `Time: ${finalTime.toFixed(1)}s`;
+        bestTimeDisplay.textContent = `Best: ${(isNewRecord ? finalTime : previousBest).toFixed(1)}s`;
+        
+        setTimeout(() => {
+          winScreen.classList.remove('hidden');
+        }, 300);
+      }
+    }
+
+    function createConfetti() {
+      confettiContainer.innerHTML = '';
+      
+      for (let i = 0; i < 80; i++) {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti';
+        confetti.style.left = Math.random() * 100 + '%';
+        confetti.style.top = -20 + 'px';
+        confetti.style.backgroundColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+        confetti.style.animationDelay = Math.random() * 0.5 + 's';
+        confetti.style.animationDuration = (2 + Math.random() * 2) + 's';
+        confetti.style.width = (8 + Math.random() * 8) + 'px';
+        confetti.style.height = confetti.style.width;
+        confettiContainer.appendChild(confetti);
+      }
+
+      setTimeout(() => {
+        confettiContainer.innerHTML = '';
+      }, 4000);
+    }
+
+    function isValidMove(x, y) {
+      const { cols, rows } = LEVELS[currentLevel];
+      const marginX = cellW * 0.25;
+      const marginY = cellH * 0.25;
+      
+      const corners = [
+        { x: x - marginX, y: y - marginY },
+        { x: x + marginX, y: y - marginY },
+        { x: x - marginX, y: y + marginY },
+        { x: x + marginX, y: y + marginY }
+      ];
+
+      for (const corner of corners) {
+        const col = Math.floor(corner.x / cellW);
+        const row = Math.floor(corner.y / cellH);
+        
+        if (col < 0 || col >= cols || row < 0 || row >= rows) return false;
+        if (maze[row][col].isWall) return false;
+      }
+      
+      return true;
+    }
+
+    function handleMove(clientX, clientY) {
+      const rect = mazeContainer.getBoundingClientRect();
+      const x = (clientX - rect.left) / rect.width * mazePixelW;
+      const y = (clientY - rect.top) / rect.height * mazePixelH;
+
+      if (x < 0 || x > mazePixelW || y < 0 || y > mazePixelH) return;
+
+      const speed = Math.min(cellW, cellH) * 0.15;
+      const dx = x - playerX;
+      const dy = y - playerY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist > 2) {
+        const moveX = playerX + (dx / dist) * speed;
+        const moveY = playerY + (dy / dist) * speed;
+
+        if (isValidMove(moveX, playerY)) {
+          playerX = moveX;
+        }
+        if (isValidMove(playerX, moveY)) {
+          playerY = moveY;
+        }
+
+        if (!gameStarted) {
+          startTimer();
+        }
+
+        updatePlayerPosition();
+        checkWin();
+      }
+    }
+
+    function handleTouch(e) {
+      e.preventDefault();
+      const touch = e.touches[0];
+      handleMove(touch.clientX, touch.clientY);
+    }
+
+    function handleMouse(e) {
+      if (e.buttons === 1 || e.type === 'click') {
+        handleMove(e.clientX, e.clientY);
+      }
+    }
+
+    const mazeWrapper = document.querySelector('.maze-wrapper');
+    mazeWrapper.addEventListener('touchstart', handleTouch, { passive: false });
+    mazeWrapper.addEventListener('touchmove', handleTouch, { passive: false });
+    mazeWrapper.addEventListener('mousedown', handleMouse);
+    mazeWrapper.addEventListener('mousemove', (e) => {
+      if (e.buttons === 1) handleMouse(e);
+    });
+
+    document.querySelectorAll('.level-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.level-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentLevel = btn.dataset.level;
+        startGame();
+      });
+    });
+
+    startBtn.addEventListener('click', startGame);
+    nextBtn.addEventListener('click', startGame);
+
+    window.addEventListener('resize', () => {
+      if (maze.length > 0) {
+        renderMaze();
+      }
+    });
+
+    startGame();
+  </script>
+</body>
+</html>

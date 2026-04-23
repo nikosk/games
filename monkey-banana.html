@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monkey Banana!</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { overflow: hidden; background: #87CEEB; }
+canvas { display: block; }
+#mobile-controls {
+  display: none;
+  position: fixed;
+  bottom: 10px;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  padding: 10px;
+}
+.ctrl-row {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-bottom: 8px;
+}
+.ctrl-btn {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 4px solid rgba(255,255,255,0.7);
+  background: rgba(255,165,0,0.6);
+  color: white;
+  font-size: 36px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+.ctrl-btn:active { background: rgba(255,100,0,0.8); }
+#start-screen, #win-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  background: rgba(0,0,0,0.5);
+}
+#win-screen { display: none; }
+.title {
+  font-family: 'Comic Sans MS', cursive, sans-serif;
+  font-size: 72px;
+  color: #FFD700;
+  text-shadow: 4px 4px 0 #FF8C00, -2px -2px 0 #FF8C00, 2px -2px 0 #FF8C00, -2px 2px 0 #FF8C00;
+  margin-bottom: 20px;
+}
+.subtitle {
+  font-family: 'Comic Sans MS', cursive, sans-serif;
+  font-size: 28px;
+  color: white;
+  text-shadow: 2px 2px 0 #333;
+  margin-bottom: 30px;
+}
+.start-btn {
+  font-family: 'Comic Sans MS', cursive, sans-serif;
+  font-size: 36px;
+  padding: 15px 50px;
+  border-radius: 30px;
+  border: 4px solid #FF8C00;
+  background: #FFD700;
+  color: #8B4513;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+.start-btn:hover { transform: scale(1.1); }
+.start-btn:active { transform: scale(0.95); }
+#score-display {
+  position: fixed;
+  top: 15px;
+  right: 20px;
+  font-family: 'Comic Sans MS', cursive, sans-serif;
+  font-size: 32px;
+  color: #FFD700;
+  text-shadow: 2px 2px 0 #8B4513;
+  z-index: 5;
+}
+@media (pointer: coarse) {
+  #mobile-controls { display: block; }
+}
+</style>
+</head>
+<body>
+
+<div id="start-screen">
+  <div class="title">🐒 Monkey Banana! 🍌</div>
+  <div class="subtitle">Help the monkey eat all the bananas!</div>
+  <button class="start-btn" id="start-btn">PLAY!</button>
+</div>
+
+<div id="win-screen">
+  <div class="title">🎉 YUM YUM! 🎉</div>
+  <div class="subtitle">You ate all the bananas!</div>
+  <button class="start-btn" id="replay-btn">PLAY AGAIN!</button>
+</div>
+
+<div id="score-display">🍌 0 / 0</div>
+
+<canvas id="game"></canvas>
+
+<div id="mobile-controls">
+  <div class="ctrl-row">
+    <div class="ctrl-btn" id="btn-up">⬆</div>
+  </div>
+  <div class="ctrl-row">
+    <div class="ctrl-btn" id="btn-left">⬅</div>
+    <div class="ctrl-btn" id="btn-right">➡</div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const startScreen = document.getElementById('start-screen');
+const winScreen = document.getElementById('win-screen');
+const scoreDisplay = document.getElementById('score-display');
+
+let W, H;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+const GRAVITY = 0.6;
+const JUMP_FORCE = -13;
+const MOVE_SPEED = 5;
+const FRICTION = 0.8;
+
+let monkey = null, bananas = [], platforms = [], clouds = [], particles = [], score = 0, totalBananas = 0, gameRunning = false, gameTime = 0;
+
+function createMonkeySVG() {
+  return `
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+    <ellipse cx="32" cy="52" rx="18" ry="14" fill="#C8702A"/>
+    <ellipse cx="32" cy="50" rx="14" ry="10" fill="#E8A050"/>
+    <circle cx="32" cy="24" r="16" fill="#C8702A"/>
+    <circle cx="16" cy="44" r="8" fill="#C8702A"/>
+    <circle cx="16" cy="44" r="5" fill="#E8A050"/>
+    <circle cx="48" cy="44" r="8" fill="#C8702A"/>
+    <circle cx="48" cy="44" r="5" fill="#E8A050"/>
+    <circle cx="32" cy="22" r="12" fill="#E8A050"/>
+    <circle cx="26" cy="19" r="5" fill="white"/>
+    <circle cx="38" cy="19" r="5" fill="white"/>
+    <circle cx="27" cy="19" r="3" fill="#2C1810"/>
+    <circle cx="39" cy="19" r="3" fill="#2C1810"/>
+    <circle cx="27" cy="18" r="1.2" fill="white"/>
+    <circle cx="39" cy="18" r="1.2" fill="white"/>
+    <ellipse cx="32" cy="27" rx="5" ry="3" fill="#A0522D"/>
+    <path d="M28 29 Q32 34 36 29" stroke="#2C1810" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+    <ellipse cx="21" cy="26" rx="4" ry="2.5" fill="#FF9999"/>
+    <ellipse cx="43" cy="26" rx="4" ry="2.5" fill="#FF9999"/>
+    <ellipse cx="32" cy="8" rx="5" ry="4" fill="#C8702A"/>
+    <path d="M27 8 L32 4 L37 8" stroke="#C8702A" stroke-width="3" fill="none" stroke-linecap="round"/>
+  </svg>`;
+}
+
+function createBananaSVG() {
+  return `
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
+    <path d="M10 30 Q8 15 18 8 Q22 5 28 8 Q24 12 22 20 Q20 28 16 32 Z" fill="#FFE135" stroke="#E8A020" stroke-width="1.5"/>
+    <path d="M10 30 Q8 15 18 8" stroke="#E8A020" stroke-width="1" fill="none" opacity="0.5"/>
+    <path d="M28 8 Q26 10 24 15" stroke="#FFF580" stroke-width="1.5" fill="none" opacity="0.6"/>
+    <circle cx="28" cy="7" r="2" fill="#8B6914"/>
+  </svg>`;
+}
+
+const monkeyImg = new Image();
+const bananaImg = new Image();
+const monkeySvg = createMonkeySVG();
+const bananaSvg = createBananaSVG();
+monkeyImg.src = 'data:image/svg+xml;base64,' + btoa(monkeySvg);
+bananaImg.src = 'data:image/svg+xml;base64,' + btoa(bananaSvg);
+
+const platformColors = ['#4CAF50', '#43A047', '#388E3C', '#66BB6A', '#81C784'];
+
+function generateLevel() {
+  platforms = [];
+  bananas = [];
+  clouds = [];
+  particles = [];
+  score = 0;
+  gameRunning = true;
+  gameTime = 0;
+
+  const groundY = H - 40;
+  platforms.push({ x: 0, y: groundY, w: W, h: 40, color: '#4CAF50', ground: true });
+
+  let rows = Math.floor((H - 200) / 120);
+  if (rows < 2) rows = 2;
+  if (rows > 5) rows = 5;
+
+  for (let r = 0; r < rows; r++) {
+    let y = groundY - (r + 1) * 130;
+    if (y < 80) break;
+    let numPlats = 2 + Math.floor(Math.random() * 2);
+    let platWidth = 100 + Math.random() * 80;
+    for (let p = 0; p < numPlats; p++) {
+      let x = (W / (numPlats + 1)) * (p + 1) - platWidth / 2 + (Math.random() - 0.5) * 40;
+      x = Math.max(10, Math.min(W - platWidth - 10, x));
+      platforms.push({
+        x: x,
+        y: y,
+        w: platWidth,
+        h: 24,
+        color: platformColors[(r + p) % platformColors.length],
+        ground: false
+      });
+    }
+  }
+
+  for (let p of platforms) {
+    if (p.ground) {
+      let numB = 3 + Math.floor(Math.random() * 3);
+      for (let b = 0; b < numB; b++) {
+        bananas.push({ x: (W / (numB + 1)) * (b + 1), y: p.y - 35, collected: false, bobOffset: Math.random() * Math.PI * 2 });
+      }
+    } else {
+      if (Math.random() < 0.7) {
+        bananas.push({ x: p.x + p.w / 2, y: p.y - 35, collected: false, bobOffset: Math.random() * Math.PI * 2 });
+      }
+    }
+  }
+
+  for (let i = 0; i < 5; i++) {
+    clouds.push({
+      x: Math.random() * W,
+      y: 30 + Math.random() * 150,
+      w: 60 + Math.random() * 80,
+      speed: 0.2 + Math.random() * 0.3
+    });
+  }
+
+  totalBananas = bananas.length;
+  updateScoreDisplay();
+
+  monkey = {
+    x: W / 2 - 32,
+    y: groundY - 64,
+    w: 64,
+    h: 64,
+    vx: 0,
+    vy: 0,
+    onGround: false,
+    facing: 1,
+    walkFrame: 0
+  };
+}
+
+function updateScoreDisplay() {
+  scoreDisplay.textContent = '🍌 ' + score + ' / ' + totalBananas;
+}
+
+const keys = {};
+window.addEventListener('keydown', e => {
+  keys[e.key] = true;
+  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
+});
+window.addEventListener('keyup', e => keys[e.key] = false);
+
+const mobileKeys = { left: false, right: false, up: false };
+function setupMobile() {
+  const btnL = document.getElementById('btn-left');
+  const btnR = document.getElementById('btn-right');
+  const btnU = document.getElementById('btn-up');
+  const start = (key) => (e) => { e.preventDefault(); mobileKeys[key] = true; };
+  const end = (key) => (e) => { e.preventDefault(); mobileKeys[key] = false; };
+  btnL.addEventListener('touchstart', start('left'));
+  btnL.addEventListener('touchend', end('left'));
+  btnR.addEventListener('touchstart', start('right'));
+  btnR.addEventListener('touchend', end('right'));
+  btnU.addEventListener('touchstart', start('up'));
+  btnU.addEventListener('touchend', end('up'));
+}
+setupMobile();
+
+function spawnParticles(x, y) {
+  for (let i = 0; i < 8; i++) {
+    particles.push({
+      x, y,
+      vx: (Math.random() - 0.5) * 8,
+      vy: -Math.random() * 6 - 2,
+      life: 1,
+      color: ['#FFD700', '#FFE135', '#FFA500', '#FF8C00', '#FFEB3B'][Math.floor(Math.random() * 5)],
+      size: 3 + Math.random() * 5
+    });
+  }
+}
+
+function update() {
+  if (!gameRunning) return;
+  gameTime++;
+
+  let moveLeft = keys['ArrowLeft'] || keys['a'] || keys['A'] || mobileKeys.left;
+  let moveRight = keys['ArrowRight'] || keys['d'] || keys['D'] || mobileKeys.right;
+  let jump = keys['ArrowUp'] || keys['w'] || keys['W'] || keys[' '] || mobileKeys.up;
+
+  if (moveLeft) {
+    monkey.vx -= MOVE_SPEED * 0.3;
+    monkey.facing = -1;
+  }
+  if (moveRight) {
+    monkey.vx += MOVE_SPEED * 0.3;
+    monkey.facing = 1;
+  }
+  if (jump && monkey.onGround) {
+    monkey.vy = JUMP_FORCE;
+    monkey.onGround = false;
+  }
+
+  monkey.vx *= FRICTION;
+  monkey.vy += GRAVITY;
+
+  if (Math.abs(monkey.vx) > MOVE_SPEED) monkey.vx = MOVE_SPEED * Math.sign(monkey.vx);
+  if (monkey.vy > 15) monkey.vy = 15;
+
+  monkey.x += monkey.vx;
+  monkey.y += monkey.vy;
+
+  if (monkey.vx > 0.5) monkey.walkFrame += 0.15;
+  else if (monkey.vx < -0.5) monkey.walkFrame += 0.15;
+
+  if (monkey.x < -monkey.w) monkey.x = W;
+  if (monkey.x > W) monkey.x = -monkey.w;
+
+  monkey.onGround = false;
+  for (let p of platforms) {
+    if (monkey.x + monkey.w > p.x + 4 && monkey.x < p.x + p.w - 4) {
+      if (monkey.vy >= 0 && monkey.y + monkey.h >= p.y && monkey.y + monkey.h <= p.y + p.h + monkey.vy + 2) {
+        monkey.y = p.y - monkey.h;
+        monkey.vy = 0;
+        monkey.onGround = true;
+      }
+    }
+  }
+
+  if (monkey.y > H + 100) {
+    monkey.x = W / 2 - 32;
+    monkey.y = 0;
+    monkey.vy = 0;
+    monkey.vx = 0;
+  }
+
+  for (let b of bananas) {
+    if (b.collected) continue;
+    let bx = b.x;
+    let by = b.y + Math.sin(gameTime * 0.05 + b.bobOffset) * 5;
+    let mx = monkey.x + monkey.w / 2;
+    let my = monkey.y + monkey.h / 2;
+    let dist = Math.sqrt((mx - bx) ** 2 + (my - by) ** 2);
+    if (dist < 40) {
+      b.collected = true;
+      score++;
+      spawnParticles(bx, by);
+      updateScoreDisplay();
+      if (score >= totalBananas) {
+        gameRunning = false;
+        setTimeout(() => {
+          winScreen.style.display = 'flex';
+        }, 500);
+      }
+    }
+  }
+
+  for (let i = particles.length - 1; i >= 0; i--) {
+    let p = particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.2;
+    p.life -= 0.02;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+
+  for (let c of clouds) {
+    c.x += c.speed;
+    if (c.x > W + c.w) c.x = -c.w;
+  }
+}
+
+function drawCloud(c) {
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.beginPath();
+  ctx.ellipse(c.x + c.w * 0.3, c.y + 15, c.w * 0.3, 18, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(c.x + c.w * 0.55, c.y + 10, c.w * 0.28, 22, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(c.x + c.w * 0.75, c.y + 15, c.w * 0.25, 16, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawSun() {
+  let sunX = W - 80;
+  let sunY = 70;
+  let t = gameTime * 0.02;
+  ctx.fillStyle = '#FFF176';
+  for (let i = 0; i < 8; i++) {
+    let angle = t + (i / 8) * Math.PI * 2;
+    ctx.save();
+    ctx.translate(sunX, sunY);
+    ctx.rotate(angle);
+    ctx.fillRect(-3, -45, 6, 20);
+    ctx.restore();
+  }
+  ctx.fillStyle = '#FFD54F';
+  ctx.beginPath();
+  ctx.arc(sunX, sunY, 30, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#FFECB3';
+  ctx.beginPath();
+  ctx.arc(sunX, sunY, 22, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#5D4037';
+  ctx.beginPath();
+  ctx.arc(sunX - 8, sunY - 4, 3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(sunX + 8, sunY - 4, 3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#5D4037';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(sunX, sunY + 2, 8, 0.1 * Math.PI, 0.9 * Math.PI);
+  ctx.stroke();
+}
+
+function drawHills() {
+  ctx.fillStyle = '#81C784';
+  ctx.beginPath();
+  ctx.moveTo(0, H - 40);
+  for (let x = 0; x <= W; x += 5) {
+    ctx.lineTo(x, H - 40 - 30 * Math.sin(x * 0.008) - 15 * Math.sin(x * 0.015 + 1));
+  }
+  ctx.lineTo(W, H);
+  ctx.lineTo(0, H);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = '#A5D6A7';
+  ctx.beginPath();
+  ctx.moveTo(0, H - 40);
+  for (let x = 0; x <= W; x += 5) {
+    ctx.lineTo(x, H - 40 - 15 * Math.sin(x * 0.012 + 2) - 10 * Math.sin(x * 0.02));
+  }
+  ctx.lineTo(W, H);
+  ctx.lineTo(0, H);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawFlowers() {
+  let flowerPositions = [];
+  let seed = 42;
+  function seededRandom() {
+    seed = (seed * 16807 + 0) % 2147483647;
+    return (seed - 1) / 2147483646;
+  }
+  seed = 42;
+  for (let i = 0; i < 12; i++) {
+    let fx = seededRandom() * W;
+    let fy = H - 40 - 5;
+    let colors = ['#FF5252', '#FF4081', '#E040FB', '#FFEB3B', '#FF9800', '#FF6E7F'];
+    let fc = colors[Math.floor(seededRandom() * colors.length)];
+    let fs = 4 + seededRandom() * 4;
+    ctx.fillStyle = '#388E3C';
+    ctx.fillRect(fx - 1, fy - fs * 2, 2, fs * 2);
+    for (let p = 0; p < 5; p++) {
+      let pa = (p / 5) * Math.PI * 2 + gameTime * 0.01;
+      ctx.fillStyle = fc;
+      ctx.beginPath();
+      ctx.arc(fx + Math.cos(pa) * fs * 0.7, fy - fs * 2 + Math.sin(pa) * fs * 0.7, fs * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#FFEB3B';
+    ctx.beginPath();
+    ctx.arc(fx, fy - fs * 2, fs * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function draw() {
+  let skyGrad = ctx.createLinearGradient(0, 0, 0, H);
+  skyGrad.addColorStop(0, '#64B5F6');
+  skyGrad.addColorStop(0.6, '#90CAF9');
+  skyGrad.addColorStop(1, '#BBDEFB');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, W, H);
+
+  drawSun();
+
+  for (let c of clouds) drawCloud(c);
+
+  drawHills();
+
+  ctx.fillStyle = '#4CAF50';
+  ctx.fillRect(0, H - 40, W, 40);
+  ctx.fillStyle = '#388E3C';
+  for (let x = 0; x < W; x += 12) {
+    let bladeH = 5 + Math.sin(x * 0.3 + gameTime * 0.05) * 3;
+    ctx.beginPath();
+    ctx.moveTo(x, H - 40);
+    ctx.quadraticCurveTo(x + 3, H - 40 - bladeH, x + 6, H - 40);
+    ctx.fill();
+  }
+
+  drawFlowers();
+
+  for (let p of platforms) {
+    if (p.ground) continue;
+    let r = 10;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.moveTo(p.x + r, p.y);
+    ctx.lineTo(p.x + p.w - r, p.y);
+    ctx.quadraticCurveTo(p.x + p.w, p.y, p.x + p.w, p.y + r);
+    ctx.lineTo(p.x + p.w, p.y + p.h);
+    ctx.lineTo(p.x, p.y + p.h);
+    ctx.lineTo(p.x, p.y + r);
+    ctx.quadraticCurveTo(p.x, p.y, p.x + r, p.y);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#2E7D32';
+    ctx.beginPath();
+    ctx.ellipse(p.x + p.w / 2, p.y, p.w / 2 + 5, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#66BB6A';
+    ctx.beginPath();
+    ctx.ellipse(p.x + p.w / 2, p.y - 1, p.w / 2, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#795548';
+    ctx.fillRect(p.x + 8, p.y + 10, p.w - 16, 3);
+  }
+
+  for (let b of bananas) {
+    if (b.collected) continue;
+    let bx = b.x - 20;
+    let by = b.y + Math.sin(gameTime * 0.05 + b.bobOffset) * 5 - 20;
+    ctx.save();
+    let glowSize = 30 + Math.sin(gameTime * 0.08 + b.bobOffset) * 5;
+    ctx.fillStyle = 'rgba(255,235,59,0.15)';
+    ctx.beginPath();
+    ctx.arc(b.x, by + 20, glowSize, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.drawImage(bananaImg, bx, by, 40, 40);
+    ctx.restore();
+  }
+
+  ctx.save();
+  if (monkey) {
+    let mx = monkey.x + monkey.w / 2;
+    let my = monkey.y + monkey.h;
+    ctx.translate(mx, my);
+    ctx.scale(monkey.facing, 1);
+
+    let bounce = 0;
+    if (monkey.onGround && Math.abs(monkey.vx) > 0.5) {
+      bounce = Math.abs(Math.sin(monkey.walkFrame * 2)) * 4;
+    }
+    let squash = 1;
+    if (!monkey.onGround && monkey.vy < -2) squash = 0.85;
+    if (!monkey.onGround && monkey.vy > 2) squash = 1.15;
+
+    ctx.scale(1, squash);
+    ctx.translate(-32, -64 + bounce);
+    ctx.drawImage(monkeyImg, 0, 0, 64, 64);
+  }
+  ctx.restore();
+
+  for (let p of particles) {
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+}
+
+function gameLoop() {
+  update();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+function startGame() {
+  startScreen.style.display = 'none';
+  winScreen.style.display = 'none';
+  generateLevel();
+}
+
+document.getElementById('start-btn').addEventListener('click', startGame);
+document.getElementById('replay-btn').addEventListener('click', startGame);
+
+gameLoop();
+</script>
+</body>
+</html>
