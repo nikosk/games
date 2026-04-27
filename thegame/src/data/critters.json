@@ -1,0 +1,42 @@
+[
+  {
+    "id": "bash",
+    "name": "Bash",
+    "hp": 2,
+    "moveRange": 1,
+    "ability": {
+      "name": "Shove",
+      "type": "push",
+      "range": 1,
+      "description": "Push adjacent enemy away. Deals 1 damage if pushed into wall or obstacle."
+    },
+    "color": "#ff8c42"
+  },
+  {
+    "id": "hop",
+    "name": "Hop",
+    "hp": 2,
+    "moveRange": 2,
+    "ability": {
+      "name": "Stomp",
+      "type": "stomp",
+      "range": 1,
+      "description": "Deal 1 damage to an adjacent enemy."
+    },
+    "color": "#6bcb77"
+  },
+  {
+    "id": "zap",
+    "name": "Zap",
+    "hp": 2,
+    "moveRange": 1,
+    "ability": {
+      "name": "Zap",
+      "type": "ranged",
+      "range": 2,
+      "damage": 1,
+      "description": "Deal 1 damage to an enemy up to 2 tiles away."
+    },
+    "color": "#ffd93d"
+  }
+]

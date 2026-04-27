@@ -1,0 +1,41 @@
+[
+  {
+    "id": "charger",
+    "name": "Charger",
+    "hp": 1,
+    "damage": 1,
+    "behavior": "charge",
+    "color": "#e74c3c",
+    "description": "Moves toward nearest critter. Attacks if adjacent."
+  },
+  {
+    "id": "spitter",
+    "name": "Spitter",
+    "hp": 1,
+    "damage": 1,
+    "behavior": "ranged",
+    "range": 2,
+    "color": "#9b59b6",
+    "description": "Attacks nearest critter within 2 tiles."
+  },
+  {
+    "id": "grabber",
+    "name": "Grabber",
+    "hp": 2,
+    "damage": 1,
+    "behavior": "grab",
+    "range": 2,
+    "color": "#e67e22",
+    "description": "Pulls nearest critter 1 tile closer."
+  },
+  {
+    "id": "boomer",
+    "name": "Boomer",
+    "hp": 1,
+    "damage": 1,
+    "behavior": "bomb",
+    "range": 3,
+    "color": "#2c3e50",
+    "description": "Drops a bomb that explodes next turn (3x3 area)."
+  }
+]

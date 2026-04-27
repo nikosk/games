@@ -1,0 +1,168 @@
+[
+  {
+    "id": 1,
+    "name": "First Steps",
+    "gridSize": 4,
+    "critters": [
+      { "type": "bash", "row": 1, "col": 1 }
+    ],
+    "enemies": [
+      { "type": "charger", "row": 0, "col": 1 }
+    ],
+    "hazards": []
+  },
+  {
+    "id": 2,
+    "name": "Keep Away",
+    "gridSize": 4,
+    "critters": [
+      { "type": "bash", "row": 1, "col": 0 }
+    ],
+    "enemies": [
+      { "type": "spitter", "row": 2, "col": 3 }
+    ],
+    "hazards": []
+  },
+  {
+    "id": 3,
+    "name": "Two by Two",
+    "gridSize": 4,
+    "critters": [
+      { "type": "bash", "row": 0, "col": 0 },
+      { "type": "zap", "row": 3, "col": 0 }
+    ],
+    "enemies": [
+      { "type": "charger", "row": 0, "col": 3 },
+      { "type": "charger", "row": 3, "col": 3 }
+    ],
+    "hazards": []
+  },
+  {
+    "id": 4,
+    "name": "Wide Open",
+    "gridSize": 5,
+    "critters": [
+      { "type": "bash", "row": 2, "col": 0 },
+      { "type": "zap", "row": 2, "col": 1 }
+    ],
+    "enemies": [
+      { "type": "charger", "row": 1, "col": 4 },
+      { "type": "spitter", "row": 3, "col": 4 }
+    ],
+    "hazards": []
+  },
+  {
+    "id": 5,
+    "name": "Hop To It",
+    "gridSize": 5,
+    "critters": [
+      { "type": "bash", "row": 2, "col": 0 },
+      { "type": "hop", "row": 2, "col": 1 }
+    ],
+    "enemies": [
+      { "type": "charger", "row": 0, "col": 2 },
+      { "type": "charger", "row": 4, "col": 2 },
+      { "type": "spitter", "row": 2, "col": 4 }
+    ],
+    "hazards": []
+  },
+  {
+    "id": 6,
+    "name": "Pull and Push",
+    "gridSize": 5,
+    "critters": [
+      { "type": "bash", "row": 2, "col": 0 },
+      { "type": "hop", "row": 1, "col": 1 },
+      { "type": "zap", "row": 3, "col": 1 }
+    ],
+    "enemies": [
+      { "type": "charger", "row": 2, "col": 3 },
+      { "type": "grabber", "row": 0, "col": 4 },
+      { "type": "spitter", "row": 4, "col": 4 }
+    ],
+    "hazards": []
+  },
+  {
+    "id": 7,
+    "name": "Bomb Squad",
+    "gridSize": 5,
+    "critters": [
+      { "type": "bash", "row": 2, "col": 0 },
+      { "type": "hop", "row": 2, "col": 1 },
+      { "type": "zap", "row": 2, "col": 2 }
+    ],
+    "enemies": [
+      { "type": "charger", "row": 1, "col": 4 },
+      { "type": "spitter", "row": 3, "col": 4 },
+      { "type": "boomer", "row": 2, "col": 4 }
+    ],
+    "hazards": []
+  },
+  {
+    "id": 8,
+    "name": "Hazard Zone",
+    "gridSize": 6,
+    "critters": [
+      { "type": "bash", "row": 0, "col": 0 },
+      { "type": "hop", "row": 0, "col": 1 },
+      { "type": "zap", "row": 0, "col": 2 }
+    ],
+    "enemies": [
+      { "type": "charger", "row": 2, "col": 3 },
+      { "type": "charger", "row": 3, "col": 3 },
+      { "type": "spitter", "row": 5, "col": 4 },
+      { "type": "grabber", "row": 5, "col": 0 }
+    ],
+    "hazards": [
+      { "row": 2, "col": 1 },
+      { "row": 2, "col": 5 },
+      { "row": 4, "col": 1 },
+      { "row": 4, "col": 4 }
+    ]
+  },
+  {
+    "id": 9,
+    "name": "The Gauntlet",
+    "gridSize": 6,
+    "critters": [
+      { "type": "bash", "row": 2, "col": 0 },
+      { "type": "hop", "row": 2, "col": 1 },
+      { "type": "zap", "row": 2, "col": 2 }
+    ],
+    "enemies": [
+      { "type": "charger", "row": 0, "col": 3 },
+      { "type": "spitter", "row": 0, "col": 5 },
+      { "type": "grabber", "row": 3, "col": 5 },
+      { "type": "boomer", "row": 5, "col": 3 },
+      { "type": "charger", "row": 5, "col": 0 }
+    ],
+    "hazards": [
+      { "row": 2, "col": 3 },
+      { "row": 3, "col": 2 }
+    ]
+  },
+  {
+    "id": 10,
+    "name": "Final Stand",
+    "gridSize": 6,
+    "critters": [
+      { "type": "bash", "row": 2, "col": 0 },
+      { "type": "hop", "row": 2, "col": 1 },
+      { "type": "zap", "row": 2, "col": 2 }
+    ],
+    "enemies": [
+      { "type": "charger", "row": 0, "col": 2 },
+      { "type": "spitter", "row": 0, "col": 4 },
+      { "type": "grabber", "row": 3, "col": 5 },
+      { "type": "grabber", "row": 4, "col": 5 },
+      { "type": "boomer", "row": 5, "col": 2 },
+      { "type": "charger", "row": 5, "col": 4 }
+    ],
+    "hazards": [
+      { "row": 1, "col": 3 },
+      { "row": 2, "col": 4 },
+      { "row": 4, "col": 1 },
+      { "row": 3, "col": 2 }
+    ]
+  }
+]
