@@ -4,6 +4,10 @@ import enemiesData from '../data/enemies.json';
 import bashImg from '../assets/bash.png';
 import hopImg from '../assets/hop.png';
 import zapImg from '../assets/zap.png';
+import chargerImg from '../assets/charger.png';
+import spitterImg from '../assets/spitter.png';
+import grabberImg from '../assets/grabber.png';
+import boomerImg from '../assets/boomer.png';
 
 export default class BootScene extends Phaser.Scene {
   constructor() {
@@ -14,6 +18,10 @@ export default class BootScene extends Phaser.Scene {
     this.load.image('critter_bash', bashImg);
     this.load.image('critter_hop', hopImg);
     this.load.image('critter_zap', zapImg);
+    this.load.image('enemy_charger', chargerImg);
+    this.load.image('enemy_spitter', spitterImg);
+    this.load.image('enemy_grabber', grabberImg);
+    this.load.image('enemy_boomer', boomerImg);
   }
 
   create() {
@@ -411,6 +419,7 @@ export default class BootScene extends Phaser.Scene {
 
   generateEnemyTextures() {
     enemiesData.forEach((enemy) => {
+      if (enemy.id === 'charger' || enemy.id === 'spitter' || enemy.id === 'grabber' || enemy.id === 'boomer') return;
       const g = this.make.graphics({ add: false });
       const color = this.hexToInt(enemy.color);
       const cx = 40, cy = 40;
