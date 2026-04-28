@@ -310,6 +310,7 @@ export default class BattleScene extends Phaser.Scene {
   damageEntity(entity, amount, isCritter) {
     entity.hp -= amount;
     this.moveHpBar(entity);
+    this.playEffect(entity.row, entity.col, 'hit');
     if (entity.hp <= 0) {
       this.removeEntity(entity, isCritter);
       return true;
@@ -857,21 +858,23 @@ export default class BattleScene extends Phaser.Scene {
     await this.delay(300);
 
     if (action.type === 'push') {
-      if (!this.enemies.includes(action.target)) return; // target already dead
+      if (!this.enemies.includes(action.target)) return;
+      this.playEffect(action.target.row, action.target.col, 'shove');
       const pushRow = action.pushDir.row;
       const pushCol = action.pushDir.col;
 
       if (!this.isCellValid(pushRow, pushCol) || this.isCellOccupied(pushRow, pushCol) || this.isCellHazard(pushRow, pushCol)) {
-        // Push into wall, occupied cell, or hazard = 1 damage
         this.damageEntity(action.target, 1, false);
       } else {
         await this.moveEntityTo(action.target, pushRow, pushCol);
       }
     } else if (action.type === 'stomp') {
       if (!this.enemies.includes(action.target)) return;
+      this.playEffect(action.target.row, action.target.col, 'stomp');
       this.damageEntity(action.target, 1, false);
     } else if (action.type === 'ranged') {
       if (!this.enemies.includes(action.target)) return;
+      this.playEffect(action.target.row, action.target.col, 'zap', action.critter.row, action.critter.col);
       this.damageEntity(action.target, action.damage, false);
     }
   }
@@ -882,6 +885,7 @@ export default class BattleScene extends Phaser.Scene {
 
     if (enemy.intent.type === 'attack') {
       const { targetRow, targetCol } = enemy.intent;
+      this.playEffect(targetRow, targetCol, 'hit');
       const c = this.critters.find((c) => c.row === targetRow && c.col === targetCol);
       if (c) {
         this.damageEntity(c, enemy.def.damage, true);
@@ -952,7 +956,7 @@ export default class BattleScene extends Phaser.Scene {
   }
 
   explodeBomb(row, col) {
-    // Flash the area
+    this.playEffect(row, col, 'explosion');
     const x = this.offsetX + col * this.cellSize;
     const y = this.offsetY + row * this.cellSize;
     const flash = this.add.graphics();
@@ -1041,6 +1045,113 @@ export default class BattleScene extends Phaser.Scene {
 
   delay(ms) {
     return new Promise((resolve) => this.time.delayedCall(ms, resolve));
+  }
+
+  playEffect(row, col, type, fromRow, fromCol) {
+    const pos = this.cellToPixel(row, col);
+    const g = this.add.graphics().setDepth(100);
+
+    if (type === 'shove') {
+      const t = { r: 8, a: 1 };
+      this.tweens.add({
+        targets: t,
+        r: this.cellSize * 0.8,
+        a: 0,
+        duration: 400,
+        ease: 'Cubic.easeOut',
+        onUpdate: () => {
+          g.clear();
+          g.fillStyle(0xffffff, t.a * 0.5);
+          g.fillCircle(pos.x, pos.y, t.r);
+          g.lineStyle(4, 0xffd93d, t.a * 0.8);
+          g.strokeCircle(pos.x, pos.y, t.r);
+        },
+        onComplete: () => g.destroy(),
+      });
+    } else if (type === 'stomp') {
+      const t = { r: 6, a: 1 };
+      this.tweens.add({
+        targets: t,
+        r: this.cellSize * 0.7,
+        a: 0,
+        duration: 400,
+        ease: 'Cubic.easeOut',
+        onUpdate: () => {
+          g.clear();
+          g.fillStyle(0x6bcb77, t.a * 0.5);
+          g.fillCircle(pos.x, pos.y, t.r);
+          g.lineStyle(3, 0xffffff, t.a * 0.6);
+          g.strokeCircle(pos.x, pos.y, t.r);
+        },
+        onComplete: () => g.destroy(),
+      });
+    } else if (type === 'zap') {
+      const fromPos = fromRow !== undefined
+        ? this.cellToPixel(fromRow, fromCol) : pos;
+      let frame = 0;
+      const t = { a: 1 };
+      this.tweens.add({
+        targets: t,
+        a: 0,
+        duration: 250,
+        onUpdate: () => {
+          g.clear();
+          frame++;
+          g.lineStyle(5, 0xffd93d, t.a);
+          g.beginPath();
+          g.moveTo(fromPos.x, fromPos.y);
+          for (let i = 1; i <= 3; i++) {
+            const p = i / 4;
+            const jx = fromPos.x + (pos.x - fromPos.x) * p + Math.sin(frame * 0.5 + i) * 14;
+            const jy = fromPos.y + (pos.y - fromPos.y) * p + Math.cos(frame * 0.5 + i) * 10;
+            g.lineTo(jx, jy);
+          }
+          g.lineTo(pos.x, pos.y);
+          g.strokePath();
+          g.lineStyle(2, 0xffffff, t.a * 0.8);
+          g.strokePath();
+        },
+        onComplete: () => g.destroy(),
+      });
+    } else if (type === 'hit') {
+      const t = { r: 0, a: 1 };
+      this.tweens.add({
+        targets: t,
+        r: this.cellSize * 0.45,
+        a: 0,
+        duration: 350,
+        ease: 'Cubic.easeOut',
+        onUpdate: () => {
+          g.clear();
+          g.lineStyle(6, 0xe74c3c, t.a);
+          g.lineBetween(pos.x - t.r, pos.y - t.r, pos.x + t.r, pos.y + t.r);
+          g.lineBetween(pos.x + t.r, pos.y - t.r, pos.x - t.r, pos.y + t.r);
+          g.lineStyle(2, 0xffffff, t.a * 0.8);
+          g.lineBetween(pos.x - t.r * 0.6, pos.y - t.r * 0.6, pos.x + t.r * 0.6, pos.y + t.r * 0.6);
+          g.lineBetween(pos.x + t.r * 0.6, pos.y - t.r * 0.6, pos.x - t.r * 0.6, pos.y + t.r * 0.6);
+        },
+        onComplete: () => g.destroy(),
+      });
+    } else if (type === 'explosion') {
+      const t = { r: 8, a: 1 };
+      this.tweens.add({
+        targets: t,
+        r: this.cellSize,
+        a: 0,
+        duration: 500,
+        ease: 'Cubic.easeOut',
+        onUpdate: () => {
+          g.clear();
+          g.fillStyle(0xff6600, t.a * 0.35);
+          g.fillCircle(pos.x, pos.y, t.r);
+          g.fillStyle(0xffd93d, t.a * 0.55);
+          g.fillCircle(pos.x, pos.y, t.r * 0.55);
+          g.fillStyle(0xffffff, t.a * 0.5);
+          g.fillCircle(pos.x, pos.y, t.r * 0.2);
+        },
+        onComplete: () => g.destroy(),
+      });
+    }
   }
 
   saveProgress() {
