@@ -28,6 +28,7 @@ export default class BattleScene extends Phaser.Scene {
     this.intentIndicators = [];
     this.skipButton = null;
     this._inputLocked = false;
+    this.turnLog = [];
 
     this.calculateLayout();
     this.drawGrid();
@@ -312,6 +313,7 @@ export default class BattleScene extends Phaser.Scene {
     this.moveHpBar(entity);
     this.playEffect(entity.row, entity.col, 'hit');
     if (entity.hp <= 0) {
+      this.addLogEntry(`${entity.def.name} was defeated!`, isCritter ? '#e74c3c' : '#6bcb77');
       this.removeEntity(entity, isCritter);
       return true;
     }
@@ -526,6 +528,7 @@ export default class BattleScene extends Phaser.Scene {
     });
 
     this.movedCritterIds.add(critter.id);
+    const moved = !!critter.pendingMove;
     critter.pendingMove = null;
     critter.hasActed = true;
     critter.sprite.clearTint();
@@ -534,6 +537,9 @@ export default class BattleScene extends Phaser.Scene {
     this.destroySkipButton();
     this.hideInfoPanel();
     this.updateUI();
+
+    const verb = ability.type === 'push' ? 'shoved' : ability.type === 'stomp' ? 'stomped' : 'zapped';
+    this.addLogEntry(`${critter.def.name} ${moved ? 'moved → ' : ''}${verb} ${target.def.name}`, critter.def.color);
   }
 
   createSkipButton(critter) {
@@ -564,6 +570,7 @@ export default class BattleScene extends Phaser.Scene {
 
   skipAbility(critter) {
     this.movedCritterIds.add(critter.id);
+    const moved = !!critter.pendingMove;
     critter.pendingMove = null;
     critter.hasActed = true;
     critter.sprite.clearTint();
@@ -572,6 +579,7 @@ export default class BattleScene extends Phaser.Scene {
     this.destroySkipButton();
     this.hideInfoPanel();
     this.updateUI();
+    this.addLogEntry(`${critter.def.name} ${moved ? 'moved → ' : ''}waited`, '#7a6a5a');
   }
 
   destroySkipButton() {
@@ -615,6 +623,25 @@ export default class BattleScene extends Phaser.Scene {
 
     this.endTurnZone = this.add.zone(btnX, btnY + 4, 160, 44).setInteractive({ useHandCursor: true });
     this.endTurnZone.on('pointerdown', () => this.endTurn());
+
+    // Action log panel (right side)
+    const logX = this.offsetX + this.gridPx + 10;
+    const logY = this.offsetY;
+    const logW = 960 - logX - 10;
+    const logH = this.gridPx;
+
+    this.logBg = this.add.graphics();
+    this.logBg.fillStyle(0xffffff, 0.7);
+    this.logBg.fillRoundedRect(logX, logY, logW, logH, 8);
+    this.logBg.lineStyle(1, 0xb8d8a8, 0.6);
+    this.logBg.strokeRoundedRect(logX, logY, logW, logH, 8);
+
+    this.logTitle = this.add.text(logX + logW / 2, logY + 10, 'Action Log', {
+      fontFamily: 'Arial, Helvetica, sans-serif',
+      fontSize: '13px',
+      fontStyle: 'bold',
+      color: '#5a4a3a',
+    }).setOrigin(0.5);
 
     this.updateUI();
   }
@@ -835,6 +862,9 @@ export default class BattleScene extends Phaser.Scene {
     // Remove dead enemies (their actions are cancelled)
     this.queuedActions = []; // Clear any queued actions for dead enemies? No, enemy actions are calculated now.
 
+    // Recalculate enemy intents (they were cleared at start of player phase)
+    this.enemies.forEach((e) => this.calculateIntent(e));
+
     // Execute surviving enemy intents
     const survivingEnemies = [...this.enemies];
     for (const enemy of survivingEnemies) {
@@ -880,7 +910,10 @@ export default class BattleScene extends Phaser.Scene {
   }
 
   async executeEnemyAction(enemy) {
-    if (!enemy.intent) return;
+    if (!enemy.intent) {
+      this.addLogEntry(`${enemy.def.name} had no target`, '#999999');
+      return;
+    }
     await this.delay(300);
 
     if (enemy.intent.type === 'attack') {
@@ -889,11 +922,13 @@ export default class BattleScene extends Phaser.Scene {
       const c = this.critters.find((c) => c.row === targetRow && c.col === targetCol);
       if (c) {
         this.damageEntity(c, enemy.def.damage, true);
+        this.addLogEntry(`${enemy.def.name} attacked ${c.def.name} (${enemy.def.damage} dmg)`, '#e74c3c');
       }
     } else if (enemy.intent.type === 'move') {
       const { toRow, toCol } = enemy.intent;
       if (!this.isCellOccupied(toRow, toCol)) {
         await this.moveEntityTo(enemy, toRow, toCol);
+        this.addLogEntry(`${enemy.def.name} moved`, '#e67e22');
       }
     } else if (enemy.intent.type === 'pull') {
       const target = enemy.intent.target;
@@ -901,13 +936,13 @@ export default class BattleScene extends Phaser.Scene {
       const { toRow, toCol } = enemy.intent;
       if (!this.isCellOccupied(toRow, toCol)) {
         await this.moveEntityTo(target, toRow, toCol);
+        this.addLogEntry(`${enemy.def.name} pulled ${target.def.name}`, '#e67e22');
       }
     } else if (enemy.intent.type === 'bomb') {
       const { bombRow, bombCol } = enemy.intent;
-      // Check if the target cell is still where the boomer aimed
-      // For simplicity, place the bomb
       this.bombs.push({ row: bombRow, col: bombCol, timer: 1 });
       this.showBomb(bombRow, bombCol);
+      this.addLogEntry(`${enemy.def.name} planted a bomb at (${bombRow},${bombCol})`, '#2c3e50');
     }
 
     enemy.intent = null;
@@ -957,6 +992,7 @@ export default class BattleScene extends Phaser.Scene {
 
   explodeBomb(row, col) {
     this.playEffect(row, col, 'explosion');
+    this.addLogEntry(`Bomb exploded at (${row},${col})!`, '#ff6b6b');
     const x = this.offsetX + col * this.cellSize;
     const y = this.offsetY + row * this.cellSize;
     const flash = this.add.graphics();
@@ -1024,7 +1060,8 @@ export default class BattleScene extends Phaser.Scene {
       }).setOrigin(0.5).setDepth(100).setInteractive({ useHandCursor: true });
 
       retryBtn.on('pointerdown', () => {
-        this._inputLocked = false;
+    this._inputLocked = false;
+    this.turnLog = [];
         this.scene.restart({ levelId: this.levelId });
       });
 
@@ -1152,6 +1189,30 @@ export default class BattleScene extends Phaser.Scene {
         onComplete: () => g.destroy(),
       });
     }
+  }
+
+  addLogEntry(text, color) {
+    this.turnLog.push({ text, color });
+    if (this.turnLog.length > 50) this.turnLog.shift();
+    this.renderLog();
+  }
+
+  renderLog() {
+    if (this._logLines) this._logLines.forEach((l) => l.destroy());
+    this._logLines = [];
+    const logX = this.offsetX + this.gridPx + 16;
+    const logY = this.offsetY + 28;
+    const maxLines = Math.floor((this.gridPx - 36) / 16);
+    const entries = this.turnLog.slice(-maxLines);
+    entries.forEach((entry, i) => {
+      const txt = this.add.text(logX, logY + i * 16, entry.text, {
+        fontFamily: 'Arial, Helvetica, sans-serif',
+        fontSize: '12px',
+        color: entry.color,
+        wordWrap: { width: 960 - logX - 16 },
+      });
+      this._logLines.push(txt);
+    });
   }
 
   saveProgress() {
@@ -1325,7 +1386,8 @@ export default class BattleScene extends Phaser.Scene {
       this._tutorialEls.forEach((e) => e.destroy());
       this._tutorialEls = null;
       localStorage.setItem('critter_tactics_tutorial', '1');
-      this._inputLocked = false;
+    this._inputLocked = false;
+    this.turnLog = [];
       this.startEnemyIntentPhase();
     });
   }
