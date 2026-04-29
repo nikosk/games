@@ -363,7 +363,7 @@ export default class BattleScene extends Phaser.Scene {
     }
 
     // Clicked on ability target (highlighted enemy)
-    if (this.selectedCritter && this.selectedCritter.pendingMove) {
+    if (this.selectedCritter) {
       const isTarget = this._abilityTargets && this._abilityTargets.some(
         (t) => t.row === row && t.col === col
       );
@@ -404,6 +404,14 @@ export default class BattleScene extends Phaser.Scene {
       const reachable = this.getReachableCells(critter, maxDist);
       this._moveTargets = reachable;
       this.showMoveHighlights(reachable);
+
+      // Also show ability targets from current position
+      const abilityTargets = this.getValidAbilityTargets(critter, critter.def.ability);
+      if (abilityTargets.length > 0) {
+        this._abilityTargets = abilityTargets;
+        this.showAbilityHighlights(abilityTargets);
+        this.createSkipButton(critter);
+      }
     }
   }
 
