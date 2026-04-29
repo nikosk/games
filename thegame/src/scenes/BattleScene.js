@@ -224,8 +224,8 @@ export default class BattleScene extends Phaser.Scene {
       hasActed: false,
       pendingMove: null,
     };
-    this.createHpBar(critter);
     this.critters.push(critter);
+    this.createHpBar(critter);
     return critter;
   }
 
@@ -257,8 +257,8 @@ export default class BattleScene extends Phaser.Scene {
       baseScale: scale,
       intent: null,
     };
-    this.createHpBar(enemy);
     this.enemies.push(enemy);
+    this.createHpBar(enemy);
     return enemy;
   }
 
@@ -1256,7 +1256,10 @@ export default class BattleScene extends Phaser.Scene {
   redrawHpFill(entity, x, y, w, h) {
     entity._hpBarFill.clear();
     const ratio = Math.max(0, entity.hp / entity.maxHp);
-    const color = ratio > 0.5 ? 0x6bcb77 : ratio > 0.25 ? 0xffd93d : 0xe74c3c;
+    const isEnemy = this.enemies.includes(entity);
+    const color = isEnemy
+      ? (ratio > 0.5 ? 0xcc3333 : 0xff4444)
+      : (ratio > 0.5 ? 0x6bcb77 : ratio > 0.25 ? 0xffd93d : 0xe74c3c);
     entity._hpBarFill.fillStyle(color, 0.9);
     if (ratio > 0) {
       entity._hpBarFill.fillRoundedRect(x, y, w * ratio, h, 2);
