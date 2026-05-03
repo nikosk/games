@@ -113,19 +113,6 @@ export default class BattleScene extends Phaser.Scene {
       const y = this.offsetY + h.row * this.cellSize;
       const img = this.add.image(x + this.cellSize / 2, y + this.cellSize / 2, 'cell_hazard');
       img.setDisplaySize(this.cellSize, this.cellSize);
-      // Spikes drawn on top
-      const g = this.add.graphics();
-      g.lineStyle(3, 0xcc0000, 0.6);
-      g.beginPath();
-      g.moveTo(x + 10, y + this.cellSize / 2);
-      g.lineTo(x + this.cellSize / 2, y + 10);
-      g.lineTo(x + this.cellSize - 10, y + this.cellSize / 2);
-      g.strokePath();
-      g.beginPath();
-      g.moveTo(x + 10, y + this.cellSize / 2);
-      g.lineTo(x + this.cellSize / 2, y + this.cellSize - 10);
-      g.lineTo(x + this.cellSize - 10, y + this.cellSize / 2);
-      g.strokePath();
     });
   }
 
@@ -158,6 +145,50 @@ export default class BattleScene extends Phaser.Scene {
       if (this.isCellValid(nr, nc)) cells.push({ row: nr, col: nc });
     });
     return cells;
+  }
+
+  isCellInBombZone(row, col) {
+    return this.bombs.some(
+      (b) => b.timer > 0 && Math.abs(b.row - row) <= 1 && Math.abs(b.col - col) <= 1
+    );
+  }
+
+  isCellTraversable(row, col, targetRow, targetCol) {
+    const isTarget = (row === targetRow && col === targetCol);
+    if (isTarget) return true;
+    if (this.isCellOccupied(row, col)) return false;
+    if (this.isCellHazard(row, col)) return false;
+    if (this.isCellInBombZone(row, col)) return false;
+    return true;
+  }
+
+  findPath(startRow, startCol, targetRow, targetCol) {
+    const visited = new Set();
+    const queue = [{ row: startRow, col: startCol, path: [] }];
+    visited.add(`${startRow},${startCol}`);
+    const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+
+    while (queue.length > 0) {
+      const { row, col, path } = queue.shift();
+
+      if (row === targetRow && col === targetCol) {
+        return [...path, { row, col }];
+      }
+
+      for (const [dr, dc] of dirs) {
+        const nr = row + dr;
+        const nc = col + dc;
+        const key = `${nr},${nc}`;
+
+        if (!this.isCellValid(nr, nc) || visited.has(key)) continue;
+        if (!this.isCellTraversable(nr, nc, targetRow, targetCol)) continue;
+
+        visited.add(key);
+        queue.push({ row: nr, col: nc, path: [...path, { row, col }] });
+      }
+    }
+
+    return null;
   }
 
   getReachableCells(critter, maxDist) {
@@ -256,6 +287,7 @@ export default class BattleScene extends Phaser.Scene {
       sprite,
       baseScale: scale,
       intent: null,
+      stunned: false,
     };
     this.enemies.push(enemy);
     this.createHpBar(enemy);
@@ -671,6 +703,11 @@ export default class BattleScene extends Phaser.Scene {
     if (this.checkDefeat()) return;
     if (this.checkVictory()) return;
 
+    this.enemies.forEach((e) => {
+      e.stunned = false;
+      e.sprite.clearTint();
+    });
+
     this.enemies.forEach((e) => this.calculateIntent(e));
     this.showIntents();
 
@@ -680,73 +717,109 @@ export default class BattleScene extends Phaser.Scene {
     });
   }
 
+  findBestTargetForEnemy(enemy) {
+    const def = enemy.def;
+    let bestTarget = null;
+    let bestScore = -Infinity;
+
+    this.critters.forEach((c) => {
+      const dist = this.distance(enemy.row, enemy.col, c.row, c.col);
+      const path = this.findPath(enemy.row, enemy.col, c.row, c.col);
+
+      let score = 100;
+
+      score -= dist * 10;
+
+      if (c.hp <= 1) score += 20;
+      else if (c.hp < c.maxHp) score += 7;
+
+      const focusCount = this.enemies.filter(
+        (e) => e !== enemy && e.intent && e.intent._targetCritterId === c.id
+      ).length;
+      score += focusCount * 10;
+
+      if (path) score += 25;
+
+      if (def.range && dist <= def.range) score += 15;
+      if (def.behavior === 'charge' && dist <= 1) score += 40;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestTarget = c;
+      }
+    });
+
+    return bestTarget;
+  }
+
   calculateIntent(enemy) {
     enemy.intent = null;
+    if (enemy.stunned) return;
     const def = enemy.def;
 
+    const target = this.findBestTargetForEnemy(enemy);
+    if (!target) return;
+
+    const dist = this.distance(enemy.row, enemy.col, target.row, target.col);
+    const path = this.findPath(enemy.row, enemy.col, target.row, target.col);
+
+    const isInRange = def.range ? dist <= def.range : dist <= 1;
+    const canMove = path && path.length >= 2;
+    const nextCell = canMove ? path[1] : null;
+
     if (def.behavior === 'charge') {
-      let nearest = null;
-      let minDist = Infinity;
-      this.critters.forEach((c) => {
-        const d = this.distance(enemy.row, enemy.col, c.row, c.col);
-        if (d < minDist) { minDist = d; nearest = c; }
-      });
-      if (!nearest) return;
-      if (minDist <= 1) {
-        enemy.intent = { type: 'attack', targetRow: nearest.row, targetCol: nearest.col };
-      } else {
-        // Move one step toward nearest
-        const adj = this.getAdjacentCells(enemy.row, enemy.col);
-        let best = adj[0];
-        let bestDist = Infinity;
-        adj.forEach((cell) => {
-          if (!this.isCellOccupied(cell.row, cell.col)) {
-            const d = this.distance(cell.row, cell.col, nearest.row, nearest.col);
-            if (d < bestDist) { bestDist = d; best = cell; }
-          }
-        });
-        if (best && bestDist < minDist) {
-          enemy.intent = { type: 'move', toRow: best.row, toCol: best.col };
-        }
+      if (dist <= 1) {
+        enemy.intent = { type: 'attack', targetRow: target.row, targetCol: target.col, _targetCritterId: target.id };
+      } else if (canMove) {
+        enemy.intent = { type: 'move', toRow: nextCell.row, toCol: nextCell.col, _targetCritterId: target.id };
       }
     } else if (def.behavior === 'ranged') {
-      let nearest = null;
-      let minDist = Infinity;
-      this.critters.forEach((c) => {
-        const d = this.distance(enemy.row, enemy.col, c.row, c.col);
-        if (d <= def.range && d < minDist) { minDist = d; nearest = c; }
-      });
-      if (nearest) {
-        enemy.intent = { type: 'attack', targetRow: nearest.row, targetCol: nearest.col };
+      if (isInRange) {
+        enemy.intent = { type: 'attack', targetRow: target.row, targetCol: target.col, _targetCritterId: target.id };
+      } else if (canMove) {
+        enemy.intent = { type: 'move', toRow: nextCell.row, toCol: nextCell.col, _targetCritterId: target.id };
       }
     } else if (def.behavior === 'grab') {
-      let nearest = null;
-      let minDist = Infinity;
-      this.critters.forEach((c) => {
-        const d = this.distance(enemy.row, enemy.col, c.row, c.col);
-        if (d <= def.range && d < minDist) { minDist = d; nearest = c; }
-      });
-      if (!nearest) return;
-      if (minDist <= 1) {
-        enemy.intent = { type: 'attack', targetRow: nearest.row, targetCol: nearest.col };
-      } else {
-        const dr = Math.sign(enemy.row - nearest.row);
-        const dc = Math.sign(enemy.col - nearest.col);
-        const toRow = nearest.row + dr;
-        const toCol = nearest.col + dc;
-        if (this.isCellValid(toRow, toCol) && !this.isCellOccupied(toRow, toCol)) {
-          enemy.intent = { type: 'pull', target: nearest, toRow, toCol };
+      if (dist <= 1) {
+        enemy.intent = { type: 'attack', targetRow: target.row, targetCol: target.col, _targetCritterId: target.id };
+      } else if (isInRange) {
+        const dr = Math.sign(enemy.row - target.row);
+        const dc = Math.sign(enemy.col - target.col);
+
+        const pullOptions = [
+          { r: target.row + dr, c: target.col + dc },
+          { r: target.row + dr, c: target.col },
+          { r: target.row, c: target.col + dc },
+        ];
+
+        let validPull = null;
+        for (const opt of pullOptions) {
+          if (this.isCellValid(opt.r, opt.c) && !this.isCellOccupied(opt.r, opt.c)) {
+            validPull = opt;
+            break;
+          }
         }
+
+        if (validPull) {
+          enemy.intent = { type: 'pull', target, toRow: validPull.r, toCol: validPull.c, _targetCritterId: target.id };
+        } else if (canMove) {
+          enemy.intent = { type: 'move', toRow: nextCell.row, toCol: nextCell.col, _targetCritterId: target.id };
+        }
+      } else if (canMove) {
+        enemy.intent = { type: 'move', toRow: nextCell.row, toCol: nextCell.col, _targetCritterId: target.id };
       }
     } else if (def.behavior === 'bomb') {
-      let nearest = null;
-      let minDist = Infinity;
-      this.critters.forEach((c) => {
-        const d = this.distance(enemy.row, enemy.col, c.row, c.col);
-        if (d <= def.range && d < minDist) { minDist = d; nearest = c; }
-      });
-      if (nearest) {
-        enemy.intent = { type: 'bomb', bombRow: nearest.row, bombCol: nearest.col };
+      if (isInRange) {
+        const alreadyBombed = this.bombs.some(
+          (b) => b.row === target.row && b.col === target.col && b.timer > 0
+        );
+        if (!alreadyBombed) {
+          enemy.intent = { type: 'bomb', bombRow: target.row, bombCol: target.col, _targetCritterId: target.id };
+        } else if (canMove) {
+          enemy.intent = { type: 'move', toRow: nextCell.row, toCol: nextCell.col, _targetCritterId: target.id };
+        }
+      } else if (canMove) {
+        enemy.intent = { type: 'move', toRow: nextCell.row, toCol: nextCell.col, _targetCritterId: target.id };
       }
     }
   }
@@ -906,6 +979,8 @@ export default class BattleScene extends Phaser.Scene {
       } else {
         await this.moveEntityTo(action.target, pushRow, pushCol);
       }
+      action.target.stunned = true;
+      action.target.sprite.setTint(0xffdd44);
     } else if (action.type === 'stomp') {
       if (!this.enemies.includes(action.target)) return;
       this.playEffect(action.target.row, action.target.col, 'stomp');

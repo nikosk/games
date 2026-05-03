@@ -8,6 +8,7 @@ import chargerImg from '../assets/charger.png';
 import spitterImg from '../assets/spitter.png';
 import grabberImg from '../assets/grabber.png';
 import boomerImg from '../assets/boomer.png';
+import hazardImg from '../assets/hazard.png';
 
 export default class BootScene extends Phaser.Scene {
   constructor() {
@@ -22,6 +23,7 @@ export default class BootScene extends Phaser.Scene {
     this.load.image('enemy_spitter', spitterImg);
     this.load.image('enemy_grabber', grabberImg);
     this.load.image('enemy_boomer', boomerImg);
+    this.load.image('cell_hazard', hazardImg);
   }
 
   create() {
@@ -462,15 +464,6 @@ export default class BootScene extends Phaser.Scene {
     g.lineStyle(2, 0xe74c3c, 0.5);
     g.strokeRoundedRect(0, 0, s, s, 8);
     g.generateTexture('highlight_danger', s, s);
-    g.destroy();
-
-    // Hazard cell
-    g = this.make.graphics({ add: false });
-    g.fillStyle(0xff4444, 0.18);
-    g.fillRoundedRect(0, 0, s, s, 8);
-    g.lineStyle(2, 0xcc0000, 0.35);
-    g.strokeRoundedRect(0, 0, s, s, 8);
-    g.generateTexture('cell_hazard', s, s);
     g.destroy();
   }
 }
