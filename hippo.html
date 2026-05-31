@@ -337,6 +337,7 @@ let transitionAlpha=0, transitionTarget='';
 let starCollectCount=0, totalFoodInLevel=0, collectedFoodCount=0;
 let musicEnabled=true, musicGain=null, musicOsc=null;
 let hippoFrame=0, hippoFrameTimer=0;
+let screenFlash=0;
 
 // ── Level-specific mutable state ─────
 let platData=[], enemyData=[], foodData=[], spikeData=[], flagData={};
@@ -352,6 +353,7 @@ function initLevel(idx){
   movingPlats=platData.filter(p=>p.moving);
   resetHippo(L.spawn);
   hippo.invincible=60;
+  score=0;
   screenShake=0;particles=[];floatTexts=[];
   camX=0;camY=0;
   bossDefeated=false;
@@ -922,8 +924,9 @@ function drawHUD(){
   }
 
   // Bottom hint
+  const hint=curLevel===9&&!bossDefeated?'Jump on the Guardian\'s head 5 times!':'ESC to pause  |  Jump on enemies to stomp!';
   ctx.fillStyle='rgba(255,255,255,0.35)';ctx.font='10px "Segoe UI"';ctx.textAlign='center';
-  ctx.fillText('ESC to pause  |  Jump on enemies to stomp!',W/2,H-6);
+  ctx.fillText(hint,W/2,H-6);
 
   // Mute button (top-right corner)
   const mbtnX=W-30,mbtnY=H-30;
@@ -1113,7 +1116,7 @@ function updateGame(){
       sfxStomp();spawnP(e.x+e.w/2,e.y+e.h/2,12,['#f1c40f','#e67e22']);
       hippo.vy=-hippo.jmp*0.7;
       if(e.type==='boss'){
-        e.hp--;e.hitTimer=20;screenShake=12;
+        e.hp--;e.hitTimer=20;screenShake=12;screenFlash=0.6;
         spawnFT(e.x,e.y-20,`${e.hp}/5 hits!`,'#ff0',16,true);
         if(e.hp<=0){
           bossDefeated=true;
@@ -1186,6 +1189,7 @@ function updateGame(){
 
   // Screen shake decay
   if(screenShake>0){screenShake*=0.85;if(screenShake<0.3)screenShake=0;}
+  if(screenFlash>0){screenFlash-=0.03;if(screenFlash<0)screenFlash=0;}
 
   // Particles
   for(let i=particles.length-1;i>=0;i--){
@@ -1271,6 +1275,12 @@ function drawGame(){
   ctx.globalAlpha=1;
 
   ctx.restore();
+
+  // Screen flash (boss hits, etc)
+  if(screenFlash>0){
+    ctx.fillStyle=`rgba(255,50,50,${screenFlash*0.4})`;
+    ctx.fillRect(0,0,W,H);
+  }
 
   // HUD
   drawHUD();
