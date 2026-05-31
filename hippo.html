@@ -60,6 +60,42 @@ function sfxVictory(){ sfx(523,'triangle',0.3,0.2);setTimeout(()=>sfx(659,'trian
 function sfxPowerup(){ sfx(600,'triangle',0.15,0.15,1200);setTimeout(()=>sfx(900,'triangle',0.2,0.2,1600),100); }
 function sfxStomp(){ sfx(60,'sawtooth',0.15,0.1,30); }
 
+// ── Ambient Music ────────────────────
+let ambientNodes=[];
+function stopAmbient(){
+  ambientNodes.forEach(n=>{try{n.osc.stop();}catch(e){}});
+  ambientNodes=[];
+}
+function startAmbient(theme){
+  stopAmbient();
+  if(!musicEnabled)return;
+  if(AC.state==='suspended')AC.resume();
+  const baseFreq=theme===THEMES.lava?55:theme===THEMES.ice?130:theme===THEMES.final?98:110;
+  const osc=AC.createOscillator();
+  const gain=AC.createGain();
+  const filt=AC.createBiquadFilter();
+  osc.type='triangle';
+  osc.frequency.setValueAtTime(baseFreq,AC.currentTime);
+  filt.type='lowpass';filt.frequency.setValueAtTime(300,AC.currentTime);
+  gain.gain.setValueAtTime(0.04,AC.currentTime);
+  osc.connect(filt);filt.connect(gain);gain.connect(AC.destination);
+  osc.start();
+  ambientNodes.push({osc,gain,filt});
+  const osc2=AC.createOscillator();
+  const gain2=AC.createGain();
+  osc2.type='sine';
+  osc2.frequency.setValueAtTime(baseFreq*1.5,AC.currentTime);
+  gain2.gain.setValueAtTime(0.02,AC.currentTime);
+  osc2.connect(gain2);gain2.connect(AC.destination);
+  osc2.start();
+  ambientNodes.push({osc:osc2,gain:gain2});
+}
+function toggleMusic(){
+  musicEnabled=!musicEnabled;
+  if(!musicEnabled)stopAmbient();
+  else if(state==='playing')startAmbient(levels[curLevel].theme);
+}
+
 // ── Input ────────────────────────────
 const keys={};
 window.addEventListener('keydown',e=>{keys[e.code]=true;e.preventDefault();});
@@ -399,6 +435,17 @@ function drawTitle(){
   if(button(W/2-90,320,180,45,'ℹ  HOW TO PLAY','#e67e22')){
     state='howTo';sfxChime();
   }
+  // Music toggle
+  const musicBtnY=380;
+  ctx.save();
+  const h3=mouseX>=W/2-30&&mouseX<=W/2+30&&mouseY>=musicBtnY&&mouseY<=musicBtnY+30;
+  ctx.fillStyle=h3?'#555':'#333';
+  ctx.strokeStyle='#888';ctx.lineWidth=1;
+  roundRect(W/2-30,musicBtnY,60,30,15);ctx.fill();ctx.stroke();
+  ctx.fillStyle='#fff';ctx.font='18px Arial';ctx.textAlign='center';
+  ctx.fillText(musicEnabled?'🔊':'🔇',W/2,musicBtnY+22);
+  if(h3&&justClicked){toggleMusic();}
+  ctx.restore();
 
   ctx.fillStyle='rgba(255,255,255,0.5)';ctx.font='12px "Segoe UI"';ctx.textAlign='center';
   ctx.fillText('Arrow Keys / WASD to move & jump  |  Press ↑/W twice for double-jump (with star power)',W/2,H-20);
@@ -507,11 +554,12 @@ function drawStory(){
   if(button(W/2-80,H-100,160,45,'▶  START LEVEL','#27ae60')){
     initLevel(curLevel);
     state='playing';
+    startAmbient(levels[curLevel].theme);
     sfxChime();
   }
   if(button(W/2-80,H-45,160,40,'← BACK','#7f8c8d')){
     state=curLevel===0?'title':'levelSelect';
-    sfxChime();
+    sfxChime();if(curLevel===0)stopAmbient();
   }
 }
 
@@ -876,6 +924,15 @@ function drawHUD(){
   // Bottom hint
   ctx.fillStyle='rgba(255,255,255,0.35)';ctx.font='10px "Segoe UI"';ctx.textAlign='center';
   ctx.fillText('ESC to pause  |  Jump on enemies to stomp!',W/2,H-6);
+
+  // Mute button (top-right corner)
+  const mbtnX=W-30,mbtnY=H-30;
+  const mh=mouseX>=mbtnX-12&&mouseX<=mbtnX+12&&mouseY>=mbtnY-12&&mouseY<=mbtnY+12;
+  ctx.fillStyle=mh?'rgba(255,255,255,0.5)':'rgba(255,255,255,0.2)';
+  ctx.beginPath();ctx.arc(mbtnX,mbtnY,12,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#fff';ctx.font='14px Arial';ctx.textAlign='center';
+  ctx.fillText(musicEnabled?'🔊':'🔇',mbtnX,mbtnY+5);
+  if(mh&&justClicked)toggleMusic();
 }
 
 // ── Game Over ────────────────────────
@@ -886,10 +943,10 @@ function drawGameOver(){
   ctx.fillStyle='#fff';ctx.font='18px "Segoe UI"';
   ctx.fillText('Hippo hit a spike!',W/2,H/2+5);
   if(button(W/2-60,H/2+35,120,40,'↺ RETRY','#e74c3c')){
-    initLevel(curLevel);state='playing';sfxChime();
+    initLevel(curLevel);state='playing';sfxChime();startAmbient(levels[curLevel].theme);
   }
   if(button(W/2-60,H/2+85,120,40,'← LEVELS','#7f8c8d')){
-    state='levelSelect';sfxChime();
+    state='levelSelect';sfxChime();stopAmbient();
   }
 }
 
@@ -949,10 +1006,10 @@ function drawGameComplete(){
   ctx.fillText(`Final Score: ${totalScore}`,W/2,250);
 
   if(button(W/2-80,300,160,45,'🏠 MENU','#27ae60')){
-    state='title';sfxChime();
+    state='title';sfxChime();stopAmbient();
   }
   if(button(W/2-80,360,160,45,'↺ PLAY AGAIN','#3498db')){
-    levelCompleted=[];totalScore=0;curLevel=0;state='story';sfxChime();
+    levelCompleted=[];totalScore=0;curLevel=0;state='story';sfxChime();stopAmbient();
   }
 }
 
@@ -1027,14 +1084,14 @@ function updateGame(){
   for(let s of spikeData){
     if(hippo.x+hippo.w>s.x+4&&hippo.x<s.x+s.w-4&&
        hippo.y+hippo.h>s.y&&hippo.y<s.y+s.h){
-      sfxHurt();screenShake=15;state='gameover';
+      sfxHurt();screenShake=15;state='gameover';stopAmbient();
       return;
     }
   }
 
   // Fall in pit
   if(hippo.y>L.h+100){
-    sfxHurt();screenShake=10;state='gameover';
+    sfxHurt();screenShake=10;state='gameover';stopAmbient();
     return;
   }
 
@@ -1117,7 +1174,7 @@ function updateGame(){
     if(curLevel===9&&!bossDefeated)return;
     totalScore+=score;
     if(!levelCompleted[curLevel])levelCompleted[curLevel]=true;
-    sfxVictory();screenShake=8;
+    sfxVictory();screenShake=8;stopAmbient();
     state=curLevel===9?'gameComplete':'win';
   }
 
@@ -1242,7 +1299,7 @@ function loop(){
     ctx.fillStyle='#fff';ctx.font='bold 40px "Segoe UI"';ctx.textAlign='center';
     ctx.fillText('PAUSED',W/2,H/2-20);
     ctx.font='18px "Segoe UI"';ctx.fillText('Press ESC to resume',W/2,H/2+20);
-    if(button(W/2-60,H/2+50,120,40,'← QUIT','#e74c3c')){state='levelSelect';sfxChime();}
+    if(button(W/2-60,H/2+50,120,40,'← QUIT','#e74c3c')){state='levelSelect';sfxChime();stopAmbient();}
     if(keys['Escape']){state='playing';keys['Escape']=false;}
   }
   else if(state==='win'){drawLevelComplete();}
