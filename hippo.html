@@ -167,67 +167,122 @@ function updateCam(tx,ty,ww,wh){
 
 // ── Player (Hippo) ──────────────────
 const hippo={
-  x:80,y:300,w:48,h:42,vx:0,vy:0,spd:4.5,jmp:11,grav:0.55,onGround:false,
+  x:80,y:300,w:52,h:40,vx:0,vy:0,spd:4.5,jmp:11,grav:0.55,onGround:false,
   face:1,invincible:0,doubleJump:false,djUsed:false,stunTimer:0,
   trail:[]
 };
-function resetHippo(spawn){ hippo.x=spawn.x;hippo.y=spawn.y;hippo.w=48;hippo.h=42;hippo.vx=0;hippo.vy=0;hippo.onGround=false;hippo.face=1;hippo.invincible=60;hippo.doubleJump=false;hippo.djUsed=false;hippo.stunTimer=0;hippo.trail=[]; }
+function resetHippo(spawn){ hippo.x=spawn.x;hippo.y=spawn.y;hippo.w=52;hippo.h=40;hippo.vx=0;hippo.vy=0;hippo.onGround=false;hippo.face=1;hippo.invincible=60;hippo.doubleJump=false;hippo.djUsed=false;hippo.stunTimer=0;hippo.trail=[]; }
 
 function drawHippo(){
   ctx.save();
   const cx=hippo.x+hippo.w/2,cy=hippo.y+hippo.h/2;
   ctx.translate(cx,cy);
   if(hippo.face<0)ctx.scale(-1,1);
+  if(hippo.invincible>0&&Math.floor(hippo.invincible/4)%2===0){ctx.restore();return;}
 
-  const FRAME_W=48,FRAME_H=42;
   const onGround=hippo.onGround;
   const moving=Math.abs(hippo.vx)>0.5;
   const bob=onGround&&moving?Math.sin(hippoFrame*0.25)*2:0;
+  const W=52,H=40;
 
-  // Shadow on ground
-  ctx.fillStyle='rgba(0,0,0,0.25)';
-  ctx.beginPath();ctx.ellipse(0,FRAME_H/2-1,FRAME_W/2-2,4,0,0,Math.PI*2);ctx.fill();
+  // Ground shadow
+  ctx.fillStyle='rgba(0,0,0,0.2)';
+  ctx.beginPath();ctx.ellipse(0,H/2-1,W/2,4,0,0,Math.PI*2);ctx.fill();
 
-  // Pick sprite frame
-  let frame=0; // idle
-  if(!onGround) frame=4; // jump frame
-  else if(moving) frame=1+Math.floor(hippoFrame*0.15)%3; // walk cycle frames 1-3
+  ctx.save();ctx.translate(0,bob);
 
-  ctx.save();
-  ctx.translate(0,bob);
+  // === BACK LEGS (behind body) ===
+  ctx.fillStyle='#6B5D9A';
+  ctx.beginPath();ctx.roundRect(-W/2+6,H/2-12,11,12,4);ctx.fill();
+  ctx.beginPath();ctx.roundRect(W/2-17,H/2-12,11,12,4);ctx.fill();
 
-  // Invincibility blink
-  if(hippo.invincible>0&&Math.floor(hippo.invincible/4)%2===0){
-    ctx.globalAlpha=0.4;
+  // === BODY (wide barrel shape) ===
+  const bodyGrad=ctx.createLinearGradient(0,-H/2,0,H/2);
+  bodyGrad.addColorStop(0,'#B0A0D8');bodyGrad.addColorStop(0.5,'#9888C0');bodyGrad.addColorStop(1,'#7A6AA8');
+  ctx.fillStyle=bodyGrad;
+  // Wide rounded rectangle for barrel body
+  ctx.beginPath();ctx.roundRect(-W/2+2,-H/2+6,W-4,H-14,10);ctx.fill();
+
+  // Lighter belly
+  ctx.fillStyle='#D0C4E8';
+  ctx.beginPath();ctx.ellipse(-2,8,(W-10)/2,H/5,0,0,Math.PI*2);ctx.fill();
+
+  // === FRONT LEGS ===
+  const legSwing=onGround&&moving?Math.sin(hippoFrame*0.3)*3:0;
+  ctx.fillStyle='#8A7AB8';
+  ctx.save();ctx.translate(0,legSwing);
+  ctx.beginPath();ctx.roundRect(-W/2+6,H/2-14,11,14,4);ctx.fill();
+  ctx.restore();
+  ctx.save();ctx.translate(0,-legSwing);
+  ctx.beginPath();ctx.roundRect(W/2-17,H/2-14,11,14,4);ctx.fill();
+  ctx.restore();
+  // Toenails
+  ctx.fillStyle='#E0D4F0';
+  for(let t of [-W/2+9,-W/2+15,W/2-14,W/2-8]){
+    ctx.beginPath();ctx.arc(t,H/2-1,2,0,Math.PI*2);ctx.fill();
   }
 
-  // Draw sprite frame
-  if(hippoSprite.complete&&hippoSprite.naturalWidth>0){
-    ctx.drawImage(hippoSprite,
-      frame*FRAME_W,0,FRAME_W,FRAME_H,  // source rect
-      -FRAME_W/2,-FRAME_H/2,FRAME_W,FRAME_H  // dest
-    );
-  } else {
-    // Fallback if sprite not loaded: simple silhouette
-    ctx.fillStyle='#8878B8';
-    ctx.beginPath();ctx.ellipse(0,2,FRAME_W/2-2,FRAME_H/2-6,0,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#B0A0D8';
-    ctx.beginPath();ctx.ellipse(8,-4,12,10,0,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#FFF';ctx.beginPath();ctx.arc(4,-12,3,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#000';ctx.beginPath();ctx.arc(5,-12,1.5,0,Math.PI*2);ctx.fill();
+  // === TAIL ===
+  ctx.fillStyle='#8A7AB8';
+  ctx.beginPath();ctx.moveTo(-W/2+4,4);
+  ctx.quadraticCurveTo(-W/2-5,-3,-W/2-2,-10);
+  ctx.quadraticCurveTo(-W/2+1,-2,-W/2+4,4);ctx.fill();
+
+  // === HEAD (large, sits forward on body) ===
+  ctx.fillStyle='#B8A8E0';
+  ctx.beginPath();ctx.ellipse(W/4+2,-2,W/3+3,H/3+2,0,0,Math.PI*2);ctx.fill();
+
+  // === SNOUT (WIDE - the key hippo feature!) ===
+  // Wide flat-fronted snout extending forward
+  ctx.fillStyle='#C8B8E8';
+  ctx.beginPath();ctx.roundRect(W/4-2,-H/3-2,W/3+6,H/2-2,8);ctx.fill();
+  // Flat snout front (lighter)
+  ctx.fillStyle='#D8CCF0';
+  ctx.beginPath();ctx.roundRect(W/2-2,-H/3-2,12,H/2-4,6);ctx.fill();
+
+  // === NOSTRILS (prominent, wide apart) ===
+  ctx.fillStyle='#4A3A6A';
+  ctx.beginPath();ctx.arc(W/2,-8,3.5,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(W/2,4,3.5,0,Math.PI*2);ctx.fill();
+  // Nostril highlights
+  ctx.fillStyle='#6A5A8A';
+  ctx.beginPath();ctx.arc(W/2-1,-9,1.5,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(W/2-1,3,1.5,0,Math.PI*2);ctx.fill();
+
+  // === MOUTH (wide smile under snout) ===
+  ctx.strokeStyle='#8A7AB0';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(W/6,8);
+  ctx.quadraticCurveTo(W/3,14,W/2-4,6);ctx.stroke();
+  // Little cheek dimple
+  ctx.fillStyle='rgba(255,150,180,0.3)';
+  ctx.beginPath();ctx.arc(-4,-4,5,0,Math.PI*2);ctx.fill();
+
+  // === EYES (on top of head, small) ===
+  ctx.fillStyle='#FFF';
+  ctx.beginPath();ctx.ellipse(4,-H/2+4,7,8,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#2A1A0A';
+  ctx.beginPath();ctx.arc(6,-H/2+4,3.5,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#000';
+  ctx.beginPath();ctx.arc(7,-H/2+4,2,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#FFF';
+  ctx.beginPath();ctx.arc(8,-H/2+2,1.5,0,Math.PI*2);ctx.fill();
+
+  // === EARS (small, on top) ===
+  ctx.fillStyle='#A090D0';
+  ctx.beginPath();ctx.ellipse(-W/4+4,-H/2+2,8,5,-0.5,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#D0C4F0';
+  ctx.beginPath();ctx.ellipse(-W/4+4,-H/2+1,5,3,-0.5,0,Math.PI*2);ctx.fill();
+
+  // === POWER-UP AURA ===
+  if(hippo.doubleJump){
+    ctx.strokeStyle='rgba(255,215,0,0.5)';ctx.lineWidth=2.5;
+    ctx.beginPath();ctx.ellipse(0,2,W/2+3,H/2+2,0,0,Math.PI*2);ctx.stroke();
+    ctx.strokeStyle='rgba(255,255,255,0.25)';ctx.lineWidth=1.2;
+    ctx.beginPath();ctx.ellipse(0,2,W/2+6,H/2+4,0,0,Math.PI*2);ctx.stroke();
   }
 
   ctx.restore(); // bob
-
-  // Power-up aura (code-drawn overlay)
-  if(hippo.doubleJump){
-    ctx.strokeStyle='rgba(255,215,0,0.6)';ctx.lineWidth=2.5;
-    ctx.beginPath();ctx.ellipse(0,2,FRAME_W/2+3,FRAME_H/2+2,0,0,Math.PI*2);ctx.stroke();
-    ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=1;
-    ctx.beginPath();ctx.ellipse(0,2,FRAME_W/2+6,FRAME_H/2+4,0,0,Math.PI*2);ctx.stroke();
-  }
-
-  ctx.restore(); // flip + translate
+  ctx.restore(); // flip+translate
 }
 
 // ── World / Level Data ───────────────
@@ -383,15 +438,44 @@ function drawTitle(){
   ctx.beginPath();ctx.moveTo(0,H);for(let x=0;x<=W;x+=20)ctx.lineTo(x,H-60-Math.sin(x*0.005+t*0.01)*30-Math.sin(x*0.013)*20);
   ctx.lineTo(W,H);ctx.fill();
 
-  // Hippo (sprite-based, scaled 2x)
-  const hx=W/2-40,hy=H-120;
+  // Hippo (code-drawn, scaled 2x for title)
+  const hx=W/2-45,hy=H-115;
   ctx.save();ctx.translate(hx,hy+Math.sin(t*0.03)*3);
-  ctx.scale(2,2);
-  if(hippoSprite.complete&&hippoSprite.naturalWidth>0){
-    ctx.drawImage(hippoSprite,0,0,48,42,-24,-21,48,42);
-  }else{
-    ctx.fillStyle='#8878B8';ctx.beginPath();ctx.ellipse(0,2,20,16,0,0,Math.PI*2);ctx.fill();
-  }
+  ctx.scale(1.8,1.8);
+  const W2=52,H2=40;
+  // Shadow
+  ctx.fillStyle='rgba(0,0,0,0.15)';ctx.beginPath();ctx.ellipse(0,H2/2-1,W2/2,4,0,0,Math.PI*2);ctx.fill();
+  // Back legs
+  ctx.fillStyle='#6B5D9A';ctx.beginPath();ctx.roundRect(-W2/2+6,H2/2-12,11,12,4);ctx.fill();
+  ctx.beginPath();ctx.roundRect(W2/2-17,H2/2-12,11,12,4);ctx.fill();
+  // Body
+  const bg=ctx.createLinearGradient(0,-H2/2,0,H2/2);
+  bg.addColorStop(0,'#B0A0D8');bg.addColorStop(0.5,'#9888C0');bg.addColorStop(1,'#7A6AA8');
+  ctx.fillStyle=bg;ctx.beginPath();ctx.roundRect(-W2/2+2,-H2/2+6,W2-4,H2-14,10);ctx.fill();
+  ctx.fillStyle='#D0C4E8';ctx.beginPath();ctx.ellipse(-2,8,(W2-10)/2,H2/5,0,0,Math.PI*2);ctx.fill();
+  // Front legs
+  ctx.fillStyle='#8A7AB8';ctx.beginPath();ctx.roundRect(-W2/2+6,H2/2-14,11,14,4);ctx.fill();
+  ctx.beginPath();ctx.roundRect(W2/2-17,H2/2-14,11,14,4);ctx.fill();
+  ctx.fillStyle='#E0D4F0';for(let t of [-W2/2+9,-W2/2+15,W2/2-14,W2/2-8]){ctx.beginPath();ctx.arc(t,H2/2-1,2,0,Math.PI*2);ctx.fill();}
+  // Tail
+  ctx.fillStyle='#8A7AB8';ctx.beginPath();ctx.moveTo(-W2/2+4,4);ctx.quadraticCurveTo(-W2/2-5,-3,-W2/2-2,-10);ctx.quadraticCurveTo(-W2/2+1,-2,-W2/2+4,4);ctx.fill();
+  // Head
+  ctx.fillStyle='#B8A8E0';ctx.beginPath();ctx.ellipse(W2/4+2,-2,W2/3+3,H2/3+2,0,0,Math.PI*2);ctx.fill();
+  // Snout (wide!)
+  ctx.fillStyle='#C8B8E8';ctx.beginPath();ctx.roundRect(W2/4-2,-H2/3-2,W2/3+6,H2/2-2,8);ctx.fill();
+  ctx.fillStyle='#D8CCF0';ctx.beginPath();ctx.roundRect(W2/2-2,-H2/3-2,12,H2/2-4,6);ctx.fill();
+  // Nostrils
+  ctx.fillStyle='#4A3A6A';ctx.beginPath();ctx.arc(W2/2,-8,3.5,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(W2/2,4,3.5,0,Math.PI*2);ctx.fill();
+  // Mouth smile
+  ctx.strokeStyle='#8A7AB0';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(W2/6,8);ctx.quadraticCurveTo(W2/3,14,W2/2-4,6);ctx.stroke();
+  // Eyes
+  ctx.fillStyle='#FFF';ctx.beginPath();ctx.ellipse(4,-H2/2+4,7,8,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#2A1A0A';ctx.beginPath();ctx.arc(6,-H2/2+4,3.5,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#000';ctx.beginPath();ctx.arc(7,-H2/2+4,2,0,Math.PI*2);ctx.fill();ctx.fillStyle='#FFF';ctx.beginPath();ctx.arc(8,-H2/2+2,1.5,0,Math.PI*2);ctx.fill();
+  // Ears
+  ctx.fillStyle='#A090D0';ctx.beginPath();ctx.ellipse(-W2/4+4,-H2/2+2,8,5,-0.5,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#D0C4F0';ctx.beginPath();ctx.ellipse(-W2/4+4,-H2/2+1,5,3,-0.5,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='rgba(255,150,180,0.3)';ctx.beginPath();ctx.arc(-4,-4,5,0,Math.PI*2);ctx.fill();
   ctx.restore();
 
   // Title text with glow
