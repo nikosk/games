@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hippo Hungry Hills</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #2c3e50;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            overflow: hidden;
+        }
+
+        #game-container {
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            background: linear-gradient(to bottom, #87CEEB, #E0F6FF);
+        }
+
+        .instructions {
+            margin-top: 15px;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            max-width: 600px;
+        }
+
+        .highlight {
+            color: #2ecc71;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <canvas id="gameCanvas" width="800" height="450"></canvas>
+    </div>
+
+    <div class="instructions">
+        <strong>Controls:</strong> Arrow Keys / WASD to Move & Jump. <br>
+        <span class="highlight">Healthy Foods (Broccoli, Apples)</span> give huge points, screen shakes, and massive spark explosions! <br>
+        Enemies won't kill you—they just push you back. Jump over them to reach the end flag!
+    </div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// --- Audio Synthesis Helper (No external files needed) ---
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playSound(type) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    if (type === 'healthy') {
+        // High pitch rewarding fanfare chime
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.4);
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.4);
+    } else if (type === 'junk') {
+        // Standard blip
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.15);
+    } else if (type === 'hit') {
+        // Low dull thud/push sound
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+        osc.frequency.linearRampToValueAtTime(60, audioCtx.currentTime + 0.2);
+        gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.2);
+    } else if (type === 'jump') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(500, audioCtx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.15);
+    }
+}
+
+// --- Game State ---
+const worldWidth = 3000; 
+let cameraX = 0;
+let score = 0;
+let screenShake = 0;
+let gameOver = false;
+
+// --- Keyboard Input ---
+const keys = {};
+window.addEventListener('keydown', e => keys[e.code] = true);
+window.addEventListener('keyup', e => keys[e.code] = false);
+
+// --- Entities ---
+const hippo = {
+    x: 100,
+    y: 300,
+    width: 50,
+    height: 40,
+    vx: 0,
+    vy: 0,
+    speed: 5,
+    jumpForce: 12,
+    gravity: 0.6,
+    isGrounded: false,
+    facingRight: true,
+    pushTimer: 0
+};
+
+// Platforms (Level Layout)
+const platforms = [
+    {x: 0, y: 400, width: 800, height: 50},
+    {x: 900, y: 400, width: 600, height: 50},
+    {x: 1600, y: 400, width: 1400, height: 50},
+    // Floating platforms
+    {x: 300, y: 280, width: 150, height: 20},
+    {x: 600, y: 220, width: 150, height: 20},
+    {x: 1050, y: 280, width: 200, height: 20},
+    {x: 1350, y: 190, width: 150, height: 20},
+    {x: 1800, y: 280, width: 250, height: 20},
+    {x: 2200, y: 200, width: 200, height: 20},
+];
+
+// Foods: type, weight (healthiness), score value
+const foodItems = [
+    {x: 350, y: 240, emoji: '🥦', type: 'healthy', value: 50, collected: false},
+    {x: 650, y: 180, emoji: '🍔', type: 'junk', value: 10, collected: false},
+    {x: 1100, y: 240, emoji: '🍎', type: 'healthy', value: 50, collected: false},
+    {x: 1200, y: 240, emoji: '🍕', type: 'junk', value: 10, collected: false},
+    {x: 1400, y: 150, emoji: '🥦', type: 'healthy', value: 50, collected: false},
+    {x: 1850, y: 240, emoji: '🍩', type: 'junk', value: 10, collected: false},
+    {x: 1950, y: 240, emoji: '🍌', type: 'healthy', value: 50, collected: false},
+    {x: 2250, y: 160, emoji: '🍟', type: 'junk', value: 10, collected: false},
+    {x: 2350, y: 160, emoji: '🥗', type: 'healthy', value: 50, collected: false},
+];
+
+// Enemies (Patrollers)
+const enemies = [
+    {x: 500, y: 360, width: 40, height: 40, startX: 450, endX: 700, speed: 2, color: '#e74c3c'},
+    {x: 1100, y: 360, width: 40, height: 40, startX: 1000, endX: 1400, speed: 3, color: '#e74c3c'},
+    {x: 1900, y: 360, width: 40, height: 40, startX: 1700, endX: 2100, speed: 2.5, color: '#e74c3c'},
+    {x: 2400, y: 360, width: 40, height: 40, startX: 2200, endX: 2700, speed: 4, color: '#e74c3c'},
+];
+
+// Finish Line
+const finishFlag = { x: 2900, y: 300, width: 40, height: 100 };
+
+// Particle System
+let particles = [];
+let floatingTexts = [];
+
+function spawnParticles(x, y, type) {
+    const count = type === 'healthy' ? 35 : 8;
+    const colors = type === 'healthy' ? ['#2ecc71', '#a3e4d7', '#f1c40f', '#ffffff'] : ['#e67e22', '#f39c12', '#d35400'];
+    
+    for (let i = 0; i < count; i++) {
+        particles.push({
+            x: x,
+            y: y,
+            vx: (Math.random() - 0.5) * (type === 'healthy' ? 10 : 4),
+            vy: (Math.random() - 0.5) * (type === 'healthy' ? 10 : 4) - (type === 'healthy' ? 3 : 0),
+            radius: Math.random() * (type === 'healthy' ? 6 : 4) + 2,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            alpha: 1,
+            decay: Math.random() * 0.02 + 0.015
+        });
+    }
+}
+
+function spawnFloatingText(x, y, text, color, isLarge) {
+    floatingTexts.push({
+        x: x,
+        y: y,
+        text: text,
+        color: color,
+        fontSize: isLarge ? 28 : 16,
+        fontWeight: isLarge ? 'bold' : 'normal',
+        vy: -2,
+        alpha: 1
+    });
+}
+
+// --- Game Loop ---
+function update() {
+    if (gameOver) return;
+
+    // Handle Push Recovery
+    if (hippo.pushTimer > 0) {
+        hippo.pushTimer--;
+    }
+
+    // Movement
+    if (hippo.pushTimer === 0) {
+        if (keys['ArrowRight'] || keys['KeyD']) {
+            hippo.vx = hippo.speed;
+            hippo.facingRight = true;
+        } else if (keys['ArrowLeft'] || keys['KeyA']) {
+            hippo.vx = -hippo.speed;
+            hippo.facingRight = false;
+        } else {
+            hippo.vx = 0;
+        }
+
+        if ((keys['ArrowUp'] || keys['KeyW'] || keys['Space']) && hippo.isGrounded) {
+            hippo.vy = -hippo.jumpForce;
+            hippo.isGrounded = false;
+            playSound('jump');
+        }
+    }
+
+    // Apply Physics
+    hippo.vy += hippo.gravity;
+    hippo.x += hippo.vx;
+    hippo.y += hippo.vy;
+
+    // Boundary constraints
+    if (hippo.x < 0) hippo.x = 0;
+
+    // Platform Collisions
+    hippo.isGrounded = false;
+    for (let plat of platforms) {
+        // Check collision from top down (landing)
+        if (hippo.x + hippo.width > plat.x && 
+            hippo.x < plat.x + plat.width && 
+            hippo.y + hippo.height >= plat.y && 
+            hippo.y + hippo.height - hippo.vy <= plat.y + 10) {
+            
+            hippo.y = plat.y - hippo.height;
+            hippo.vy = 0;
+            hippo.isGrounded = true;
+        }
+    }
+
+    // Fall in pit check (Reset position instead of death)
+    if (hippo.y > canvas.height + 100) {
+        hippo.x = 100;
+        hippo.y = 100;
+        hippo.vx = 0;
+        hippo.vy = 0;
+        screenShake = 10;
+        playSound('hit');
+    }
+
+    // Enemy Patrol & Logic
+    for (let enemy of enemies) {
+        enemy.x += enemy.speed;
+        if (enemy.x <= enemy.startX || enemy.x + enemy.width >= enemy.endX) {
+            enemy.speed *= -1;
+        }
+
+        // Collision with Hippo
+        if (hippo.x < enemy.x + enemy.width &&
+            hippo.x + hippo.width > enemy.x &&
+            hippo.y < enemy.y + enemy.height &&
+            hippo.y + hippo.height > enemy.y) {
+            
+            // Trigger Pushback mechanics
+            playSound('hit');
+            screenShake = 5;
+            hippo.pushTimer = 15; // stun frame count
+            hippo.vy = -4; // Slight pop upward
+            hippo.vx = (hippo.x + hippo.width / 2 < enemy.x + enemy.width / 2) ? -8 : 8;
+            hippo.x += hippo.vx; // immediate nudge
+        }
+    }
+
+    // Food Collision
+    for (let food of foodItems) {
+        if (!food.collected &&
+            hippo.x < food.x + 30 &&
+            hippo.x + hippo.width > food.x &&
+            hippo.y < food.y + 30 &&
+            hippo.y + hippo.height > food.y) {
+            
+            food.collected = true;
+            score += food.value;
+
+            if (food.type === 'healthy') {
+                playSound('healthy');
+                screenShake = 15; // High impact visual juice
+                spawnParticles(food.x + 15, food.y + 15, 'healthy');
+                spawnFloatingText(food.x, food.y, `CRUNCH! +${food.value}`, '#2ecc71', true);
+            } else {
+                playSound('junk');
+                spawnParticles(food.x + 15, food.y + 15, 'junk');
+                spawnFloatingText(food.x, food.y, `+${food.value}`, '#f1c40f', false);
+            }
+        }
+    }
+
+    // Check Win Condition
+    if (hippo.x + hippo.width > finishFlag.x &&
+        hippo.x < finishFlag.x + finishFlag.width &&
+        hippo.y < finishFlag.y + finishFlag.height &&
+        hippo.y + hippo.height > finishFlag.y) {
+        gameOver = true;
+    }
+
+    // Camera follow (keep player centered slightly to the left)
+    cameraX = hippo.x - 200;
+    if (cameraX < 0) cameraX = 0;
+    if (cameraX > worldWidth - canvas.width) cameraX = worldWidth - canvas.width;
+
+    // Process Effects
+    if (screenShake > 0) screenShake *= 0.9; // decay shake
+    if (screenShake < 0.5) screenShake = 0;
+
+    // Update particles
+    for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.alpha -= p.decay;
+        if (p.alpha <= 0) particles.splice(i, 1);
+    }
+
+    // Update floating text
+    for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        let t = floatingTexts[i];
+        t.y += t.vy;
+        t.alpha -= 0.02;
+        if (t.alpha <= 0) floatingTexts.splice(i, 1);
+    }
+}
+
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.save();
+    // Screen Shake juice application
+    if (screenShake > 0) {
+        let dx = (Math.random() - 0.5) * screenShake;
+        let dy = (Math.random() - 0.5) * screenShake;
+        ctx.translate(dx, dy);
+    }
+
+    // Translate view matrix according to camera
+    ctx.translate(-cameraX, 0);
+
+    // Draw Background Hills (Parallax-ish effect)
+    ctx.fillStyle = '#7bcd7b';
+    ctx.beginPath();
+    ctx.arc(400, 450, 300, 0, Math.PI * 2);
+    ctx.arc(1200, 480, 400, 0, Math.PI * 2);
+    ctx.arc(2200, 450, 350, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Draw Platforms
+    ctx.fillStyle = '#46701a';
+    for (let plat of platforms) {
+        ctx.fillRect(plat.x, plat.y, plat.width, plat.height);
+        // Top grass rim
+        ctx.fillStyle = '#5c9624';
+        ctx.fillRect(plat.x, plat.y, plat.width, 6);
+        ctx.fillStyle = '#46701a';
+    }
+
+    // Draw Finish Flag
+    ctx.fillStyle = '#7f8c8d';
+    ctx.fillRect(finishFlag.x, finishFlag.y, 6, finishFlag.height); // pole
+    ctx.fillStyle = '#e74c3c';
+    ctx.beginPath();
+    ctx.moveTo(finishFlag.x + 6, finishFlag.y);
+    ctx.lineTo(finishFlag.x + 40, finishFlag.y + 20);
+    ctx.lineTo(finishFlag.x + 6, finishFlag.y + 40);
+    ctx.fill();
+
+    // Draw Food Items
+    ctx.font = '24px Arial';
+    ctx.textAlign = 'center';
+    for (let food of foodItems) {
+        if (!food.collected) {
+            ctx.fillText(food.emoji, food.x + 15, food.y + 22);
+        }
+    }
+
+    // Draw Enemies
+    for (let enemy of enemies) {
+        ctx.fillStyle = enemy.color;
+        // Body
+        ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+        // Angry Eyes
+        ctx.fillStyle = 'white';
+        let eyeOffset = enemy.speed > 0 ? 25 : 5;
+        ctx.fillRect(enemy.x + eyeOffset, enemy.y + 8, 8, 8);
+        ctx.fillRect(enemy.x + eyeOffset + 4, enemy.y + 8, 2, 8); // pupil
+        ctx.fillStyle = 'black';
+        ctx.fillRect(enemy.x + eyeOffset + (enemy.speed > 0 ? 4 : 2), enemy.y + 11, 3, 3);
+    }
+
+    // Draw Hippo (The Main Character)
+    ctx.save();
+    ctx.translate(hippo.x + hippo.width / 2, hippo.y + hippo.height / 2);
+    if (!hippo.facingRight) {
+        ctx.scale(-1, 1); // Flip graphic if looking left
+    }
+    
+    // Body (Purple/Grey Hippo)
+    ctx.fillStyle = '#a5a5c4';
+    ctx.fillRect(-hippo.width / 2, -hippo.height / 2 + 5, hippo.width, hippo.height - 5); 
+    // Head Snout
+    ctx.fillRect(0, -hippo.height / 2, hippo.width / 2 + 4, hippo.height / 2 + 4);
+    // Ears
+    ctx.fillRect(-hippo.width / 4, -hippo.height / 2 - 2, 6, 4);
+    // Cheeks / Snout detail
+    ctx.fillStyle = '#bcbcd6';
+    ctx.fillRect(10, -3, 12, 12);
+    // Eye
+    ctx.fillStyle = 'white';
+    ctx.fillRect(2, -12, 6, 6);
+    ctx.fillStyle = 'black';
+    ctx.fillRect(5, -10, 3, 3);
+    // Little Feet
+    ctx.fillStyle = '#8686a8';
+    ctx.fillRect(-hippo.width/2 + 4, hippo.height/2, 10, 5);
+    ctx.fillRect(hippo.width/2 - 14, hippo.height/2, 10, 5);
+
+    ctx.restore();
+
+    // Draw Particles
+    for (let p of particles) {
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    // Draw Floating Text Juice
+    for (let t of floatingTexts) {
+        ctx.save();
+        ctx.globalAlpha = t.alpha;
+        ctx.fillStyle = t.color;
+        ctx.font = `${t.fontWeight} ${t.fontSize}px Arial`;
+        ctx.fillText(t.text, t.x, t.y);
+        ctx.restore();
+    }
+
+    ctx.restore(); // Undo Camera view offset & Screen shake matrix transformation
+
+    // Draw Static HUD (Heads-up Display)
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(15, 15, 160, 45);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 20px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(`SCORE: ${score}`, 30, 44);
+
+    // End Screens
+    if (gameOver) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#2ecc71';
+        ctx.font = 'bold 40px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText("VICTORY! HIPPO IS FULL!", canvas.width / 2, canvas.height / 2 - 20);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '20px Arial';
+        ctx.fillText(`Final Score: ${score}`, canvas.width / 2, canvas.height / 2 + 20);
+        ctx.font = '14px Arial';
+        ctx.fillText(`Press 'R' to play again`, canvas.width / 2, canvas.height / 2 + 60);
+    }
+}
+
+// Reset/Restart functionality
+window.addEventListener('keydown', e => {
+    if (e.code === 'KeyR' && gameOver) {
+        hippo.x = 100;
+        hippo.y = 300;
+        hippo.vx = 0;
+        hippo.vy = 0;
+        score = 0;
+        gameOver = false;
+        foodItems.forEach(f => f.collected = false);
+    }
+});
+
+// Main Loop Processor
+function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+}
+
+// Fire up engine
+loop();
+</script>
+
+</body>
+</html>
