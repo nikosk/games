@@ -966,14 +966,21 @@ function drawEnemies(){
 }
 // ── Draw spikes ──────────────────────
 function drawSpikes(){
-  ctx.fillStyle='#e74c3c';
   for(let s of spikeData){
     const sx=s.x-camX,sy=s.y-camY;
     if(sx<-30||sx>W+30)continue;
-    ctx.beginPath();ctx.moveTo(sx,sy+s.h);ctx.lineTo(sx+s.w/2,sy-8);ctx.lineTo(sx+s.w,sy+s.h);ctx.fill();
-    ctx.fillStyle='#c0392b';
-    ctx.beginPath();ctx.moveTo(sx+4,sy+s.h);ctx.lineTo(sx+s.w/2,sy-2);ctx.lineTo(sx+s.w-4,sy+s.h);ctx.fill();
-    ctx.fillStyle='#e74c3c';
+    const spikeW=s.w,spikeH=s.h;
+    // Glow warning
+    ctx.fillStyle='rgba(255,0,0,0.15)';
+    ctx.beginPath();ctx.moveTo(sx-2,sy+spikeH);ctx.lineTo(sx+spikeW/2,sy-16);ctx.lineTo(sx+spikeW+2,sy+spikeH);ctx.fill();
+    // Main spike body
+    const spGrad=ctx.createLinearGradient(0,sy-8,0,sy+spikeH);
+    spGrad.addColorStop(0,'#FF4444');spGrad.addColorStop(1,'#AA0000');
+    ctx.fillStyle=spGrad;
+    ctx.beginPath();ctx.moveTo(sx,sy+spikeH);ctx.lineTo(sx+spikeW/2,sy-8);ctx.lineTo(sx+spikeW,sy+spikeH);ctx.closePath();ctx.fill();
+    // Highlight edge
+    ctx.fillStyle='rgba(255,255,255,0.3)';
+    ctx.beginPath();ctx.moveTo(sx+spikeW/2,sy-8);ctx.lineTo(sx+2,sy+spikeH);ctx.lineTo(sx+spikeW/2,sy+2);ctx.fill();
   }
 }
 
@@ -981,18 +988,26 @@ function drawSpikes(){
 function drawFlag(){
   const fx=flagData.x-camX,fy=flagData.y-camY;
   // Pole
-  ctx.fillStyle='#7f8c8d';ctx.fillRect(fx,fy,5,flagData.h);
-  // Flag cloth (waving)
-  const wave=Math.sin(animTimer*0.06)*4;
-  ctx.fillStyle='#e74c3c';
-  ctx.beginPath();ctx.moveTo(fx+5,fy);ctx.lineTo(fx+35+wave,fy+15);ctx.lineTo(fx+5,fy+30);ctx.fill();
-  // Star on flag
-  ctx.fillStyle='#f1c40f';ctx.font='14px Arial';ctx.textAlign='center';
-  ctx.fillText('⭐',fx+14+wave*0.5,fy+22);
+  const poleGrad=ctx.createLinearGradient(fx,0,fx+6,0);
+  poleGrad.addColorStop(0,'#BDC3C7');poleGrad.addColorStop(0.5,'#ECF0F1');poleGrad.addColorStop(1,'#95A5A6');
+  ctx.fillStyle=poleGrad;ctx.fillRect(fx,fy,6,flagData.h);
+  // Pole top ball
+  ctx.fillStyle='#F1C40F';ctx.beginPath();ctx.arc(fx+3,fy,5,0,Math.PI*2);ctx.fill();
+  // Flag cloth
+  const wave=Math.sin(animTimer*0.06)*5;
+  const flagGrad=ctx.createLinearGradient(fx+5,fy,fx+40,fy+20);
+  flagGrad.addColorStop(0,'#E74C3C');flagGrad.addColorStop(1,'#C0392B');
+  ctx.fillStyle=flagGrad;
+  ctx.beginPath();ctx.moveTo(fx+6,fy+4);ctx.quadraticCurveTo(fx+22+wave,fy+10,fx+38+wave,fy+12);ctx.lineTo(fx+38+wave,fy+22);ctx.quadraticCurveTo(fx+22+wave,fy+26,fx+6,fy+28);ctx.closePath();ctx.fill();
+  // Flag stripe
+  ctx.fillStyle='rgba(255,255,255,0.2)';ctx.fillRect(fx+6,fy+14,fx+32+wave,4);
+  // Star
+  ctx.fillStyle='#F1C40F';ctx.font='bold 13px Arial';ctx.textAlign='center';ctx.fillText('⭐',fx+20+wave*0.5,fy+22);
   // Glow on final level
   if(curLevel===9){
-    ctx.fillStyle='rgba(255,215,0,0.3)';
-    ctx.beginPath();ctx.arc(fx+20,fy+15,25+Math.sin(animTimer*0.05)*5,0,Math.PI*2);ctx.fill();
+    const glow=ctx.createRadialGradient(fx+20,fy+flagData.h/2,5,fx+20,fy+flagData.h/2,40);
+    glow.addColorStop(0,'rgba(255,215,0,0.4)');glow.addColorStop(1,'rgba(255,215,0,0)');
+    ctx.fillStyle=glow;ctx.beginPath();ctx.arc(fx+20,fy+flagData.h/2,40,0,Math.PI*2);ctx.fill();
   }
 }
 
