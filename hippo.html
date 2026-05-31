@@ -17,7 +17,7 @@ body {
   box-shadow:0 0 40px rgba(100,120,255,0.3), 0 10px 30px rgba(0,0,0,0.6);
   border-radius:12px; overflow:hidden;
 }
-canvas { display:block; }
+canvas { display:block; max-width:100vw; max-height:100vh; width:auto; height:auto; }
 #ui-overlay {
   position:absolute; top:0; left:0; width:100%; height:100%;
   pointer-events:none;
@@ -346,7 +346,7 @@ let levelCompleted=[];
 let bossDefeated=false;
 let animTimer=0;
 let transitionAlpha=0, transitionTarget='';
-let starCollectCount=0, totalFoodInLevel=0, collectedFoodCount=0;
+let deathMessage='';
 let musicEnabled=true, musicGain=null, musicOsc=null;
 let hippoFrame=0, hippoFrameTimer=0;
 let screenFlash=0;
@@ -973,8 +973,9 @@ function drawGameOver(){
   ctx.fillStyle='#e74c3c';ctx.font='bold 40px "Segoe UI"';ctx.textAlign='center';
   ctx.fillText('OUCH!',W/2,H/2-40);
   ctx.fillStyle='#fff';ctx.font='18px "Segoe UI"';
-  ctx.fillText('Hippo hit a spike!',W/2,H/2+5);
-  if(button(W/2-60,H/2+35,120,40,'↺ RETRY','#e74c3c')){
+  ctx.fillText(deathMessage||'Hippo took a tumble!',W/2,H/2+5);
+  if(button(W/2-60,H/2+35,120,40,'↺ RETRY','#e74c3c')||keys['KeyR']){
+    if(keys['KeyR'])keys['KeyR']=false;
     initLevel(curLevel);state='playing';sfxChime();startAmbient(levels[curLevel].theme);
   }
   if(button(W/2-60,H/2+85,120,40,'← LEVELS','#7f8c8d')){
@@ -1116,14 +1117,14 @@ function updateGame(){
   for(let s of spikeData){
     if(hippo.x+hippo.w>s.x+4&&hippo.x<s.x+s.w-4&&
        hippo.y+hippo.h>s.y&&hippo.y<s.y+s.h){
-      sfxHurt();screenShake=15;state='gameover';stopAmbient();
+      sfxHurt();screenShake=15;state='gameover';stopAmbient();deathMessage='Hippo touched a spike! Be careful!';
       return;
     }
   }
 
   // Fall in pit
   if(hippo.y>L.h+100){
-    sfxHurt();screenShake=10;state='gameover';stopAmbient();
+    sfxHurt();screenShake=10;state='gameover';stopAmbient();deathMessage='Hippo fell into the abyss!';
     return;
   }
 
@@ -1151,9 +1152,11 @@ function updateGame(){
           bossDefeated=true;
           const idx=enemyData.indexOf(e);
           enemyData.splice(idx,1);
-          spawnP(e.x+e.w/2,e.y+e.h/2,40,['#f1c40f','#2ecc71','#fff','#e74c3c'],8);
+          spawnP(e.x+e.w/2,e.y+e.h/2,50,['#f1c40f','#2ecc71','#fff','#e74c3c','#9b59b6','#3498db'],10);
+          screenFlash=1.0;screenShake=20;
           sfxVictory();
-          spawnFT(e.x,e.y-30,'BOSS DEFEATED!','#2ecc71',22,true);
+          spawnFT(e.x,e.y-40,'BOSS DEFEATED!','#2ecc71',24,true);
+          spawnFT(e.x,e.y-10,'Reach the flag!','#f1c40f',16,true);
         }
       }else{
         const idx=enemyData.indexOf(e);
