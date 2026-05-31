@@ -98,15 +98,27 @@ function toggleMusic(){
 
 // ── Input ────────────────────────────
 const keys={};
+let touchLeft=false,touchRight=false,touchJump=false;
 window.addEventListener('keydown',e=>{keys[e.code]=true;e.preventDefault();});
 window.addEventListener('keyup',e=>{keys[e.code]=false;e.preventDefault();});
 let mouseX=0,mouseY=0,mouseDown=false,justClicked=false;
 canvas.addEventListener('mousemove',e=>{const r=canvas.getBoundingClientRect();mouseX=e.clientX-r.left;mouseY=e.clientY-r.top;});
 canvas.addEventListener('mousedown',()=>{mouseDown=true;justClicked=true;});
 canvas.addEventListener('mouseup',()=>{mouseDown=false;});
-canvas.addEventListener('touchstart',e=>{e.preventDefault();const r=canvas.getBoundingClientRect();mouseX=e.touches[0].clientX-r.left;mouseY=e.touches[0].clientY-r.top;mouseDown=true;justClicked=true;});
-canvas.addEventListener('touchend',()=>{mouseDown=false;});
-canvas.addEventListener('touchmove',e=>{e.preventDefault();const r=canvas.getBoundingClientRect();mouseX=e.touches[0].clientX-r.left;mouseY=e.touches[0].clientY-r.top;});
+canvas.addEventListener('touchstart',e=>{e.preventDefault();const r=canvas.getBoundingClientRect();mouseX=e.touches[0].clientX-r.left;mouseY=e.touches[0].clientY-r.top;mouseDown=true;justClicked=true;handleTouchControls(mouseX,mouseY,true);});
+canvas.addEventListener('touchend',e=>{e.preventDefault();mouseDown=false;touchLeft=false;touchRight=false;touchJump=false;});
+canvas.addEventListener('touchmove',e=>{e.preventDefault();const r=canvas.getBoundingClientRect();mouseX=e.touches[0].clientX-r.left;mouseY=e.touches[0].clientY-r.top;handleTouchControls(mouseX,mouseY,true);});
+canvas.addEventListener('touchcancel',()=>{mouseDown=false;touchLeft=false;touchRight=false;touchJump=false;});
+
+function handleTouchControls(mx,my,down){
+  if(!down)return;
+  // Left button area (bottom-left)
+  touchLeft=(mx>=10&&mx<=70&&my>=H-80&&my<=H-20);
+  // Right button area
+  touchRight=(mx>=80&&mx<=140&&my>=H-80&&my<=H-20);
+  // Jump button area (bottom-right)
+  touchJump=(mx>=W-70&&mx<=W-10&&my>=H-80&&my<=H-20);
+}
 
 // ── Particles ────────────────────────
 let particles=[],floatTexts=[],screenShake=0;
@@ -936,6 +948,23 @@ function drawHUD(){
   ctx.fillStyle='#fff';ctx.font='14px Arial';ctx.textAlign='center';
   ctx.fillText(musicEnabled?'🔊':'🔇',mbtnX,mbtnY+5);
   if(mh&&justClicked)toggleMusic();
+
+  // Mobile touch controls (semi-transparent)
+  ctx.globalAlpha=0.25;
+  // Left button
+  ctx.fillStyle=touchLeft?'#fff':'#aaa';ctx.beginPath();
+  roundRect(10,H-80,60,60,12);ctx.fill();
+  ctx.fillStyle='#333';ctx.font='28px Arial';ctx.textAlign='center';
+  ctx.fillText('◀',40,H-38);
+  // Right button
+  ctx.fillStyle=touchRight?'#fff':'#aaa';ctx.beginPath();
+  roundRect(80,H-80,60,60,12);ctx.fill();
+  ctx.fillStyle='#333';ctx.fillText('▶',110,H-38);
+  // Jump button
+  ctx.fillStyle=touchJump?'#fff':'#aaa';ctx.beginPath();
+  roundRect(W-70,H-80,60,60,12);ctx.fill();
+  ctx.fillStyle='#333';ctx.fillText('▲',W-40,H-38);
+  ctx.globalAlpha=1;
 }
 
 // ── Game Over ────────────────────────
@@ -1024,8 +1053,8 @@ function updateGame(){
   // Movement (only accept input when not stunned)
   let mx=0;
   if(hippo.stunTimer<=0){
-    if(keys['ArrowRight']||keys['KeyD'])mx=1;
-    if(keys['ArrowLeft']||keys['KeyA'])mx=-1;
+    if(keys['ArrowRight']||keys['KeyD']||touchRight)mx=1;
+    if(keys['ArrowLeft']||keys['KeyA']||touchLeft)mx=-1;
 
     if(mx!==0){
       hippo.vx=mx*hippo.spd;
@@ -1041,7 +1070,7 @@ function updateGame(){
 
   // Jump (only when not stunned)
   if(hippo.stunTimer<=0){
-    const jumpPressed=keys['ArrowUp']||keys['KeyW']||keys['Space'];
+    const jumpPressed=keys['ArrowUp']||keys['KeyW']||keys['Space']||touchJump;
     if(jumpPressed&&hippo.onGround){
       hippo.vy=-hippo.jmp;hippo.onGround=false;sfxJump();
     }else if(jumpPressed&&!hippo.onGround&&hippo.doubleJump&&!hippo.djUsed){
