@@ -128,6 +128,10 @@ function drawHippo(){
   if(hippo.face<0)ctx.scale(-1,1);
   if(hippo.invincible>0&&Math.floor(hippo.invincible/4)%2===0){ctx.restore();return;}
 
+  const onGround=hippo.onGround;
+  const moving=Math.abs(hippo.vx)>0.5;
+  const runCycle=onGround&&moving?Math.sin(hippoFrame*0.3)*5:0;
+
   // Shadow
   ctx.fillStyle='rgba(0,0,0,0.2)';ctx.beginPath();ctx.ellipse(0,hippo.h/2-2,hippo.w/2+2,5,0,0,Math.PI*2);ctx.fill();
 
@@ -156,18 +160,32 @@ function drawHippo(){
   ctx.fillStyle='#8e8eb8';ctx.beginPath();ctx.ellipse(-hippo.w/4+4,-hippo.h/2+2,6,4,-0.3,0,Math.PI*2);ctx.fill();
   ctx.fillStyle='#c8c8e0';ctx.beginPath();ctx.ellipse(-hippo.w/4+4,-hippo.h/2,4,3,-0.3,0,Math.PI*2);ctx.fill();
 
-  // Feet
+  // Animated feet (run cycle)
   ctx.fillStyle='#7a7aaa';
-  ctx.fillRect(-hippo.w/2+5,hippo.h/2-7,12,7);
-  ctx.fillRect(hippo.w/2-16,hippo.h/2-7,12,7);
-  // Toes
-  ctx.fillStyle='#9999bb';ctx.beginPath();ctx.arc(-hippo.w/2+10,hippo.h/2,2.5,0,Math.PI*2);ctx.fill();
-  ctx.beginPath();ctx.arc(-hippo.w/2+15,hippo.h/2,2.5,0,Math.PI*2);ctx.fill();
-  ctx.beginPath();ctx.arc(hippo.w/2-11,hippo.h/2,2.5,0,Math.PI*2);ctx.fill();
-  ctx.beginPath();ctx.arc(hippo.w/2-6,hippo.h/2,2.5,0,Math.PI*2);ctx.fill();
+  if(onGround&&moving){
+    ctx.save();ctx.translate(0,runCycle);
+    ctx.fillRect(-hippo.w/2+5,hippo.h/2-7,12,7);
+    ctx.fillStyle='#9999bb';ctx.beginPath();ctx.arc(-hippo.w/2+10,hippo.h/2,2.5,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(-hippo.w/2+15,hippo.h/2,2.5,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+    ctx.save();ctx.translate(0,-runCycle);
+    ctx.fillRect(hippo.w/2-16,hippo.h/2-7,12,7);
+    ctx.fillStyle='#9999bb';ctx.beginPath();ctx.arc(hippo.w/2-11,hippo.h/2,2.5,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(hippo.w/2-6,hippo.h/2,2.5,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+  }else{
+    ctx.fillRect(-hippo.w/2+5,hippo.h/2-7,12,7);
+    ctx.fillRect(hippo.w/2-16,hippo.h/2-7,12,7);
+    ctx.fillStyle='#9999bb';ctx.beginPath();ctx.arc(-hippo.w/2+10,hippo.h/2,2.5,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(-hippo.w/2+15,hippo.h/2,2.5,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(hippo.w/2-11,hippo.h/2,2.5,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(hippo.w/2-6,hippo.h/2,2.5,0,Math.PI*2);ctx.fill();
+  }
 
-  // Tail
-  ctx.fillStyle='#b8b8d4';ctx.beginPath();ctx.moveTo(-hippo.w/2+2,2);ctx.quadraticCurveTo(-hippo.w/2-6,-2,-hippo.w/2-4,-8);ctx.quadraticCurveTo(-hippo.w/2-2,-4,-hippo.w/2+2,2);ctx.fill();
+  // Tail wag
+  ctx.fillStyle='#b8b8d4';
+  const tailWag=moving?Math.sin(hippoFrame*0.4)*4:0;
+  ctx.beginPath();ctx.moveTo(-hippo.w/2+2,2);ctx.quadraticCurveTo(-hippo.w/2-6-tailWag,-2,-hippo.w/2-4,-8+tailWag);ctx.quadraticCurveTo(-hippo.w/2-2,-4,-hippo.w/2+2,2);ctx.fill();
 
   // Power-up aura
   if(hippo.doubleJump){
@@ -273,14 +291,16 @@ function buildLevels(){
 buildLevels();
 
 // ── Game State ────────────────────────
-let state='title'; // title, story, playing, win, gameover, levelSelect, gameComplete
+let state='title', prevState='title'; // title, story, playing, win, gameover, levelSelect, gameComplete
 let curLevel=0;
 let score=0, totalScore=0;
 let levelCompleted=[];
 let bossDefeated=false;
 let animTimer=0;
-let transitionAlpha=0;
+let transitionAlpha=0, transitionTarget='';
 let starCollectCount=0, totalFoodInLevel=0, collectedFoodCount=0;
+let musicEnabled=true, musicGain=null, musicOsc=null;
+let hippoFrame=0, hippoFrameTimer=0;
 
 // ── Level-specific mutable state ─────
 let platData=[], enemyData=[], foodData=[], spikeData=[], flagData={};
@@ -988,7 +1008,11 @@ function updateGame(){
   for(let p of platData){
     if(hippo.x+hippo.w>p.x&&hippo.x<p.x+p.w&&
        hippo.y+hippo.h>=p.y&&hippo.y+hippo.h-hippo.vy<=p.y+12){
+      const wasAirborne=!hippo.onGround;
       hippo.y=p.y-hippo.h;hippo.vy=0;hippo.onGround=true;
+      if(wasAirborne&&Math.abs(hippo.vy)>4){
+        spawnP(hippo.x+hippo.w/2,hippo.y+hippo.h,6,['#8a7a6a','#aa9a8a','#6a5a4a'],2);
+      }
       if(p.bouncy){hippo.vy=-hippo.jmp*1.5;hippo.onGround=false;sfxJump();}
     }
   }
@@ -1198,6 +1222,8 @@ function drawGame(){
 // ── Main Loop ────────────────────────
 function loop(){
   animTimer++;
+  if(hippo.onGround&&Math.abs(hippo.vx)>0.5)hippoFrame++;
+  else if(!hippo.onGround)hippoFrame+=0.3;
 
   // Pause
   if(keys['Escape']&&state==='playing'){
