@@ -40,6 +40,10 @@ const canvas = document.getElementById('gc');
 const ctx = canvas.getContext('2d');
 const W = 900, H = 500;
 
+// ── Hippo Sprite ─────────────────────
+const hippoSprite = new Image();
+hippoSprite.src = 'data:image/png;base64,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';
+
 // ── Audio ────────────────────────────
 const AC = new (window.AudioContext||window.webkitAudioContext)();
 function sfx(freq,type,dur,vol=0.15,ramp=0){
@@ -174,115 +178,55 @@ function drawHippo(){
   const cx=hippo.x+hippo.w/2,cy=hippo.y+hippo.h/2;
   ctx.translate(cx,cy);
   if(hippo.face<0)ctx.scale(-1,1);
-  if(hippo.invincible>0&&Math.floor(hippo.invincible/4)%2===0){ctx.restore();return;}
 
-  const W=hippo.w,H=hippo.h;
+  const FRAME_W=48,FRAME_H=42;
   const onGround=hippo.onGround;
   const moving=Math.abs(hippo.vx)>0.5;
-  const runPhase=hippoFrame*0.25;
-  const bob=onGround&&moving?Math.sin(runPhase)*2:0;
+  const bob=onGround&&moving?Math.sin(hippoFrame*0.25)*2:0;
 
   // Shadow on ground
   ctx.fillStyle='rgba(0,0,0,0.25)';
-  ctx.beginPath();ctx.ellipse(0,H/2-1,W/2,4,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(0,FRAME_H/2-1,FRAME_W/2-2,4,0,0,Math.PI*2);ctx.fill();
+
+  // Pick sprite frame
+  let frame=0; // idle
+  if(!onGround) frame=4; // jump frame
+  else if(moving) frame=1+Math.floor(hippoFrame*0.15)%3; // walk cycle frames 1-3
 
   ctx.save();
   ctx.translate(0,bob);
 
-  // ── BACK LEGS ──────────────────────
-  const legSwing=onGround&&moving?Math.sin(runPhase)*4:0;
-  // Far back leg
-  ctx.fillStyle='#6A5C9A';
-  ctx.beginPath();ctx.roundRect(-W/2+8,H/2-10,10,10,3);ctx.fill();
-  // Far front leg
-  ctx.fillStyle='#7B6DAB';
-  ctx.beginPath();ctx.roundRect(W/2-18,H/2-12,10,12,3);ctx.fill();
-
-  // ── BODY ───────────────────────────
-  const bodyGrad=ctx.createLinearGradient(0,-H/2,0,H/2);
-  bodyGrad.addColorStop(0,'#A898D0');
-  bodyGrad.addColorStop(0.6,'#8878B8');
-  bodyGrad.addColorStop(1,'#6A5C9A');
-  ctx.fillStyle=bodyGrad;
-  ctx.beginPath();ctx.ellipse(-2,1,W/2-3,H/2-6,0,0,Math.PI*2);ctx.fill();
-
-  // Belly (lighter)
-  ctx.fillStyle='#C8B8E8';
-  ctx.beginPath();ctx.ellipse(-2,6,W/2-8,H/4,0,0,Math.PI*2);ctx.fill();
-
-  // ── FRONT LEGS ─────────────────────
-  ctx.fillStyle='#8878B8';
-  ctx.save();ctx.translate(0,legSwing);
-  ctx.beginPath();ctx.roundRect(-W/2+8,H/2-12,10,12,3);ctx.fill();
-  ctx.restore();
-  ctx.save();ctx.translate(0,-legSwing);
-  ctx.beginPath();ctx.roundRect(W/2-18,H/2-10,10,10,3);ctx.fill();
-  ctx.restore();
-  // Toenails
-  ctx.fillStyle='#D8C8F0';
-  for(let lx of [-W/2+10,-W/2+16,W/2-14,W/2-8]){
-    ctx.beginPath();ctx.arc(lx+legSwing*(lx<-W/4?-1:1)*0.5,H/2-0.5,2,0,Math.PI*2);ctx.fill();
+  // Invincibility blink
+  if(hippo.invincible>0&&Math.floor(hippo.invincible/4)%2===0){
+    ctx.globalAlpha=0.4;
   }
 
-  // ── TAIL ───────────────────────────
-  ctx.fillStyle='#8878B8';
-  ctx.beginPath();ctx.moveTo(-W/2+2,1);
-  ctx.quadraticCurveTo(-W/2-6,-4,-W/2-3,-10);
-  ctx.quadraticCurveTo(-W/2,-4,-W/2+2,1);ctx.fill();
-
-  // ── HEAD ───────────────────────────
-  ctx.fillStyle='#B0A0D8';
-  ctx.beginPath();ctx.ellipse(W/4+2,-4,W/3+2,H/3,0,0,Math.PI*2);ctx.fill();
-
-  // ── SNOUT ──────────────────────────
-  ctx.fillStyle='#C0B0E8';
-  ctx.beginPath();ctx.ellipse(W/4+8,-2,W/4+4,H/4+2,0,0,Math.PI*2);ctx.fill();
-  // Snout flat front
-  ctx.fillStyle='#D0C0F0';
-  ctx.beginPath();ctx.ellipse(W/4+14,-3,8,10,0,0,Math.PI*2);ctx.fill();
-
-  // Nostrils
-  ctx.fillStyle='#5A4A8A';
-  ctx.beginPath();ctx.arc(W/4+17,-5,2.5,0,Math.PI*2);ctx.fill();
-  ctx.beginPath();ctx.arc(W/4+17,2,2.5,0,Math.PI*2);ctx.fill();
-
-  // Mouth line
-  ctx.strokeStyle='#8A7AB8';ctx.lineWidth=1.5;
-  ctx.beginPath();ctx.moveTo(W/4+4,6);ctx.quadraticCurveTo(W/4+12,12,W/4+18,5);ctx.stroke();
-
-  // ── EYES ───────────────────────────
-  // Eye whites
-  ctx.fillStyle='#fff';
-  ctx.beginPath();ctx.ellipse(4,-14,7,8,0,0,Math.PI*2);ctx.fill();
-  // Iris
-  ctx.fillStyle='#3A2A1A';
-  ctx.beginPath();ctx.arc(6,-14,3.5,0,Math.PI*2);ctx.fill();
-  // Pupil
-  ctx.fillStyle='#000';
-  ctx.beginPath();ctx.arc(7,-14,2,0,Math.PI*2);ctx.fill();
-  // Highlight
-  ctx.fillStyle='#fff';
-  ctx.beginPath();ctx.arc(8,-16,1.5,0,Math.PI*2);ctx.fill();
-
-  // ── EARS ───────────────────────────
-  ctx.fillStyle='#9A8AC8';
-  ctx.beginPath();ctx.ellipse(-W/4+6,-H/2+4,8,5,-0.4,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#C0B0E8';
-  ctx.beginPath();ctx.ellipse(-W/4+6,-H/2+3,5,3,-0.4,0,Math.PI*2);ctx.fill();
-
-  // ── ROSY CHEEK ─────────────────────
-  ctx.fillStyle='rgba(255,150,180,0.35)';
-  ctx.beginPath();ctx.arc(-6,-4,6,0,Math.PI*2);ctx.fill();
-
-  // ── POWER-UP AURA ──────────────────
-  if(hippo.doubleJump){
-    ctx.strokeStyle='rgba(255,215,0,0.6)';ctx.lineWidth=2.5;
-    ctx.beginPath();ctx.ellipse(0,2,W/2+2,H/2+1,0,0,Math.PI*2);ctx.stroke();
-    ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=1;
-    ctx.beginPath();ctx.ellipse(0,2,W/2+5,H/2+3,0,0,Math.PI*2);ctx.stroke();
+  // Draw sprite frame
+  if(hippoSprite.complete&&hippoSprite.naturalWidth>0){
+    ctx.drawImage(hippoSprite,
+      frame*FRAME_W,0,FRAME_W,FRAME_H,  // source rect
+      -FRAME_W/2,-FRAME_H/2,FRAME_W,FRAME_H  // dest
+    );
+  } else {
+    // Fallback if sprite not loaded: simple silhouette
+    ctx.fillStyle='#8878B8';
+    ctx.beginPath();ctx.ellipse(0,2,FRAME_W/2-2,FRAME_H/2-6,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#B0A0D8';
+    ctx.beginPath();ctx.ellipse(8,-4,12,10,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#FFF';ctx.beginPath();ctx.arc(4,-12,3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#000';ctx.beginPath();ctx.arc(5,-12,1.5,0,Math.PI*2);ctx.fill();
   }
 
   ctx.restore(); // bob
+
+  // Power-up aura (code-drawn overlay)
+  if(hippo.doubleJump){
+    ctx.strokeStyle='rgba(255,215,0,0.6)';ctx.lineWidth=2.5;
+    ctx.beginPath();ctx.ellipse(0,2,FRAME_W/2+3,FRAME_H/2+2,0,0,Math.PI*2);ctx.stroke();
+    ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.ellipse(0,2,FRAME_W/2+6,FRAME_H/2+4,0,0,Math.PI*2);ctx.stroke();
+  }
+
   ctx.restore(); // flip + translate
 }
 
@@ -439,47 +383,15 @@ function drawTitle(){
   ctx.beginPath();ctx.moveTo(0,H);for(let x=0;x<=W;x+=20)ctx.lineTo(x,H-60-Math.sin(x*0.005+t*0.01)*30-Math.sin(x*0.013)*20);
   ctx.lineTo(W,H);ctx.fill();
 
-  // Hippo sitting (matching in-game design)
-  const hx=W/2-20,hy=H-135;
-  ctx.save();ctx.translate(hx,hy+Math.sin(t*0.03)*4);
-  // Back legs
-  ctx.fillStyle='#6A5C9A';ctx.beginPath();ctx.roundRect(-40,25,14,12,3);ctx.fill();
-  ctx.beginPath();ctx.roundRect(26,25,14,12,3);ctx.fill();
-  // Body
-  const bg=ctx.createLinearGradient(0,-45,0,30);
-  bg.addColorStop(0,'#A898D0');bg.addColorStop(0.6,'#8878B8');bg.addColorStop(1,'#6A5C9A');
-  ctx.fillStyle=bg;ctx.beginPath();ctx.ellipse(-5,0,42,30,0,0,Math.PI*2);ctx.fill();
-  // Belly
-  ctx.fillStyle='#C8B8E8';ctx.beginPath();ctx.ellipse(-5,8,32,14,0,0,Math.PI*2);ctx.fill();
-  // Front legs
-  ctx.fillStyle='#8878B8';ctx.beginPath();ctx.roundRect(-40,23,14,14,3);ctx.fill();
-  ctx.beginPath();ctx.roundRect(26,23,14,14,3);ctx.fill();
-  // Toes
-  ctx.fillStyle='#D8C8F0';
-  for(let tx of [-36,-30,30,36]){ctx.beginPath();ctx.arc(tx,35,2.5,0,Math.PI*2);ctx.fill();}
-  // Tail
-  ctx.fillStyle='#8878B8';ctx.beginPath();ctx.moveTo(-42,5);ctx.quadraticCurveTo(-52,-2,-48,-10);ctx.quadraticCurveTo(-44,-2,-42,5);ctx.fill();
-  // Head
-  ctx.fillStyle='#B0A0D8';ctx.beginPath();ctx.ellipse(24,-10,28,22,0,0,Math.PI*2);ctx.fill();
-  // Snout
-  ctx.fillStyle='#C0B0E8';ctx.beginPath();ctx.ellipse(36,-4,20,16,0,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#D0C0F0';ctx.beginPath();ctx.ellipse(44,-6,10,12,0,0,Math.PI*2);ctx.fill();
-  // Nostrils
-  ctx.fillStyle='#5A4A8A';ctx.beginPath();ctx.arc(47,-8,3,0,Math.PI*2);ctx.fill();
-  ctx.beginPath();ctx.arc(47,0,3,0,Math.PI*2);ctx.fill();
-  // Happy mouth
-  ctx.strokeStyle='#8A7AB8';ctx.lineWidth=1.5;
-  ctx.beginPath();ctx.moveTo(34,4);ctx.quadraticCurveTo(40,10,48,2);ctx.stroke();
-  // Eyes (happy)
-  ctx.fillStyle='#fff';ctx.beginPath();ctx.ellipse(14,-18,8,9,0,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#3A2A1A';ctx.beginPath();ctx.arc(17,-18,4,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#000';ctx.beginPath();ctx.arc(18,-18,2.5,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(19,-21,1.8,0,Math.PI*2);ctx.fill();
-  // Ears
-  ctx.fillStyle='#9A8AC8';ctx.beginPath();ctx.ellipse(-8,-36,10,6,-0.4,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#C0B0E8';ctx.beginPath();ctx.ellipse(-8,-37,6,4,-0.4,0,Math.PI*2);ctx.fill();
-  // Rosy cheek
-  ctx.fillStyle='rgba(255,150,180,0.3)';ctx.beginPath();ctx.arc(4,-6,7,0,Math.PI*2);ctx.fill();
+  // Hippo (sprite-based, scaled 2x)
+  const hx=W/2-40,hy=H-120;
+  ctx.save();ctx.translate(hx,hy+Math.sin(t*0.03)*3);
+  ctx.scale(2,2);
+  if(hippoSprite.complete&&hippoSprite.naturalWidth>0){
+    ctx.drawImage(hippoSprite,0,0,48,42,-24,-21,48,42);
+  }else{
+    ctx.fillStyle='#8878B8';ctx.beginPath();ctx.ellipse(0,2,20,16,0,0,Math.PI*2);ctx.fill();
+  }
   ctx.restore();
 
   // Title text with glow
