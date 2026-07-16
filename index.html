@@ -107,6 +107,9 @@
         .game-card:nth-child(6)::before { background: linear-gradient(90deg, #FF8C42, #FFB74D); }
         .game-card:nth-child(7)::before { background: linear-gradient(90deg, #FFD93D, #FF9A3D); }
         .game-card:nth-child(8)::before { background: linear-gradient(90deg, #6BCB77, #4ECDC4); }
+        .game-card:nth-child(9)::before { background: linear-gradient(90deg, #8E75B2, #D8A7E8); }
+        .game-card:nth-child(10)::before { background: linear-gradient(90deg, #FF8C42, #FFD166); }
+        .game-card:nth-child(11)::before { background: linear-gradient(90deg, #5C6BC0, #26A69A); }
 
         .game-card:hover {
             transform: translateY(-15px) scale(1.02);
@@ -171,6 +174,21 @@
             box-shadow: 0 8px 0 #4CAF50;
         }
 
+        .game-card:nth-child(9) .game-icon {
+            background: linear-gradient(135deg, #E8DDF2, #B8A8E0);
+            box-shadow: 0 8px 0 #7A6AA8;
+        }
+
+        .game-card:nth-child(10) .game-icon {
+            background: linear-gradient(135deg, #FFF3C4, #FFB74D);
+            box-shadow: 0 8px 0 #F57C00;
+        }
+
+        .game-card:nth-child(11) .game-icon {
+            background: linear-gradient(135deg, #C5CAE9, #80CBC4);
+            box-shadow: 0 8px 0 #3F51B5;
+        }
+
         .game-icon::after {
             content: '▶';
             position: absolute;
@@ -208,6 +226,9 @@
         .game-card:nth-child(6) .game-title { color: #E65100; }
         .game-card:nth-child(7) .game-title { color: #F57C00; }
         .game-card:nth-child(8) .game-title { color: #388E3C; }
+        .game-card:nth-child(9) .game-title { color: #6A4C93; }
+        .game-card:nth-child(10) .game-title { color: #E65100; }
+        .game-card:nth-child(11) .game-title { color: #3F51B5; }
 
         .game-desc {
             font-size: 1.1rem;
@@ -319,6 +340,27 @@
             <h2 class="game-title">Coco's Lost Hat</h2>
             <p class="game-desc">Help Coco find her red hat in a narrated Greek adventure!</p>
             <span class="age-badge">Ages 3+</span>
+        </a>
+
+        <a href="hippo.html" class="game-card">
+            <div class="game-icon">🦛</div>
+            <h2 class="game-title">Hippo's Great Feast</h2>
+            <p class="game-desc">Leap across ten magical lands on a quest for the Golden Watermelon!</p>
+            <span class="age-badge">Ages 3+</span>
+        </a>
+
+        <a href="little-chef-kitchen/" class="game-card">
+            <div class="game-icon">🍳</div>
+            <h2 class="game-title">Little Chef's Kitchen</h2>
+            <p class="game-desc">Run a busy automated kitchen and keep every hungry customer happy!</p>
+            <span class="age-badge">Ages 3+</span>
+        </a>
+
+        <a href="thegame/" class="game-card">
+            <div class="game-icon">⚔️</div>
+            <h2 class="game-title">Critter Tactics</h2>
+            <p class="game-desc">Command a team of clever critters in colorful tactical battles!</p>
+            <span class="age-badge">Ages 4+</span>
         </a>
     </div>
     
