@@ -111,6 +111,7 @@
         .game-card:nth-child(10)::before { background: linear-gradient(90deg, #8D6E63, #A1887F); }
         .game-card:nth-child(11)::before { background: linear-gradient(90deg, #00ACC1, #26C6DA); }
         .game-card:nth-child(12)::before { background: linear-gradient(90deg, #E53935, #FF7043); }
+        .game-card:nth-child(13)::before { background: linear-gradient(90deg, #43A047, #D32F2F); }
 
         .game-card:hover {
             transform: translateY(-15px) scale(1.02);
@@ -195,6 +196,11 @@
             box-shadow: 0 8px 0 #E53935;
         }
 
+        .game-card:nth-child(13) .game-icon {
+            background: linear-gradient(135deg, #C8E6C9, #81C784);
+            box-shadow: 0 8px 0 #388E3C;
+        }
+
         .game-icon::after {
             content: '▶';
             position: absolute;
@@ -236,6 +242,7 @@
         .game-card:nth-child(10) .game-title { color: #6D4C41; }
         .game-card:nth-child(11) .game-title { color: #00838F; }
         .game-card:nth-child(12) .game-title { color: #C62828; }
+        .game-card:nth-child(13) .game-title { color: #2E7D32; }
 
         .game-desc {
             font-size: 1.1rem;
@@ -374,6 +381,13 @@
             <div class="game-icon">👾</div>
             <h2 class="game-title">Code Adventure</h2>
             <p class="game-desc">Learn programming with Bit the robot! Code, loops, and conditions!</p>
+            <span class="age-badge">Ages 3+</span>
+        </a>
+
+        <a href="crocodile-game/" class="game-card">
+            <div class="game-icon">🐊</div>
+            <h2 class="game-title">Coco's Lost Hat</h2>
+            <p class="game-desc">Help Coco find her red hat in a narrated Greek adventure!</p>
             <span class="age-badge">Ages 3+</span>
         </a>
     </div>
