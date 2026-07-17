@@ -27,7 +27,7 @@ Before changing a game, read instructions in this order:
 
 If documents conflict, follow the more specific document. Ask the owner when a conflict changes product scope, gameplay, art direction, public URLs, or architecture.
 
-Until the Markdown plan documents exist, the current HTML review artifact under `.lavish/` records the approved portfolio direction.
+The canonical approved rewrite plan begins at `.plans/README.md`; architecture, quality, media, decisions, and per-game briefs are cross-linked there. The `.lavish/` review artifact is source history only and is not an implementation dependency.
 
 ## Product authority
 
@@ -73,16 +73,16 @@ classic/
   <preserved original games>
 
 games/
-  train-tracks/
-  animal-memory/
-  monkey-banana/
-  mouse-adventure/
-  valley-explorer/
-  robot-factory/
-  code-adventure/
+  railway-workshop/
+  wild-pairs/
+  canopy-caper/
+  cheese-heist/
+  valley-of-echoes/
+  sparkys-assembly-line/
+  bits-grand-adventure/
   cocos-lost-hat/
   hippos-great-feast/
-  little-chef-kitchen/
+  little-chefs-grand-kitchen/
   critter-tactics/
 
 packages/
