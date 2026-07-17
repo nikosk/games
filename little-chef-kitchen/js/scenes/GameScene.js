@@ -65,13 +65,6 @@ class GameScene extends Phaser.Scene {
         this.createToolbar();
         this.createLevelUI();
         
-        // Start game loop
-        this.time.addEvent({
-            delay: 100,
-            callback: this.gameTick,
-            callbackScope: this,
-            loop: true
-        });
         
         // Customer spawn timer
         this.sceneTime = 0;
@@ -97,6 +90,42 @@ class GameScene extends Phaser.Scene {
         
         // Show recipe book
         this.createRecipeBook();
+
+        // Handle window resize without accumulating listeners across scene restarts
+        this.scale.on('resize', this.handleResize, this);
+        this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.handleShutdown, this);
+    }
+
+    handleShutdown() {
+        this.scale.off('resize', this.handleResize, this);
+    }
+
+    handleResize() {
+        // Rebuild UI elements that use fixed screen positions
+        if (this.toolbarBg) this.toolbarBg.destroy();
+        if (this.toolButtons) {
+            this.toolButtons.forEach(tb => {
+                if (tb.btn) tb.btn.destroy();
+                if (tb.icon) tb.icon.destroy();
+                if (tb.label) tb.label.destroy();
+            });
+            this.toolButtons = [];
+        }
+        if (this.levelTextBg) this.levelTextBg.destroy();
+        if (this.levelText) this.levelText.destroy();
+        if (this.progressTextBg) this.progressTextBg.destroy();
+        if (this.progressText) this.progressText.destroy();
+        if (this.recipeBg) this.recipeBg.destroy();
+        if (this.recipeTitle) this.recipeTitle.destroy();
+        if (this.recipeEntries) {
+            this.recipeEntries.forEach(e => e.destroy());
+            this.recipeEntries = [];
+        }
+
+        this.createToolbar();
+        this.createLevelUI();
+        this.createRecipeBook();
+        this.updateToolSelection();
     }
 
     initGrid() {
@@ -347,8 +376,13 @@ class GameScene extends Phaser.Scene {
         
         const st = cell.station;
         
-        // Counter always accepts
-        if (st.type === 'counter') return true;
+        // Counter accepts if there's a customer waiting with the right order
+        if (st.type === 'counter') {
+            const customer = this.customers.find(c =>
+                c.counterX === cell.x && c.counterY === cell.y && !c.satisfied
+            );
+            return customer ? customer.wants === itemType : false;
+        }
         
         // Trash always accepts
         if (st.type === 'trash') return true;
@@ -391,7 +425,7 @@ class GameScene extends Phaser.Scene {
             );
             
             // Red if blocked, green if valid
-            const blocked = cell.station || (cell.belt && this.selectedTool.startsWith('belt_'));
+            const blocked = cell.station || cell.belt;
             this.ghostSprite.setTint(blocked ? 0xff0000 : 0x00ff00);
             this.ghostSprite.setVisible(true);
         }
@@ -503,6 +537,10 @@ class GameScene extends Phaser.Scene {
         }
         
         const station = cell.station;
+        if (station.processTimer) {
+            station.processTimer.remove();
+            station.processTimer = null;
+        }
         if (station.sprite) station.sprite.destroy();
         if (station.itemSprite) station.itemSprite.destroy();
         if (station.progressBar) station.progressBar.destroy();
@@ -538,11 +576,10 @@ class GameScene extends Phaser.Scene {
         cell.belt = belt;
         this.belts.push(belt);
         
+        belt.sprite.setScale(0);
         this.tweens.add({
             targets: belt.sprite,
-            scale: 0,
-            scaleX: 1,
-            scaleY: 1,
+            scale: 1,
             duration: 200,
             ease: 'Back.out'
         });
@@ -645,7 +682,10 @@ class GameScene extends Phaser.Scene {
         
         // Try to place on station
         if (cell.station) {
-            this.placeItemOnStation(x, y, itemType);
+            const placed = this.placeItemOnStation(x, y, itemType);
+            if (!placed && cell.station.type === 'counter') {
+                this.showFloatingText(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE - 50, '❌', 0xff0000);
+            }
         }
         // Try to place on belt
         else if (cell.belt && !cell.belt.item) {
@@ -662,21 +702,27 @@ class GameScene extends Phaser.Scene {
         const station = cell.station;
         
         if (!station) {
-            return;
+            return false;
         }
         
         
         // Counter - try to fulfill order
         if (station.type === 'counter') {
-            this.tryFulfillOrder(x, y, itemType);
-            return;
+            const customer = this.customers.find(c =>
+                c.counterX === x && c.counterY === y && !c.satisfied
+            );
+            if (customer && customer.wants === itemType) {
+                this.fulfillOrder(customer);
+                return true;
+            }
+            return false;
         }
         
         // Trash - destroy item
         if (station.type === 'trash') {
             this.clearHeldItem();
             this.emitParticles(x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, 'steam', 3);
-            return;
+            return true;
         }
         
         // Plate station - plate any item
@@ -693,7 +739,7 @@ class GameScene extends Phaser.Scene {
                     this.advanceTutorial();
                 }
             }
-            return;
+            return true;
         }
 
         // Processor - check recipe
@@ -707,6 +753,17 @@ class GameScene extends Phaser.Scene {
             this.updateStationItemSprite(station);
             this.updateRecipeHint(station);
             
+            // Tutorial: dispenser → mixer steps
+            if (this.tutorialActive && this.tutorialSteps) {
+                const step = this.tutorialSteps[this.tutorialStep];
+                if (step && step.target === 'dispenser_wheat') {
+                    this.advanceTutorial();
+                } else if (step && step.target === 'dispenser_egg_milk' &&
+                    (itemType === 'egg' || itemType === 'milk')) {
+                    this.advanceTutorial();
+                }
+            }
+
             // Tutorial: oven_dough
             if (this.tutorialActive && this.tutorialSteps && station.type === 'oven' && itemType === 'dough') {
                 const step = this.tutorialSteps[this.tutorialStep];
@@ -714,7 +771,10 @@ class GameScene extends Phaser.Scene {
                     this.advanceTutorial();
                 }
             }
+            return true;
         }
+
+        return false;
     }
 
     updateRecipeHint(station) {
@@ -801,11 +861,17 @@ class GameScene extends Phaser.Scene {
                 station.inputs = station.inputs.filter(i => !used.includes(i));
                 station.progress = 0;
                 
+                // Cancel any previous timer
+                if (station.processTimer) {
+                    station.processTimer.remove();
+                    station.processTimer = null;
+                }
+
                 // Create progress bar
                 this.createProgressBar(station);
                 
                 // Processing timer
-                this.time.delayedCall(recipe.time, () => {
+                station.processTimer = this.time.delayedCall(recipe.time, () => {
                     this.finishProcessing(station);
                 });
                 
@@ -818,7 +884,8 @@ class GameScene extends Phaser.Scene {
         const x = station.x * TILE_SIZE + TILE_SIZE / 2;
         const y = station.y * TILE_SIZE + TILE_SIZE - 5;
         
-        station.progressBar = this.add.rectangle(x, y, 52, 6, 0x00ff00);
+        station.progressBar = this.add.rectangle(x - 26, y, 52, 6, 0x00ff00);
+        station.progressBar.setOrigin(0, 0.5);
         station.progressBar.setDepth(50);
         
         // Animate progress
@@ -834,6 +901,7 @@ class GameScene extends Phaser.Scene {
         station.processing = false;
         station.outputItem = station.recipe.output;
         station.recipe = null;
+        station.processTimer = null;
         
         if (station.progressBar) {
             station.progressBar.destroy();
@@ -849,9 +917,12 @@ class GameScene extends Phaser.Scene {
             10
         );
         
-        // Tutorial
-        if (this.tutorialActive) {
-            this.advanceTutorial();
+        // Tutorial: advance for steps triggered by processing completion
+        if (this.tutorialActive && this.tutorialSteps) {
+            const step = this.tutorialSteps[this.tutorialStep];
+            if (step && (step.target === 'dispenser_wheat' || step.target === 'dispenser_egg_milk')) {
+                this.advanceTutorial();
+            }
         }
     }
 
@@ -938,9 +1009,10 @@ class GameScene extends Phaser.Scene {
         // Apply moves
         for (const move of moves) {
             if (move.type === 'station') {
-                this.placeItemOnStation(move.x, move.y, move.belt.item);
-                move.belt.item = null;
-                this.updateBeltItemSprite(move.belt);
+                if (this.placeItemOnStation(move.x, move.y, move.belt.item)) {
+                    move.belt.item = null;
+                    this.updateBeltItemSprite(move.belt);
+                }
             } else if (move.type === 'belt') {
                 move.to.item = move.from.item;
                 this.updateBeltItemSprite(move.to);
@@ -1047,7 +1119,8 @@ class GameScene extends Phaser.Scene {
         customer.itemIcon.setScale(1.0);
         
         // Patience bar above customer
-        customer.progressBar = this.add.rectangle(cx, cy - 48, 52, 6, 0x00ff00);
+        customer.progressBar = this.add.rectangle(cx - 26, cy - 48, 52, 6, 0x00ff00);
+        customer.progressBar.setOrigin(0, 0.5);
         customer.progressBar.setDepth(35);
         
         this.customers.push(customer);
@@ -1146,9 +1219,12 @@ class GameScene extends Phaser.Scene {
         // Check win condition
         this.checkWinCondition();
         
-        // Tutorial
-        if (this.tutorialActive) {
-            this.advanceTutorial();
+        // Tutorial: advance on serve step
+        if (this.tutorialActive && this.tutorialSteps) {
+            const step = this.tutorialSteps[this.tutorialStep];
+            if (step && (step.target === 'serve' || step.target === 'serve_bread')) {
+                this.advanceTutorial();
+            }
         }
     }
 
@@ -1180,9 +1256,10 @@ class GameScene extends Phaser.Scene {
                 }
             }
             
-            // Impatient bounce
-            if (customer.patience < 10000 && Math.floor(this.time.now / 500) % 2 === 0) {
-                customer.sprite.x += Math.sin(this.time.now / 200) * 0.5;
+            // Impatient wobble
+            if (customer.patience < 10000) {
+                const wobble = Math.sin(this.time.now / 200) * 2;
+                customer.sprite.x = customer.counterX * TILE_SIZE + TILE_SIZE / 2 + wobble;
             }
             
             // Leave if out of patience
@@ -1353,6 +1430,17 @@ class GameScene extends Phaser.Scene {
             this.updateToolSelection();
         });
         
+        btn.on('pointerover', () => {
+            if (toolKey !== this.selectedTool) {
+                btn.setTint(0xdddddd);
+            }
+        });
+        btn.on('pointerout', () => {
+            if (toolKey !== this.selectedTool) {
+                btn.clearTint();
+            }
+        });
+
         this.toolButtons.push({ btn, icon, label, key: toolKey });
     }
 
@@ -1457,6 +1545,7 @@ class GameScene extends Phaser.Scene {
             for (const inp of recipe.inputs) {
                 const icon = this.add.image(offsetX, 0, `item_${inp.item}`);
                 icon.setScale(0.5);
+                icon.setScrollFactor(0);
                 entry.add(icon);
                 offsetX += 18;
             }
@@ -1467,17 +1556,20 @@ class GameScene extends Phaser.Scene {
                 color: '#f4e4c1'
             });
             arrow.setOrigin(0.5);
+            arrow.setScrollFactor(0);
             entry.add(arrow);
             offsetX += 18;
             
             // Output icon
             const outIcon = this.add.image(offsetX, 0, `item_${recipe.output}`);
             outIcon.setScale(0.5);
+            outIcon.setScrollFactor(0);
             entry.add(outIcon);
             
             // Station icon
             const stationIcon = this.add.image(offsetX + 20, 0, `station_${recipe.station}`);
             stationIcon.setScale(0.35);
+            stationIcon.setScrollFactor(0);
             entry.add(stationIcon);
             
             this.recipeEntries.push(entry);
@@ -1541,16 +1633,15 @@ class GameScene extends Phaser.Scene {
         
         // Only zoom OUT if the grid is too big for the viewport
         // Leave padding for UI: 80px top, 120px bottom, 20px sides
+        // Calculate zoom to fit viewport with UI padding
         const maxZoomX = (vw - 50) / gridW;
         const maxZoomY = (vh - 250) / gridH;
-        const maxZoom = Math.min(maxZoomX, maxZoomY);
+        const fitZoom = Math.min(maxZoomX, maxZoomY);
         
-        if (maxZoom < 1.0) {
-            zoom = maxZoom;
+        // Only zoom OUT if grid is too big; never zoom in past 1.0 (UI stays fixed)
+        if (fitZoom < 1.0) {
+            zoom = Math.max(0.5, fitZoom);
         }
-        
-        // Hard floor so tiles don't get microscopic
-        zoom = Math.max(0.5, zoom);
         
         this.cameras.main.setZoom(zoom);
         this.cameras.main.centerOn(cx, cy);
@@ -1583,17 +1674,6 @@ class GameScene extends Phaser.Scene {
         
         // Update bots
         this.updateBots(delta);
-    }
-
-    gameTick() {
-        if (this.isPaused) return;
-        
-        // Update processing stations
-        for (const entity of this.entities) {
-            if (entity.processing && entity.progressBar) {
-                // Progress bar is handled by tween, but we can add visual effects here
-            }
-        }
     }
 
     // ========== SETUP LEVEL ==========
@@ -1655,8 +1735,9 @@ class GameScene extends Phaser.Scene {
     }
 
     showWinScreen() {
-        // Calculate stars
-        const ratio = this.ordersCompleted / this.totalCustomers;
+        // Calculate stars — use level's total customers, not spawned count
+        const totalExpected = this.levelData.customers.length;
+        const ratio = this.ordersCompleted / totalExpected;
         let stars = 1;
         if (ratio >= 0.7) stars = 2;
         if (ratio >= 0.9) stars = 3;
@@ -1795,13 +1876,22 @@ class GameScene extends Phaser.Scene {
         this.failOverlay.setDepth(500);
         this.failOverlay.setScrollFactor(0);
         
-        this.failText = this.add.text(
+        this.failPanel = this.add.image(
             this.scale.width / 2,
             this.scale.height / 2,
+            'ui_panel'
+        );
+        this.failPanel.setDepth(501);
+        this.failPanel.setScrollFactor(0);
+        this.failPanel.setScale(1.5);
+
+        this.failText = this.add.text(
+            this.scale.width / 2,
+            this.scale.height / 2 - 30,
             'Try Again!',
             { fontSize: '32px', fontFamily: 'Courier New, monospace', color: '#f4e4c1' }
         );
-        this.failText.setDepth(501);
+        this.failText.setDepth(502);
         this.failText.setScrollFactor(0);
         this.failText.setOrigin(0.5);
         
@@ -1969,8 +2059,22 @@ class GameScene extends Phaser.Scene {
             const found = findStation('dispenser');
             if (found) { tx = found.x; ty = found.y; }
         } else if (targetType === 'dispenser_egg_milk') {
-            const found = findStation('dispenser');
-            if (found) { tx = found.x; ty = found.y; }
+            // Find dispensers for egg or milk specifically
+            for (let x = 0; x < this.gridWidth; x++) {
+                for (let y = 0; y < this.gridHeight; y++) {
+                    const st = this.grid[x][y].station;
+                    if (st?.type === 'dispenser' && (st.dispenserType === 'egg' || st.dispenserType === 'milk')) {
+                        tx = x; ty = y;
+                        break;
+                    }
+                }
+                if (tx >= 0) break;
+            }
+            // Fallback to any dispenser
+            if (tx < 0) {
+                const found = findStation('dispenser');
+                if (found) { tx = found.x; ty = found.y; }
+            }
         } else if (targetType === 'pickup_dough') {
             const found = findStation('mixer');
             if (found && this.grid[found.x][found.y].station?.outputItem) {
@@ -2106,7 +2210,7 @@ class GameScene extends Phaser.Scene {
 
     spawnBot(actionData) {
         // Find empty spot
-        let spawnX = 0, spawnY = 0;
+        let spawnX = -1, spawnY = -1;
         for (let x = 0; x < this.gridWidth; x++) {
             for (let y = 0; y < this.gridHeight; y++) {
                 if (!this.grid[x][y].station && !this.grid[x][y].belt) {
@@ -2115,9 +2219,12 @@ class GameScene extends Phaser.Scene {
                     break;
                 }
             }
-            if (spawnX !== 0) break;
+            if (spawnX >= 0) break;
         }
         
+        // Fallback if grid is completely full
+        if (spawnX < 0) return;
+
         const bot = {
             x: spawnX,
             y: spawnY,
