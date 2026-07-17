@@ -1267,13 +1267,13 @@
             map: [
                 [1,1,1,1,1,1],
                 [1,9,0,1,2,1],
-                [1,1,0,1,1,1],
+                [1,1,0,0,0,1],
                 [1,0,0,0,0,1],
                 [1,1,1,1,1,1]
             ],
             start: { x: 1, y: 1, dir: 'RIGHT' },
             commands: ['forward', 'left', 'right', 'ifwall'],
-            optimalMoves: 5,
+            optimalMoves: 8,
             intro: '"If Wall" only does the next command if there\'s a wall ahead!'
         },
         {
@@ -1313,14 +1313,14 @@
             width: 8, height: 5,
             map: [
                 [1,1,1,1,1,1,1,1],
-                [1,9,0,0,3,3,2,1],
+                [1,9,0,0,3,0,2,1],
                 [1,1,1,0,1,1,1,1],
                 [1,0,0,0,0,0,0,1],
                 [1,1,1,1,1,1,1,1]
             ],
             start: { x: 1, y: 1, dir: 'RIGHT' },
             commands: ['forward', 'left', 'right', 'jump', 'ifwall'],
-            optimalMoves: 5,
+            optimalMoves: 4,
             intro: 'Jump over the water to reach the star!'
         },
         {
