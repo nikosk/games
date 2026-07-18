@@ -4,11 +4,12 @@ The tooling exists to shorten the path from an idea to a playable portfolio game
 
 ## Current state
 
-- There is no root workspace yet.
+- A minimal root npm workspace and strict TypeScript configuration now exist.
+- Root type checking, portfolio building, and output validation are implemented.
 - Most games are standalone HTML files.
 - `crocodile-game/` has a small working test suite.
 - `little-chef-kitchen/` loads Phaser from a CDN.
-- `thegame/` uses Vite, but its raw source is published instead of its built output, so Critter Tactics is broken online.
+- `thegame/` uses Vite. The portfolio builder now includes its built output, but the live site remains broken until the generated `docs/` is published.
 
 ## Build first
 

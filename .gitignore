@@ -1,3 +1,7 @@
 .pi-subagents/
 .lavish/
 .idea/
+node_modules/
+dist/
+.docs-build/
+*.tsbuildinfo

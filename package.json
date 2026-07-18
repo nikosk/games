@@ -1,0 +1,19 @@
+{
+  "name": "nikosk-games",
+  "version": "0.0.0",
+  "private": true,
+  "workspaces": [
+    "games/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "build": "tsx packages/tools/src/build.ts",
+    "validate": "tsx packages/tools/src/validate.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}

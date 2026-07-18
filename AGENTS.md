@@ -122,7 +122,7 @@ npm run validate
 npm run game:create
 ```
 
-The root workspace does not exist yet, so do not pretend these commands work until they are created. For current legacy checks:
+The root workspace currently provides `npm run typecheck`, `npm run build`, and `npm run validate`. Do not pretend the other commands work until they are created. For current legacy checks:
 
 ```bash
 cd crocodile-game && npm run check

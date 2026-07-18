@@ -124,8 +124,7 @@ Before publishing, run the relevant checks, open the built game, play its main p
 
 ## Next steps
 
-1. Create the small root workspace and portfolio build.
-2. Make the current games publish reliably, including Critter Tactics.
-3. Build one complete Railway Workshop level as the first Phaser/TypeScript example.
-4. Extract only the shared pieces that the finished example proves useful.
-5. Add a lightweight game starter when it will genuinely speed up the next idea.
+1. Check and publish the generated portfolio, including the built Critter Tactics.
+2. Build one complete Railway Workshop level as the first Phaser/TypeScript example.
+3. Extract only the shared pieces that the finished example proves useful.
+4. Add a lightweight game starter when it will genuinely speed up the next idea.

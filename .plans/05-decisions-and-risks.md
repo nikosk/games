@@ -42,8 +42,8 @@ Try the simplest likely solution first. Research only if an unknown blocks usefu
 
 ## Known things to handle
 
-- The root workspace and portfolio build still need to be created.
-- The current Critter Tactics public entry serves raw Vite source and needs a built transitional version.
+- The root workspace and portfolio builder exist; the generated `docs/` still needs to be published.
+- The builder includes a working transitional Critter Tactics build.
 - The exact target tablet should be noted when device tuning begins.
 - Games with old saves may either import them or start fresh; leave old keys untouched either way.
 - Third-party art and audio need clear permission and credits.

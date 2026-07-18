@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="description" content="Η Κόκο και το χαμένο καπέλο - Διαδραστική ιστορία για παιδιά">
+  <title>Η Κόκο και το χαμένο καπέλο</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="app" role="application" aria-label="Η Κόκο και το χαμένο καπέλο - Διαδραστική ιστορία">
+
+  <!-- ===== Audio Unlock Overlay ===== -->
+  <div id="audio-overlay" role="dialog" aria-label="Πάτα για να ξεκινήσει η ιστορία" aria-hidden="false" tabindex="0">
+    <div id="audio-overlay-inner">
+      <div id="audio-overlay-icon" aria-hidden="true">🔊</div>
+      <p id="audio-overlay-text">Πάτα οπουδήποτε για να ξεκινήσει η ιστορία!</p>
+    </div>
+  </div>
+
+  <!-- ===== Top Bar ===== -->
+  <header id="top-bar" role="toolbar" aria-label="Εργαλεία ιστορίας">
+    <button type="button" id="btn-mute" class="icon-btn" aria-label="Σίγαση αφήγησης" title="Σίγαση">
+      <span aria-hidden="true">🔊</span>
+    </button>
+    <nav id="progress-indicator" aria-label="Πρόοδος ιστορίας">
+      <span class="progress-dot active" data-scene="1" role="img" aria-label="Σκηνή 1: Ξύπνα Κόκο"></span>
+      <span class="progress-dot" data-scene="2" role="img" aria-label="Σκηνή 2: Το ποτάμι"></span>
+      <span class="progress-dot" data-scene="3" role="img" aria-label="Σκηνή 3: Το ψηλό χορτάρι"></span>
+      <span class="progress-dot" data-scene="4" role="img" aria-label="Σκηνή 4: Ποιος θα βοηθήσει"></span>
+      <span class="progress-dot" data-scene="5" role="img" aria-label="Σκηνή 5: Στόλισε το καπέλο"></span>
+    </nav>
+    <button type="button" id="btn-replay-narration" class="icon-btn" aria-label="Επανάληψη αφήγησης" title="Επανάληψη αφήγησης">
+      <span aria-hidden="true">🔄</span>
+    </button>
+    <button type="button" id="btn-fullscreen" class="icon-btn" aria-label="Πλήρης οθόνη" title="Πλήρης οθόνη">
+      <span aria-hidden="true">⛶</span>
+    </button>
+  </header>
+
+  <!-- ===== Scene Container ===== -->
+  <main id="scene-container" aria-live="polite">
+
+    <!-- ===== Scene 1: Wake Coco ===== -->
+    <section id="scene-1" class="scene active" aria-label="Σκηνή 1: Ξύπνα την Κόκο">
+      <div class="scene-bg scene-1-bg" aria-hidden="true">
+        <div class="layer sky-layer"></div>
+        <div class="layer hill-back"></div>
+        <div class="layer hill-mid"></div>
+        <div class="layer ground-layer"></div>
+        <div class="layer leaf-left layer-leaf"></div>
+        <div class="layer leaf-right layer-leaf"></div>
+        <div class="layer sun-layer"></div>
+      </div>
+      <div class="scene-content">
+        <div id="coco-sleeping" class="character-container coco-sleeping" role="img" aria-label="Η Κόκο κοιμάται. Πάτα για να την ξυπνήσεις.">
+          <svg class="coco-svg" viewBox="0 0 300 220" aria-hidden="true">
+            <!-- Tail -->
+            <path class="coco-tail" d="M40,100 Q15,80 10,100 Q5,120 40,115Z" fill="#5B8C3E"/>
+            <!-- Body -->
+            <ellipse class="coco-body" cx="130" cy="115" rx="85" ry="50" fill="#6BAF4A"/>
+            <ellipse class="coco-belly" cx="125" cy="128" rx="60" ry="30" fill="#A5D66B"/>
+            <!-- Back leg far -->
+            <ellipse cx="85" cy="155" rx="15" ry="10" fill="#5B8C3E"/>
+            <ellipse cx="165" cy="155" rx="15" ry="10" fill="#5B8C3E"/>
+            <!-- Front leg far -->
+            <ellipse cx="200" cy="150" rx="14" ry="9" fill="#5B8C3E"/>
+            <!-- Head -->
+            <ellipse class="coco-head" cx="210" cy="90" rx="60" ry="32" fill="#6BAF4A"/>
+            <!-- Snout bump -->
+            <ellipse cx="250" cy="92" rx="20" ry="18" fill="#6BAF4A"/>
+            <!-- Nostrils -->
+            <circle cx="262" cy="85" r="3.5" fill="#4A7A2E"/>
+            <circle cx="270" cy="85" r="3.5" fill="#4A7A2E"/>
+            <!-- Closed eyes (sleeping) -->
+            <path class="coco-eye coco-eye-left" d="M225,75 Q232,68 239,75" stroke="#2E4A1E" stroke-width="3" fill="none" stroke-linecap="round"/>
+            <path class="coco-eye coco-eye-right" d="M248,75 Q255,68 262,75" stroke="#2E4A1E" stroke-width="3" fill="none" stroke-linecap="round"/>
+            <!-- Sleep ZZZ -->
+            <text class="sleep-zzz" x="195" y="45" font-size="18" fill="#2E4A1E" font-weight="bold" opacity="0.8">Z</text>
+            <text class="sleep-zzz sleep-zzz-2" x="210" y="25" font-size="22" fill="#2E4A1E" font-weight="bold" opacity="0.6">Z</text>
+            <text class="sleep-zzz sleep-zzz-3" x="228" y="8" font-size="26" fill="#2E4A1E" font-weight="bold" opacity="0.4">Z</text>
+            <!-- Spikes -->
+            <polygon points="100,68 110,45 120,68" fill="#5B8C3E"/>
+            <polygon points="125,65 135,40 145,65" fill="#5B8C3E"/>
+            <polygon points="150,65 158,42 166,65" fill="#5B8C3E"/>
+            <!-- Hat peg (where hat should be) -->
+            <circle id="hat-peg" cx="218" cy="55" r="6" fill="#D32F2F" opacity="0.9"/>
+          </svg>
+        </div>
+        <p class="scene-prompt" id="scene-1-prompt">Πάτα την Κόκο για να ξυπνήσει!</p>
+      </div>
+    </section>
+
+    <!-- ===== Scene 2: Cross River ===== -->
+    <section id="scene-2" class="scene" aria-label="Σκηνή 2: Διάσχισε το ποτάμι">
+      <div class="scene-bg scene-2-bg" aria-hidden="true">
+        <div class="layer sky-layer"></div>
+        <div class="layer hill-back"></div>
+        <div class="layer river-bank-back"></div>
+        <div class="layer river-water"></div>
+        <div class="layer river-bank-front"></div>
+        <div class="layer bush-left layer-bush"></div>
+        <div class="layer bush-right layer-bush"></div>
+      </div>
+      <div class="scene-content">
+        <div class="river-zone" role="group" aria-label="Ποτάμι με νούφαρα">
+          <!-- Lily pads -->
+          <button type="button" class="lily-pad" id="lily-1" aria-label="Πρώτο νούφαρο. Πάτα για να πηδήξει η Κόκο.">
+            <svg viewBox="0 0 80 60" aria-hidden="true"><ellipse cx="40" cy="30" rx="35" ry="22" fill="#4CAF50"/><path d="M40,8 L40,52" stroke="#388E3C" stroke-width="2"/></svg>
+            <span class="lily-label">1</span>
+          </button>
+          <button type="button" class="lily-pad" id="lily-2" aria-label="Δεύτερο νούφαρο. Πάτα για να πηδήξει η Κόκο.">
+            <svg viewBox="0 0 80 60" aria-hidden="true"><ellipse cx="40" cy="30" rx="35" ry="22" fill="#4CAF50"/><path d="M40,8 L40,52" stroke="#388E3C" stroke-width="2"/></svg>
+            <span class="lily-label">2</span>
+          </button>
+          <button type="button" class="lily-pad" id="lily-3" aria-label="Τρίτο νούφαρο. Πάτα για να πηδήξει η Κόκο.">
+            <svg viewBox="0 0 80 60" aria-hidden="true"><ellipse cx="40" cy="30" rx="35" ry="22" fill="#4CAF50"/><path d="M40,8 L40,52" stroke="#388E3C" stroke-width="2"/></svg>
+            <span class="lily-label">3</span>
+          </button>
+        </div>
+        <!-- Coco on the move -->
+        <div id="coco-river" class="character-container coco-small" role="img" aria-label="Η Κόκο στο ποτάμι">
+          <svg class="coco-svg" viewBox="0 0 180 130" aria-hidden="true">
+            <path d="M25,60 Q10,50 8,60 Q6,70 25,68Z" fill="#5B8C3E"/>
+            <ellipse cx="80" cy="70" rx="50" ry="30" fill="#6BAF4A"/>
+            <ellipse cx="78" cy="78" rx="35" ry="18" fill="#A5D66B"/>
+            <ellipse cx="125" cy="55" rx="35" ry="20" fill="#6BAF4A"/>
+            <ellipse cx="148" cy="57" rx="12" ry="10" fill="#6BAF4A"/>
+            <circle cx="155" cy="52" r="2" fill="#4A7A2E"/>
+            <circle cx="160" cy="52" r="2" fill="#4A7A2E"/>
+            <!-- Open eyes -->
+            <circle cx="118" cy="45" r="7" fill="white"/>
+            <circle cx="138" cy="45" r="7" fill="white"/>
+            <circle cx="120" cy="45" r="4" fill="#1A1A1A"/>
+            <circle cx="140" cy="45" r="4" fill="#1A1A1A"/>
+            <path d="M130,58 Q135,63 140,58" stroke="#4A7A2E" stroke-width="2" fill="none" stroke-linecap="round"/>
+            <polygon points="60,42 68,28 76,42" fill="#5B8C3E"/>
+            <polygon points="78,40 85,25 92,40" fill="#5B8C3E"/>
+          </svg>
+        </div>
+        <p class="scene-prompt" id="scene-2-prompt">Πάτα τα νούφαρα για να περάσει η Κόκο το ποτάμι!</p>
+      </div>
+    </section>
+
+    <!-- ===== Scene 3: Tall Grass ===== -->
+    <section id="scene-3" class="scene" aria-label="Σκηνή 3: Το ψηλό χορτάρι">
+      <div class="scene-bg scene-3-bg" aria-hidden="true">
+        <div class="layer sky-layer"></div>
+        <div class="layer hill-back"></div>
+        <div class="layer ground-layer"></div>
+        <div class="layer tree-left"></div>
+        <div class="layer tree-right"></div>
+      </div>
+      <div class="scene-content">
+        <div class="grass-zone" role="group" aria-label="Ψηλό χορτάρι με κρυμμένους φίλους">
+          <!-- Grass clump 1 - hides butterfly -->
+          <div class="grass-clump" id="grass-1" data-creature="butterfly">
+            <button type="button" class="grass-tap-zone" aria-label="Χορτάρι αριστερά. Πάτα για να αποκαλύψεις τι κρύβεται.">
+              <svg class="grass-svg" viewBox="0 0 120 180" aria-hidden="true">
+                <rect class="grass-blade" x="15" y="20" width="14" height="160" rx="7" fill="#66BB6A"/>
+                <rect class="grass-blade" x="35" y="10" width="16" height="170" rx="8" fill="#4CAF50"/>
+                <rect class="grass-blade" x="55" y="5" width="18" height="175" rx="9" fill="#81C784"/>
+                <rect class="grass-blade" x="75" y="15" width="14" height="165" rx="7" fill="#388E3C"/>
+                <rect class="grass-blade" x="92" y="25" width="12" height="155" rx="6" fill="#66BB6A"/>
+              </svg>
+            </button>
+            <div class="creature hidden" id="creature-butterfly" role="img" aria-label="Μια πεταλούδα!">
+              <svg viewBox="0 0 120 100" aria-hidden="true">
+                <ellipse cx="60" cy="60" rx="8" ry="20" fill="#5D4037"/>
+                <ellipse cx="35" cy="35" rx="22" ry="16" fill="#E040FB" opacity="0.85"/>
+                <ellipse cx="85" cy="35" rx="22" ry="16" fill="#E040FB" opacity="0.85"/>
+                <ellipse cx="42" cy="50" rx="14" ry="10" fill="#CE93D8"/>
+                <ellipse cx="78" cy="50" rx="14" ry="10" fill="#CE93D8"/>
+                <circle cx="35" cy="22" r="4" fill="#FFD600"/>
+                <circle cx="85" cy="22" r="4" fill="#FFD600"/>
+                <line x1="60" y1="38" x2="42" y2="18" stroke="#5D4037" stroke-width="2"/>
+                <line x1="60" y1="38" x2="78" y2="18" stroke="#5D4037" stroke-width="2"/>
+              </svg>
+              <span class="creature-name">Πεταλούδα</span>
+            </div>
+          </div>
+          <!-- Grass clump 2 - hides beetle -->
+          <div class="grass-clump" id="grass-2" data-creature="beetle">
+            <button type="button" class="grass-tap-zone" aria-label="Χορτάρι στη μέση. Πάτα για να αποκαλύψεις τι κρύβεται.">
+              <svg class="grass-svg" viewBox="0 0 120 180" aria-hidden="true">
+                <rect class="grass-blade" x="12" y="18" width="15" height="162" rx="7" fill="#66BB6A"/>
+                <rect class="grass-blade" x="32" y="8" width="17" height="172" rx="8" fill="#4CAF50"/>
+                <rect class="grass-blade" x="53" y="3" width="19" height="177" rx="9" fill="#81C784"/>
+                <rect class="grass-blade" x="75" y="12" width="15" height="168" rx="7" fill="#388E3C"/>
+                <rect class="grass-blade" x="93" y="22" width="13" height="158" rx="6" fill="#66BB6A"/>
+              </svg>
+            </button>
+            <div class="creature hidden" id="creature-beetle" role="img" aria-label="Ένα σκαθάρι!">
+              <svg viewBox="0 0 120 90" aria-hidden="true">
+                <ellipse cx="60" cy="50" rx="30" ry="22" fill="#4E342E"/>
+                <ellipse cx="60" cy="42" rx="20" ry="16" fill="#6D4C41"/>
+                <line x1="60" y1="26" x2="60" y2="58" stroke="#3E2723" stroke-width="2"/>
+                <circle cx="47" cy="35" r="4" fill="white"/>
+                <circle cx="73" cy="35" r="4" fill="white"/>
+                <circle cx="47" cy="35" r="2" fill="#1A1A1A"/>
+                <circle cx="73" cy="35" r="2" fill="#1A1A1A"/>
+                <line x1="30" y1="42" x2="18" y2="35" stroke="#4E342E" stroke-width="3" stroke-linecap="round"/>
+                <line x1="30" y1="50" x2="18" y2="55" stroke="#4E342E" stroke-width="3" stroke-linecap="round"/>
+                <line x1="90" y1="42" x2="102" y2="35" stroke="#4E342E" stroke-width="3" stroke-linecap="round"/>
+                <line x1="90" y1="50" x2="102" y2="55" stroke="#4E342E" stroke-width="3" stroke-linecap="round"/>
+              </svg>
+              <span class="creature-name">Σκαθάρι</span>
+            </div>
+          </div>
+          <!-- Grass clump 3 - hides turtle -->
+          <div class="grass-clump" id="grass-3" data-creature="turtle">
+            <button type="button" class="grass-tap-zone" aria-label="Χορτάρι δεξιά. Πάτα για να αποκαλύψεις τι κρύβεται.">
+              <svg class="grass-svg" viewBox="0 0 120 180" aria-hidden="true">
+                <rect class="grass-blade" x="14" y="22" width="13" height="158" rx="7" fill="#66BB6A"/>
+                <rect class="grass-blade" x="33" y="12" width="16" height="168" rx="8" fill="#4CAF50"/>
+                <rect class="grass-blade" x="54" y="7" width="18" height="173" rx="9" fill="#81C784"/>
+                <rect class="grass-blade" x="76" y="17" width="14" height="163" rx="7" fill="#388E3C"/>
+                <rect class="grass-blade" x="94" y="27" width="12" height="153" rx="6" fill="#66BB6A"/>
+              </svg>
+            </button>
+            <div class="creature hidden" id="creature-turtle" role="img" aria-label="Μια χελώνα!">
+              <svg viewBox="0 0 120 90" aria-hidden="true">
+                <ellipse cx="60" cy="48" rx="38" ry="24" fill="#388E3C"/>
+                <ellipse cx="60" cy="44" rx="30" ry="18" fill="#4CAF50"/>
+                <path d="M35,30 L50,20 L70,20 L85,30" fill="#4CAF50" stroke="#388E3C" stroke-width="2"/>
+                <ellipse cx="60" cy="30" rx="12" ry="9" fill="#81C784"/>
+                <circle cx="42" cy="28" r="5" fill="white"/>
+                <circle cx="78" cy="28" r="5" fill="white"/>
+                <circle cx="42" cy="28" r="2.5" fill="#1A1A1A"/>
+                <circle cx="78" cy="28" r="2.5" fill="#1A1A1A"/>
+                <ellipse cx="35" cy="58" rx="10" ry="7" fill="#4CAF50"/>
+                <ellipse cx="85" cy="58" rx="10" ry="7" fill="#4CAF50"/>
+              </svg>
+              <span class="creature-name">Χελώνα</span>
+            </div>
+          </div>
+        </div>
+        <p class="scene-prompt" id="scene-3-prompt">Πάτα το χορτάρι για να βρεις τους φίλους!</p>
+      </div>
+    </section>
+
+    <!-- ===== Scene 4: Choose Helper ===== -->
+    <section id="scene-4" class="scene" aria-label="Σκηνή 4: Ποιος θα βοηθήσει την Κόκο">
+      <div class="scene-bg scene-4-bg" aria-hidden="true">
+        <div class="layer sky-layer"></div>
+        <div class="layer hill-back"></div>
+        <div class="layer ground-layer"></div>
+        <div class="layer tree-center"></div>
+      </div>
+      <div class="scene-content">
+        <!-- Hat in tree -->
+        <div id="hat-in-tree" class="hat-high" role="img" aria-label="Το κόκκινο καπέλο στο δέντρο">
+          <svg viewBox="0 0 80 60" aria-hidden="true">
+            <ellipse cx="40" cy="45" rx="35" ry="10" fill="#B71C1C"/>
+            <rect x="15" y="10" width="50" height="35" rx="10" fill="#D32F2F"/>
+            <rect x="12" y="30" width="56" height="15" rx="7" fill="#F44336"/>
+          </svg>
+        </div>
+        <!-- Helper animals -->
+        <div class="helpers-zone" role="group" aria-label="Διάλεξε έναν φίλο να βοηθήσει">
+          <button type="button" class="helper-btn" id="helper-elephant" aria-label="Ελέφαντας. Πάτα για να σε βοηθήσει.">
+            <svg class="helper-svg" viewBox="0 0 160 150" aria-hidden="true">
+              <ellipse cx="80" cy="90" rx="55" ry="45" fill="#9E9E9E"/>
+              <ellipse cx="80" cy="100" rx="40" ry="30" fill="#BDBDBD"/>
+              <ellipse cx="130" cy="60" rx="25" ry="35" fill="#9E9E9E"/>
+              <circle cx="143" cy="40" r="7" fill="white"/>
+              <circle cx="143" cy="40" r="3.5" fill="#1A1A1A"/>
+              <path d="M145,55 Q155,65 148,75" stroke="#757575" stroke-width="3" fill="none" stroke-linecap="round"/>
+              <ellipse cx="55" cy="125" rx="18" ry="12" fill="#9E9E9E"/>
+              <ellipse cx="105" cy="125" rx="18" ry="12" fill="#9E9E9E"/>
+              <ellipse cx="35" cy="100" rx="16" ry="12" fill="#9E9E9E"/>
+              <ellipse cx="125" cy="100" rx="16" ry="12" fill="#9E9E9E"/>
+            </svg>
+            <span class="helper-name">Ελέφαντας</span>
+          </button>
+          <button type="button" class="helper-btn" id="helper-giraffe" aria-label="Καμηλοπάρδαλη. Πάτα για να σε βοηθήσει.">
+            <svg class="helper-svg" viewBox="0 0 130 170" aria-hidden="true">
+              <rect x="50" y="35" width="18" height="70" rx="9" fill="#FF8F00"/>
+              <ellipse cx="59" cy="30" rx="20" ry="25" fill="#FFA726"/>
+              <circle cx="68" cy="22" r="6" fill="white"/>
+              <circle cx="68" cy="22" r="3" fill="#1A1A1A"/>
+              <circle cx="66" cy="18" r="2" fill="#5D4037"/>
+              <circle cx="70" cy="18" r="2" fill="#5D4037"/>
+              <ellipse cx="70" cy="35" rx="5" ry="3" fill="#BF360C"/>
+              <ellipse cx="59" cy="125" rx="20" ry="12" fill="#FF8F00"/>
+              <ellipse cx="25" cy="115" rx="14" ry="9" fill="#FF8F00"/>
+              <ellipse cx="93" cy="115" rx="14" ry="9" fill="#FF8F00"/>
+              <ellipse cx="35" cy="110" rx="8" ry="5" fill="#5D4037"/>
+              <ellipse cx="83" cy="110" rx="8" ry="5" fill="#5D4037"/>
+              <circle cx="48" cy="55" r="5" fill="#BF360C"/>
+              <circle cx="62" cy="65" r="4" fill="#BF360C"/>
+              <circle cx="55" cy="78" r="6" fill="#BF360C"/>
+              <circle cx="65" cy="90" r="4" fill="#BF360C"/>
+            </svg>
+            <span class="helper-name">Καμηλοπάρδαλη</span>
+          </button>
+          <button type="button" class="helper-btn" id="helper-monkey" aria-label="Μαϊμού. Πάτα για να σε βοηθήσει.">
+            <svg class="helper-svg" viewBox="0 0 130 160" aria-hidden="true">
+              <ellipse cx="65" cy="90" rx="30" ry="35" fill="#795548"/>
+              <ellipse cx="65" cy="100" rx="20" ry="25" fill="#A1887F"/>
+              <circle cx="65" cy="48" r="28" fill="#795548"/>
+              <circle cx="65" cy="52" r="20" fill="#A1887F"/>
+              <circle cx="52" cy="40" r="8" fill="white"/>
+              <circle cx="78" cy="40" r="8" fill="white"/>
+              <circle cx="52" cy="40" r="4" fill="#1A1A1A"/>
+              <circle cx="78" cy="40" r="4" fill="#1A1A1A"/>
+              <ellipse cx="65" cy="55" rx="8" ry="5" fill="#5D4037"/>
+              <ellipse cx="40" cy="120" rx="14" ry="10" fill="#795548"/>
+              <ellipse cx="90" cy="120" rx="14" ry="10" fill="#795548"/>
+              <path d="M35,50 Q20,30 15,25 Q10,20 18,18" stroke="#795548" stroke-width="4" fill="none" stroke-linecap="round"/>
+              <path d="M95,50 Q110,30 115,25 Q120,20 112,18" stroke="#795548" stroke-width="4" fill="none" stroke-linecap="round"/>
+            </svg>
+            <span class="helper-name">Μαϊμού</span>
+          </button>
+        </div>
+        <p class="scene-prompt" id="scene-4-prompt">Ποιος θα βοηθήσει την Κόκο να πάρει το καπέλο;</p>
+      </div>
+    </section>
+
+    <!-- ===== Scene 5: Decorate & Celebrate ===== -->
+    <section id="scene-5" class="scene" aria-label="Σκηνή 5: Στόλισε το καπέλο και γιόρτασε">
+      <div class="scene-bg scene-5-bg" aria-hidden="true">
+        <div class="layer sky-layer"></div>
+        <div class="layer hill-back"></div>
+        <div class="layer ground-layer celebration-ground"></div>
+      </div>
+      <div class="scene-content">
+        <div class="decorate-zone" role="group" aria-label="Στόλισε το καπέλο">
+          <!-- Big red hat to decorate -->
+          <div id="decorate-hat" class="hat-decorate" role="img" aria-label="Το κόκκινο καπέλο της Κόκο">
+            <svg viewBox="0 0 200 160" aria-hidden="true">
+              <ellipse cx="100" cy="130" rx="90" ry="25" fill="#B71C1C"/>
+              <rect x="35" y="20" width="130" height="110" rx="25" fill="#D32F2F"/>
+              <rect x="30" y="65" width="140" height="35" rx="12" fill="#F44336"/>
+            </svg>
+            <!-- Decoration spots -->
+            <div id="deco-spot-flower" class="deco-spot" data-deco="flower" role="img" aria-label="Θέση για λουλούδι"></div>
+            <div id="deco-spot-star" class="deco-spot" data-deco="star" role="img" aria-label="Θέση για αστέρι"></div>
+            <div id="deco-spot-bow" class="deco-spot" data-deco="bow" role="img" aria-label="Θέση για φιόγκο"></div>
+          </div>
+          <!-- Decoration options -->
+          <div class="deco-options" role="group" aria-label="Διάλεξε στολίδια">
+            <button type="button" class="deco-btn" id="deco-flower" data-deco="flower" aria-label="Λουλούδι">
+              <svg viewBox="0 0 70 70" aria-hidden="true">
+                <circle cx="35" cy="35" r="12" fill="#FFD600"/>
+                <ellipse cx="35" cy="17" rx="8" ry="12" fill="#F44336"/>
+                <ellipse cx="35" cy="53" rx="8" ry="12" fill="#F44336"/>
+                <ellipse cx="17" cy="35" rx="12" ry="8" fill="#F44336"/>
+                <ellipse cx="53" cy="35" rx="12" ry="8" fill="#F44336"/>
+                <ellipse cx="22" cy="22" rx="8" ry="11" fill="#FF5252" transform="rotate(45 22 22)"/>
+                <ellipse cx="48" cy="48" rx="8" ry="11" fill="#FF5252" transform="rotate(45 48 48)"/>
+              </svg>
+              <span>Λουλούδι</span>
+            </button>
+            <button type="button" class="deco-btn" id="deco-star" data-deco="star" aria-label="Αστέρι">
+              <svg viewBox="0 0 70 70" aria-hidden="true">
+                <polygon points="35,8 43,28 65,28 48,40 54,60 35,48 16,60 22,40 5,28 27,28" fill="#FFD600"/>
+              </svg>
+              <span>Αστέρι</span>
+            </button>
+            <button type="button" class="deco-btn" id="deco-bow" data-deco="bow" aria-label="Φιόγκος">
+              <svg viewBox="0 0 70 70" aria-hidden="true">
+                <ellipse cx="22" cy="35" rx="16" ry="12" fill="#E91E63" transform="rotate(-20 22 35)"/>
+                <ellipse cx="48" cy="35" rx="16" ry="12" fill="#E91E63" transform="rotate(20 48 35)"/>
+                <circle cx="35" cy="38" r="8" fill="#F06292"/>
+              </svg>
+              <span>Φιόγκος</span>
+            </button>
+          </div>
+        </div>
+        <!-- Celebration zone -->
+        <div id="celebration-zone" class="celebration-zone hidden" role="group" aria-label="Γιορτή! Πάτα τα ζωάκια για να χορέψουν.">
+          <div class="celebration-animals">
+            <button type="button" class="dance-animal" id="dance-coco" aria-label="Η Κόκο. Πάτα για να χορέψει!">
+              <svg viewBox="0 0 130 130" aria-hidden="true">
+                <ellipse cx="65" cy="70" rx="35" ry="22" fill="#6BAF4A"/>
+                <ellipse cx="96" cy="55" rx="28" ry="16" fill="#6BAF4A"/>
+                <circle cx="88" cy="45" r="6" fill="white"/>
+                <circle cx="105" cy="45" r="6" fill="white"/>
+                <circle cx="89" cy="45" r="3" fill="#1A1A1A"/>
+                <circle cx="106" cy="45" r="3" fill="#1A1A1A"/>
+                <path d="M98,56 Q103,60 108,56" stroke="#4A7A2E" stroke-width="2" fill="none"/>
+                <polygon points="45,48 52,36 59,48" fill="#5B8C3E"/>
+              </svg>
+            </button>
+            <button type="button" class="dance-animal" id="dance-elephant" aria-label="Ελέφαντας. Πάτα για να χορέψει!">
+              <svg viewBox="0 0 130 140" aria-hidden="true">
+                <ellipse cx="65" cy="85" rx="40" ry="32" fill="#9E9E9E"/>
+                <ellipse cx="105" cy="60" rx="20" ry="27" fill="#9E9E9E"/>
+                <circle cx="115" cy="42" r="5" fill="white"/>
+                <circle cx="115" cy="42" r="2.5" fill="#1A1A1A"/>
+                <ellipse cx="50" cy="110" rx="14" ry="10" fill="#9E9E9E"/>
+                <ellipse cx="80" cy="110" rx="14" ry="10" fill="#9E9E9E"/>
+              </svg>
+            </button>
+            <button type="button" class="dance-animal" id="dance-giraffe" aria-label="Καμηλοπάρδαλη. Πάτα για να χορέψει!">
+              <svg viewBox="0 0 100 150" aria-hidden="true">
+                <rect x="42" y="40" width="14" height="60" rx="7" fill="#FF8F00"/>
+                <ellipse cx="49" cy="35" rx="16" ry="20" fill="#FFA726"/>
+                <circle cx="56" cy="28" r="5" fill="white"/>
+                <circle cx="56" cy="28" r="2.5" fill="#1A1A1A"/>
+                <circle cx="46" cy="55" r="4" fill="#BF360C"/>
+                <circle cx="55" cy="70" r="3" fill="#BF360C"/>
+                <ellipse cx="49" cy="115" rx="16" ry="10" fill="#FF8F00"/>
+                <ellipse cx="25" cy="105" rx="10" ry="7" fill="#FF8F00"/>
+                <ellipse cx="73" cy="105" rx="10" ry="7" fill="#FF8F00"/>
+              </svg>
+            </button>
+            <button type="button" class="dance-animal" id="dance-monkey" aria-label="Μαϊμού. Πάτα για να χορέψει!">
+              <svg viewBox="0 0 100 140" aria-hidden="true">
+                <ellipse cx="50" cy="82" rx="24" ry="28" fill="#795548"/>
+                <circle cx="50" cy="42" r="22" fill="#795548"/>
+                <circle cx="42" cy="36" r="6" fill="white"/>
+                <circle cx="58" cy="36" r="6" fill="white"/>
+                <circle cx="42" cy="36" r="3" fill="#1A1A1A"/>
+                <circle cx="58" cy="36" r="3" fill="#1A1A1A"/>
+                <ellipse cx="35" cy="105" rx="10" ry="8" fill="#795548"/>
+                <ellipse cx="65" cy="105" rx="10" ry="8" fill="#795548"/>
+              </svg>
+            </button>
+          </div>
+          <div id="confetti-container" aria-hidden="true"></div>
+        </div>
+        <button type="button" id="btn-replay" class="replay-btn hidden" aria-label="Ξανά! Παίξε από την αρχή.">🔁 Ξανά!</button>
+        <p class="scene-prompt" id="scene-5-prompt">Στόλισε το καπέλο της Κόκο!</p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
