@@ -7,7 +7,9 @@
     "packages/*"
   ],
   "scripts": {
+    "dev": "npm run dev --workspace @games/railway-workshop",
     "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
     "build": "tsx packages/tools/src/build.ts",
     "validate": "tsx packages/tools/src/validate.ts"
   },

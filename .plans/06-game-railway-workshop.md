@@ -65,6 +65,12 @@ Warm handmade model railway: painted scenery, chunky wooden track, brass and woo
 - authored board validity
 - save data if progression is added
 
+## Current version
+
+A first playable puzzle now lives in `games/railway-workshop/`. It has limited straight and curved pieces, rotation, removal, undo, route highlighting, a moving train, original sound effects, and a success celebration. The original is preserved at `classic/train-tracks.html`.
+
+Before calling it finished, play it together on the target tablet and tune anything that feels unclear or awkward.
+
 ## Ready for the portfolio when
 
 One complete puzzle feels good by touch, the train journey has clear visual and sound feedback, the built game opens cleanly, and the original is preserved under `classic/`.

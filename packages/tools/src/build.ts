@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { cp, mkdir, rename, rm } from 'node:fs/promises';
+import { cp, mkdir, readFile, readdir, rename, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -28,7 +28,37 @@ const legacyDirectories = [
     destination: 'little-chef-kitchen',
     sources: ['index.html', 'css', 'js'],
   },
+  {
+    destination: 'classic',
+    sources: ['train-tracks.html'],
+  },
 ] as const;
+
+interface GameManifest {
+  readonly id: string;
+}
+
+async function findWorkspaceGames(): Promise<Array<{ directory: string; manifest: GameManifest }>> {
+  const gamesDirectory = join(root, 'games');
+  const entries = await readdir(gamesDirectory, { withFileTypes: true });
+  const games: Array<{ directory: string; manifest: GameManifest }> = [];
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const directory = join(gamesDirectory, entry.name);
+    try {
+      const manifest = JSON.parse(await readFile(join(directory, 'game.json'), 'utf8')) as GameManifest;
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(manifest.id)) {
+        throw new Error(`Invalid game id in games/${entry.name}/game.json: ${manifest.id}`);
+      }
+      games.push({ directory, manifest });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    }
+  }
+
+  return games.sort((left, right) => left.manifest.id.localeCompare(right.manifest.id));
+}
 
 async function copy(relativeSource: string, relativeDestination = relativeSource): Promise<void> {
   const destination = join(staging, relativeDestination);
@@ -48,6 +78,13 @@ function run(command: string, args: string[], cwd: string): Promise<void> {
       }
     });
   });
+}
+
+async function buildWorkspaceGames(): Promise<void> {
+  for (const game of await findWorkspaceGames()) {
+    await run('npm', ['run', 'build'], game.directory);
+    await copy(join('games', game.manifest.id, 'dist'), game.manifest.id);
+  }
 }
 
 async function buildCritterTactics(): Promise<void> {
@@ -72,6 +109,7 @@ async function build(): Promise<void> {
       }
     }
 
+    await buildWorkspaceGames();
     await buildCritterTactics();
 
     await rm(output, { recursive: true, force: true });

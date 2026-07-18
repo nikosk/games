@@ -5,11 +5,12 @@ The tooling exists to shorten the path from an idea to a playable portfolio game
 ## Current state
 
 - A minimal root npm workspace and strict TypeScript configuration now exist.
-- Root type checking, portfolio building, and output validation are implemented.
+- Root development, type checking, testing, portfolio building, and output validation are implemented.
 - Most games are standalone HTML files.
+- Railway Workshop is the first Phaser/TypeScript/Vite workspace game and is included automatically by the portfolio builder.
 - `crocodile-game/` has a small working test suite.
 - `little-chef-kitchen/` loads Phaser from a CDN.
-- `thegame/` uses Vite. The portfolio builder now includes its built output, but the live site remains broken until the generated `docs/` is published.
+- `thegame/` uses Vite and its built output is published through `docs/`.
 
 ## Build first
 

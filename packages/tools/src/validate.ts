@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const site = join(root, 'docs');
 
-const expectedEntries = [
+const fixedExpectedEntries = [
   'index.html',
   'animal-memory.html',
   'code-adventure.html',
@@ -15,10 +15,32 @@ const expectedEntries = [
   'robot-factory.html',
   'train-tracks.html',
   'valley-explorer.html',
+  'classic/train-tracks.html',
   'crocodile-game/index.html',
   'little-chef-kitchen/index.html',
   'thegame/index.html',
 ] as const;
+
+interface GameManifest {
+  readonly id: string;
+}
+
+async function workspaceGameEntries(): Promise<string[]> {
+  const gamesDirectory = join(root, 'games');
+  const entries: string[] = [];
+  for (const directory of await readdir(gamesDirectory, { withFileTypes: true })) {
+    if (!directory.isDirectory()) continue;
+    try {
+      const manifest = JSON.parse(
+        await readFile(join(gamesDirectory, directory.name, 'game.json'), 'utf8'),
+      ) as GameManifest;
+      entries.push(`${manifest.id}/index.html`);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    }
+  }
+  return entries.sort();
+}
 
 const errors: string[] = [];
 
@@ -120,6 +142,7 @@ async function validate(): Promise<void> {
     throw new Error('docs/ does not exist. Run npm run build first.');
   }
 
+  const expectedEntries = [...fixedExpectedEntries, ...await workspaceGameEntries()];
   for (const entry of expectedEntries) {
     if (!await exists(join(site, entry))) errors.push(`Missing portfolio entry: ${entry}`);
   }
