@@ -6,23 +6,24 @@ describe('responsive workshop layout', () => {
     [1024, 768],
     [1280, 720],
     [1366, 1024],
-  ])('fills a landscape viewport at %d × %d', (width, height) => {
+  ])('keeps the map dominant at %d × %d', (width, height) => {
     const layout = createWorkshopLayout(width, height);
 
-    expect(layout.boardWidth / width).toBeGreaterThan(0.8);
-    expect(layout.boardHeight / height).toBeGreaterThan(0.8);
+    expect(layout.boardWidth / width).toBeGreaterThan(0.62);
+    expect(layout.boardHeight / height).toBeGreaterThan(0.75);
+    expect((layout.boardWidth + layout.panelWidth) / width).toBeGreaterThan(0.85);
     expect(layout.boardX).toBeGreaterThanOrEqual(0);
     expect(layout.boardY).toBeGreaterThanOrEqual(0);
-    expect(layout.boardX + layout.boardWidth).toBeLessThanOrEqual(width);
-    expect(layout.boardY + layout.boardHeight).toBeLessThanOrEqual(height);
+    expect(layout.panelX + layout.panelWidth).toBeLessThanOrEqual(width);
+    expect(layout.panelY + layout.panelHeight).toBeLessThanOrEqual(height);
   });
 
-  it('keeps the overlaid controls inside the board', () => {
+  it('places the controls inside the right side panel', () => {
     const layout = createWorkshopLayout(1024, 768);
 
-    expect(layout.controlsX).toBeGreaterThan(layout.hudX);
-    expect(layout.controlsY).toBeGreaterThanOrEqual(layout.hudY);
-    expect(layout.controlsX).toBeLessThan(layout.boardX + layout.boardWidth);
-    expect(layout.controlsScale).toBeGreaterThanOrEqual(1);
+    expect(layout.panelX).toBeGreaterThan(layout.boardX + layout.boardWidth);
+    expect(layout.controlsX).toBeGreaterThanOrEqual(layout.panelX);
+    expect(layout.controlsY).toBeGreaterThanOrEqual(layout.panelY);
+    expect(layout.controlsScale).toBeGreaterThan(0.85);
   });
 });

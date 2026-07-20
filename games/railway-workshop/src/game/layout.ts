@@ -1,6 +1,8 @@
 import { COLS, ROWS } from './level';
 
 export const DESIGN_CELL_SIZE = 78;
+export const DESIGN_PANEL_WIDTH = 280;
+export const DESIGN_PANEL_HEIGHT = 470;
 
 export interface WorkshopLayout {
   readonly width: number;
@@ -11,18 +13,14 @@ export interface WorkshopLayout {
   readonly boardHeight: number;
   readonly cellSize: number;
   readonly boardScale: number;
-  readonly hudX: number;
-  readonly hudY: number;
-  readonly hudWidth: number;
-  readonly hudHeight: number;
-  readonly infoWidth: number;
+  readonly panelX: number;
+  readonly panelY: number;
+  readonly panelWidth: number;
+  readonly panelHeight: number;
   readonly controlsX: number;
   readonly controlsY: number;
   readonly controlsScale: number;
 }
-
-const CONTROL_WIDTH = 626;
-const CONTROL_HEIGHT = 68;
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value));
@@ -30,19 +28,25 @@ function clamp(value: number, minimum: number, maximum: number): number {
 
 export function createWorkshopLayout(width: number, height: number): WorkshopLayout {
   const margin = clamp(Math.min(width, height) * 0.022, 10, 24);
-  const cellSize = Math.min((width - margin * 2) / COLS, (height - margin * 2) / ROWS);
+  const gap = clamp(width * 0.012, 10, 18);
+  const panelWidth = clamp(width * 0.24, 196, 300);
+  const availableBoardWidth = width - margin * 2 - gap - panelWidth;
+  const cellSize = Math.min(availableBoardWidth / COLS, (height - margin * 2) / ROWS);
   const boardWidth = cellSize * COLS;
   const boardHeight = cellSize * ROWS;
-  const boardX = (width - boardWidth) / 2;
+  const contentWidth = boardWidth + gap + panelWidth;
+  const boardX = (width - contentWidth) / 2;
   const boardY = (height - boardHeight) / 2;
-  const hudInset = clamp(cellSize * 0.08, 8, 13);
-  const hudX = boardX + hudInset;
-  const hudY = boardY + hudInset;
-  const hudWidth = boardWidth - hudInset * 2;
-  const hudHeight = clamp(cellSize * 0.72, 72, 96);
-  const controlsScale = Math.min(1.05, hudHeight / CONTROL_HEIGHT, (hudWidth - 150) / CONTROL_WIDTH);
-  const controlsWidth = CONTROL_WIDTH * controlsScale;
-  const infoWidth = hudWidth - controlsWidth - 16;
+  const panelX = boardX + boardWidth + gap;
+  const panelY = boardY;
+  const panelHeight = boardHeight;
+  const controlsScale = Math.min(
+    1.1,
+    panelWidth / DESIGN_PANEL_WIDTH,
+    panelHeight / DESIGN_PANEL_HEIGHT,
+  );
+  const controlsX = panelX + (panelWidth - DESIGN_PANEL_WIDTH * controlsScale) / 2;
+  const controlsY = panelY + (panelHeight - DESIGN_PANEL_HEIGHT * controlsScale) / 2;
 
   return {
     width,
@@ -53,13 +57,12 @@ export function createWorkshopLayout(width: number, height: number): WorkshopLay
     boardHeight,
     cellSize,
     boardScale: cellSize / DESIGN_CELL_SIZE,
-    hudX,
-    hudY,
-    hudWidth,
-    hudHeight,
-    infoWidth,
-    controlsX: hudX + hudWidth - controlsWidth,
-    controlsY: hudY + (hudHeight - CONTROL_HEIGHT * controlsScale) / 2,
+    panelX,
+    panelY,
+    panelWidth,
+    panelHeight,
+    controlsX,
+    controlsY,
     controlsScale,
   };
 }

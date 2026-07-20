@@ -91,17 +91,29 @@ export class WorkshopScene extends Phaser.Scene {
     this.boardLayer = this.add.container(this.layout.boardX, this.layout.boardY)
       .setScale(this.layout.boardScale)
       .setDepth(10);
+
+    const panelContent = this.add.container(this.layout.controlsX, this.layout.controlsY)
+      .setScale(this.layout.controlsScale)
+      .setDepth(61);
+    panelContent.add(this.add.text(16, 18, 'RAILWAY WORKSHOP', {
+      fontFamily: 'Georgia, serif',
+      fontSize: '18px',
+      color: '#f5d274',
+      fontStyle: 'bold',
+      letterSpacing: 1.5,
+    }));
+    this.statusText = this.add.text(16, 50, 'Choose a track piece, then tap the grass.', {
+      fontFamily: '"Trebuchet MS", sans-serif',
+      fontSize: '16px',
+      color: '#fff4d6',
+      fontStyle: 'bold',
+      wordWrap: { width: 248 },
+    });
+    panelContent.add(this.statusText);
+
     this.controlsLayer = this.add.container(this.layout.controlsX, this.layout.controlsY)
       .setScale(this.layout.controlsScale)
       .setDepth(62);
-
-    this.statusText = this.add.text(this.layout.hudX + 16, this.layout.hudY + 34, 'Choose a track piece, then tap the grass.', {
-      fontFamily: '"Trebuchet MS", sans-serif',
-      fontSize: `${Math.round(Math.min(16, this.layout.hudHeight * 0.18))}px`,
-      color: '#fff4d6',
-      fontStyle: 'bold',
-      wordWrap: { width: Math.max(120, this.layout.infoWidth - 24) },
-    }).setDepth(61);
 
     this.renderBoard();
     this.createTrain();
@@ -109,6 +121,10 @@ export class WorkshopScene extends Phaser.Scene {
     this.installKeyboardControls();
     this.updateRouteMessage();
     this.scale.on(Phaser.Scale.Events.RESIZE, this.handleResize, this);
+    this.scale.on(Phaser.Scale.Events.ENTER_FULLSCREEN, this.renderControls, this);
+    this.scale.on(Phaser.Scale.Events.LEAVE_FULLSCREEN, this.renderControls, this);
+    this.scale.on(Phaser.Scale.Events.FULLSCREEN_FAILED, this.handleFullscreenFailure, this);
+    this.scale.on(Phaser.Scale.Events.FULLSCREEN_UNSUPPORTED, this.handleFullscreenFailure, this);
 
     const canvas = this.game.canvas;
     canvas.tabIndex = 0;
@@ -116,6 +132,10 @@ export class WorkshopScene extends Phaser.Scene {
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.scale.off(Phaser.Scale.Events.RESIZE, this.handleResize, this);
+      this.scale.off(Phaser.Scale.Events.ENTER_FULLSCREEN, this.renderControls, this);
+      this.scale.off(Phaser.Scale.Events.LEAVE_FULLSCREEN, this.renderControls, this);
+      this.scale.off(Phaser.Scale.Events.FULLSCREEN_FAILED, this.handleFullscreenFailure, this);
+      this.scale.off(Phaser.Scale.Events.FULLSCREEN_UNSUPPORTED, this.handleFullscreenFailure, this);
       this.input.keyboard?.removeAllListeners();
       this.tweens.killAll();
       this.sound.stopAll();
@@ -123,7 +143,7 @@ export class WorkshopScene extends Phaser.Scene {
   }
 
   private drawWorkshop(): void {
-    const { width, height, boardX, boardY, boardWidth, boardHeight, hudX, hudY, hudWidth, hudHeight } = this.layout;
+    const { width, height, boardX, boardY, boardWidth, boardHeight, panelX, panelY, panelWidth, panelHeight } = this.layout;
     this.cameras.main.setBackgroundColor(COLORS.deepGreen);
 
     const background = this.add.graphics();
@@ -140,21 +160,12 @@ export class WorkshopScene extends Phaser.Scene {
     background.lineStyle(4, COLORS.woodLight, 0.9);
     background.strokeRoundedRect(boardX - frame, boardY - frame, boardWidth + frame * 2, boardHeight + frame * 2, 15);
 
-    const hud = this.add.graphics().setDepth(60);
-    hud.fillStyle(0x102f2a, 0.9);
-    hud.fillRoundedRect(hudX, hudY + 5, hudWidth, hudHeight, 16);
-    hud.fillStyle(0x173f38, 0.97);
-    hud.fillRoundedRect(hudX, hudY, hudWidth, hudHeight, 16);
-    hud.lineStyle(2, COLORS.brass, 0.7);
-    hud.strokeRoundedRect(hudX, hudY, hudWidth, hudHeight, 16);
-
-    this.add.text(hudX + 16, hudY + 10, 'RAILWAY WORKSHOP', {
-      fontFamily: 'Georgia, serif',
-      fontSize: '15px',
-      color: '#f5d274',
-      fontStyle: 'bold',
-      letterSpacing: 1.5,
-    }).setDepth(61);
+    background.fillStyle(0x102f2a, 0.55);
+    background.fillRoundedRect(panelX - 5, panelY + 5, panelWidth + 10, panelHeight + 5, 18);
+    background.fillStyle(0x6f452d, 0.98);
+    background.fillRoundedRect(panelX, panelY, panelWidth, panelHeight, 16);
+    background.lineStyle(3, COLORS.woodLight, 1);
+    background.strokeRoundedRect(panelX, panelY, panelWidth, panelHeight, 16);
   }
 
   private renderBoard(): void {
@@ -361,27 +372,27 @@ export class WorkshopScene extends Phaser.Scene {
   private renderControls(): void {
     this.controlsLayer.removeAll(true);
 
-    this.createToolButton('straight', 0, 0, 118, 'STRAIGHT', this.inventory.straight);
-    this.createToolButton('curve', 126, 0, 110, 'CURVE', this.inventory.curve);
-    this.createToolButton('erase', 244, 0, 102, 'REMOVE', null);
+    this.createToolButton('straight', 16, 115, 119, 'STRAIGHT', this.inventory.straight);
+    this.createToolButton('curve', 145, 115, 119, 'CURVE', this.inventory.curve);
+    this.createToolButton('erase', 16, 197, 119, 'REMOVE', null);
 
-    const undo = this.createButton(354, 0, 88, 68, '↶ UNDO', () => this.undo(), {
+    const undo = this.createButton(145, 197, 119, 72, '↶ UNDO', () => this.undo(), {
       fill: 0xf1ddba,
       text: '#3f352a',
       border: 0xc89b62,
       small: true,
-      fontSize: 13,
+      fontSize: 14,
       disabled: this.history.length === 0,
     });
     this.controlsLayer.add(undo);
 
-    this.runButton = this.createButton(450, 0, 176, 68, 'RUN TRAIN', () => {
+    this.runButton = this.createButton(16, 279, 248, 76, 'RUN TRAIN', () => {
       void this.runTrain();
     }, {
       fill: 0xc85445,
       text: '#fff4d6',
       border: 0xf5d274,
-      fontSize: 18,
+      fontSize: 20,
       labelOffsetX: -10,
       disabled: this.isRunning,
     });
@@ -389,16 +400,34 @@ export class WorkshopScene extends Phaser.Scene {
 
     const lever = this.add.graphics();
     lever.fillStyle(0x243431);
-    lever.fillRoundedRect(602, 16, 9, 34, 4);
+    lever.fillRoundedRect(238, 296, 10, 40, 4);
     lever.fillStyle(COLORS.brassLight);
-    lever.fillCircle(606.5, 16, 8);
+    lever.fillCircle(243, 296, 9);
     this.controlsLayer.add(lever);
+
+    const fullscreen = this.createButton(16, 365, 248, 58, this.scale.isFullscreen ? 'EXIT FULL SCREEN' : 'FULL SCREEN', () => {
+      this.scale.toggleFullscreen({ navigationUI: 'hide' });
+    }, {
+      fill: 0x36594d,
+      text: '#fff4d6',
+      border: 0xe5b74f,
+      fontSize: 16,
+    });
+    this.controlsLayer.add(fullscreen);
+
+    const helper = this.add.text(140, 448, 'Tap track to rotate • Ctrl+Z undo', {
+      fontFamily: '"Trebuchet MS", sans-serif',
+      fontSize: '12px',
+      color: '#ead7b4',
+      align: 'center',
+    }).setOrigin(0.5);
+    this.controlsLayer.add(helper);
   }
 
   private createToolButton(tool: Tool, x: number, y: number, width: number, label: string, count: number | null): void {
     const selected = this.selectedTool === tool;
     const disabled = tool !== 'erase' && count === 0;
-    const button = this.createButton(x, y, width, 68, label, () => {
+    const button = this.createButton(x, y, width, 72, label, () => {
       if (!disabled && !this.isRunning) {
         this.selectedTool = tool;
         this.play('place', 0.35);
@@ -709,10 +738,10 @@ export class WorkshopScene extends Phaser.Scene {
     const colors = [COLORS.brassLight, COLORS.red, COLORS.blue, 0x88bd67, 0xfff4d6];
     for (let index = 0; index < 28; index += 1) {
       const x = this.layout.boardX + 24 + ((index * 71) % Math.max(120, this.layout.boardWidth - 48));
-      const piece = this.add.rectangle(x, this.layout.hudY + 8, 8, 14, colors[index % colors.length]).setDepth(80);
+      const piece = this.add.rectangle(x, this.layout.panelY + 8, 8, 14, colors[index % colors.length]).setDepth(80);
       piece.setAngle(index * 37);
       if (this.reducedMotion) {
-        piece.setY(this.layout.hudY + 18 + (index % 4) * 10);
+        piece.setY(this.layout.panelY + 18 + (index % 4) * 10);
         this.time.delayedCall(450, () => piece.destroy());
       } else {
         this.tweens.add({
@@ -765,6 +794,10 @@ export class WorkshopScene extends Phaser.Scene {
       return;
     }
     this.scene.restart();
+  }
+
+  private handleFullscreenFailure(): void {
+    this.setStatus('Fullscreen is unavailable here. Try the browser menu instead.');
   }
 
   private setStatus(message: string): void {
