@@ -56,6 +56,12 @@ Do not build all of these before a real game needs them. Do not hide Phaser behi
 
 A little duplication is fine. Extract shared code after two real uses make the common behavior obvious.
 
+## Screen layout
+
+A rewritten game should fill the available browser viewport. In landscape, the playfield should take most of the width and height, with compact information and controls overlaid where practical. Avoid permanent banners, sidebars, and footers that make the game itself small.
+
+Keep responsive layout calculations separate from game rules so the pattern can be reused after another real game needs it.
+
 ## Builds and public paths
 
 Each rewritten game builds with Vite to its own `dist/` directory. The portfolio build copies that output to:

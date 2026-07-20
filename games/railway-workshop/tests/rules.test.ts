@@ -35,7 +35,7 @@ describe('track pieces', () => {
 
 describe('route tracing', () => {
   it('finds the authored route from the shed to the station', () => {
-    const board = emptyBoard(6, 5);
+    const board = emptyBoard(8, 5);
     board[3]![0] = { ...piece('straight', 1), fixed: true };
     board[3]![1] = piece('straight', 1);
     board[3]![2] = piece('curve', 3);
@@ -43,12 +43,14 @@ describe('route tracing', () => {
     board[1]![2] = piece('curve', 1);
     board[1]![3] = piece('straight', 1);
     board[1]![4] = piece('straight', 1);
-    board[1]![5] = { ...piece('straight', 1), fixed: true };
+    board[1]![5] = piece('straight', 1);
+    board[1]![6] = piece('straight', 1);
+    board[1]![7] = { ...piece('straight', 1), fixed: true };
 
-    const result = traceRoute(board, { x: 0, y: 3 }, { x: 5, y: 1 }, 1);
+    const result = traceRoute(board, { x: 0, y: 3 }, { x: 7, y: 1 }, 1);
 
     expect(result.success).toBe(true);
-    expect(result.path).toHaveLength(8);
+    expect(result.path).toHaveLength(10);
   });
 
   it('reports the first missing track without moving the train onto it', () => {

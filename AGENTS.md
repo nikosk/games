@@ -92,6 +92,8 @@ Use this short loop:
 
 Temporary art is fine during development. A published game should feel intentional and visually coherent. Important actions should have clear visual and sound feedback. Touch targets must work comfortably on the target tablet.
 
+Game canvases should fill the available viewport. In landscape, center the game area and let it use most of the width and height. Keep permanent interface chrome small; overlay compact information and controls instead of shrinking the playfield with large banners, sidebars, or footers.
+
 ## Code and checks
 
 Keep scenes focused. Put complicated rules in small TypeScript modules when that makes them easier to understand or test. Clean up listeners, timers, tweens, and audio when scenes stop.

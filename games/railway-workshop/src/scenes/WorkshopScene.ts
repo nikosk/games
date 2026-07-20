@@ -14,6 +14,7 @@ import {
   cellKey,
   createBoard,
 } from '../game/level';
+import { createWorkshopLayout, DESIGN_CELL_SIZE, type WorkshopLayout } from '../game/layout';
 import {
   cloneBoard,
   rotate,
@@ -26,15 +27,7 @@ import {
   type TrackPiece,
 } from '../game/rules';
 
-const WIDTH = 960;
-const HEIGHT = 640;
-const BOARD_X = 52;
-const BOARD_Y = 132;
-const CELL_SIZE = 78;
-const PANEL_X = 552;
-const PANEL_Y = 116;
-const PANEL_WIDTH = 354;
-const PANEL_HEIGHT = 430;
+const CELL_SIZE = DESIGN_CELL_SIZE;
 
 const COLORS = {
   deepGreen: 0x173f38,
@@ -67,11 +60,12 @@ export class WorkshopScene extends Phaser.Scene {
   private selectedTool: Tool = 'straight';
   private isRunning = false;
   private reducedMotion = false;
+  private resizePending = false;
+  private layout!: WorkshopLayout;
 
   private boardLayer!: Phaser.GameObjects.Container;
   private controlsLayer!: Phaser.GameObjects.Container;
   private statusText!: Phaser.GameObjects.Text;
-  private helperText!: Phaser.GameObjects.Text;
   private train!: Phaser.GameObjects.Container;
   private runButton!: Phaser.GameObjects.Container;
 
@@ -89,40 +83,39 @@ export class WorkshopScene extends Phaser.Scene {
 
   create(): void {
     this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this.resizePending = false;
+    this.layout = createWorkshopLayout(this.scale.width, this.scale.height);
     this.input.mouse?.disableContextMenu();
     this.drawWorkshop();
 
-    this.boardLayer = this.add.container(BOARD_X, BOARD_Y);
-    this.controlsLayer = this.add.container(0, 0);
+    this.boardLayer = this.add.container(this.layout.boardX, this.layout.boardY)
+      .setScale(this.layout.boardScale)
+      .setDepth(10);
+    this.controlsLayer = this.add.container(this.layout.controlsX, this.layout.controlsY)
+      .setScale(this.layout.controlsScale)
+      .setDepth(62);
 
-    this.statusText = this.add.text(52, 575, 'Choose a track piece, then tap the grass to place it.', {
+    this.statusText = this.add.text(this.layout.hudX + 16, this.layout.hudY + 34, 'Choose a track piece, then tap the grass.', {
       fontFamily: '"Trebuchet MS", sans-serif',
-      fontSize: '22px',
+      fontSize: `${Math.round(Math.min(16, this.layout.hudHeight * 0.18))}px`,
       color: '#fff4d6',
       fontStyle: 'bold',
-    });
-    this.statusText.setOrigin(0, 0.5);
-
-    this.helperText = this.add.text(906, 576, '1 / 2 • E erase • Space run • Ctrl+Z undo', {
-      fontFamily: '"Trebuchet MS", sans-serif',
-      fontSize: '13px',
-      color: '#bcd5c9',
-      align: 'right',
-    });
-    this.helperText.setOrigin(1, 0.5);
+      wordWrap: { width: Math.max(120, this.layout.infoWidth - 24) },
+    }).setDepth(61);
 
     this.renderBoard();
     this.createTrain();
     this.renderControls();
     this.installKeyboardControls();
     this.updateRouteMessage();
+    this.scale.on(Phaser.Scale.Events.RESIZE, this.handleResize, this);
 
     const canvas = this.game.canvas;
     canvas.tabIndex = 0;
     canvas.setAttribute('aria-label', 'Railway Workshop puzzle board');
-    canvas.addEventListener('pointerdown', () => canvas.focus(), { once: true });
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.scale.off(Phaser.Scale.Events.RESIZE, this.handleResize, this);
       this.input.keyboard?.removeAllListeners();
       this.tweens.killAll();
       this.sound.stopAll();
@@ -130,53 +123,38 @@ export class WorkshopScene extends Phaser.Scene {
   }
 
   private drawWorkshop(): void {
+    const { width, height, boardX, boardY, boardWidth, boardHeight, hudX, hudY, hudWidth, hudHeight } = this.layout;
     this.cameras.main.setBackgroundColor(COLORS.deepGreen);
+
     const background = this.add.graphics();
     background.fillStyle(0x1c4a41);
-    background.fillRect(0, 0, WIDTH, HEIGHT);
-
+    background.fillRect(0, 0, width, height);
     background.fillStyle(0xffffff, 0.025);
-    for (let x = 12; x < WIDTH; x += 24) background.fillRect(x, 0, 2, HEIGHT);
+    for (let x = 12; x < width; x += 24) background.fillRect(x, 0, 2, height);
 
-    background.fillStyle(0x102f2a, 0.65);
-    background.fillRoundedRect(28, 18, 904, 78, 20);
-    background.lineStyle(2, COLORS.brass, 0.45);
-    background.strokeRoundedRect(28, 18, 904, 78, 20);
+    const frame = Math.max(8, this.layout.cellSize * 0.08);
+    background.fillStyle(0x4f311f, 0.55);
+    background.fillRoundedRect(boardX - frame - 4, boardY - frame - 4, boardWidth + frame * 2 + 8, boardHeight + frame * 2 + 8, 18);
+    background.fillStyle(COLORS.wood);
+    background.fillRoundedRect(boardX - frame, boardY - frame, boardWidth + frame * 2, boardHeight + frame * 2, 15);
+    background.lineStyle(4, COLORS.woodLight, 0.9);
+    background.strokeRoundedRect(boardX - frame, boardY - frame, boardWidth + frame * 2, boardHeight + frame * 2, 15);
 
-    this.add.text(54, 28, 'RAILWAY', {
+    const hud = this.add.graphics().setDepth(60);
+    hud.fillStyle(0x102f2a, 0.9);
+    hud.fillRoundedRect(hudX, hudY + 5, hudWidth, hudHeight, 16);
+    hud.fillStyle(0x173f38, 0.97);
+    hud.fillRoundedRect(hudX, hudY, hudWidth, hudHeight, 16);
+    hud.lineStyle(2, COLORS.brass, 0.7);
+    hud.strokeRoundedRect(hudX, hudY, hudWidth, hudHeight, 16);
+
+    this.add.text(hudX + 16, hudY + 10, 'RAILWAY WORKSHOP', {
       fontFamily: 'Georgia, serif',
-      fontSize: '34px',
+      fontSize: '15px',
       color: '#f5d274',
       fontStyle: 'bold',
-      letterSpacing: 3,
-    });
-    this.add.text(54, 62, 'WORKSHOP', {
-      fontFamily: '"Trebuchet MS", sans-serif',
-      fontSize: '19px',
-      color: '#fff4d6',
-      fontStyle: 'bold',
-      letterSpacing: 7,
-    });
-    this.add.text(360, 51, 'Build a safe line from the engine shed to Pinecone Station.', {
-      fontFamily: '"Trebuchet MS", sans-serif',
-      fontSize: '17px',
-      color: '#d6e6dc',
-      wordWrap: { width: 520 },
-    });
-
-    background.fillStyle(0x4f311f, 0.55);
-    background.fillRoundedRect(BOARD_X - 17, BOARD_Y - 17, COLS * CELL_SIZE + 34, ROWS * CELL_SIZE + 34, 18);
-    background.fillStyle(COLORS.wood);
-    background.fillRoundedRect(BOARD_X - 12, BOARD_Y - 12, COLS * CELL_SIZE + 24, ROWS * CELL_SIZE + 24, 15);
-    background.lineStyle(4, COLORS.woodLight, 0.9);
-    background.strokeRoundedRect(BOARD_X - 12, BOARD_Y - 12, COLS * CELL_SIZE + 24, ROWS * CELL_SIZE + 24, 15);
-
-    background.fillStyle(0x102f2a, 0.5);
-    background.fillRoundedRect(PANEL_X - 8, PANEL_Y - 8, PANEL_WIDTH + 16, PANEL_HEIGHT + 16, 20);
-    background.fillStyle(0x6f452d);
-    background.fillRoundedRect(PANEL_X, PANEL_Y, PANEL_WIDTH, PANEL_HEIGHT, 16);
-    background.lineStyle(3, COLORS.woodLight, 1);
-    background.strokeRoundedRect(PANEL_X, PANEL_Y, PANEL_WIDTH, PANEL_HEIGHT, 16);
+      letterSpacing: 1.5,
+    }).setDepth(61);
   }
 
   private renderBoard(): void {
@@ -375,6 +353,7 @@ export class WorkshopScene extends Phaser.Scene {
     graphics.fillStyle(COLORS.brassLight);
     graphics.fillRect(-29, 4, 6, 8);
     this.train.add(graphics);
+    this.train.setScale(this.layout.boardScale);
     this.train.setDepth(50);
     this.setTrainAt(START, 1);
   }
@@ -382,61 +361,44 @@ export class WorkshopScene extends Phaser.Scene {
   private renderControls(): void {
     this.controlsLayer.removeAll(true);
 
-    const heading = this.add.text(PANEL_X + 24, PANEL_Y + 18, 'TRACK DRAWER', {
-      fontFamily: 'Georgia, serif',
-      fontSize: '22px',
-      color: '#fff4d6',
-      fontStyle: 'bold',
-    });
-    this.controlsLayer.add(heading);
+    this.createToolButton('straight', 0, 0, 118, 'STRAIGHT', this.inventory.straight);
+    this.createToolButton('curve', 126, 0, 110, 'CURVE', this.inventory.curve);
+    this.createToolButton('erase', 244, 0, 102, 'REMOVE', null);
 
-    const note = this.add.text(PANEL_X + 25, PANEL_Y + 48, 'Tap a placed piece to rotate it.', {
-      fontFamily: '"Trebuchet MS", sans-serif',
-      fontSize: '14px',
-      color: '#ead7b4',
-    });
-    this.controlsLayer.add(note);
-
-    this.createToolButton('straight', PANEL_X + 24, PANEL_Y + 78, 'STRAIGHT', this.inventory.straight);
-    this.createToolButton('curve', PANEL_X + 184, PANEL_Y + 78, 'CURVE', this.inventory.curve);
-    this.createToolButton('erase', PANEL_X + 24, PANEL_Y + 180, 'REMOVE', null);
-
-    const undo = this.createButton(PANEL_X + 184, PANEL_Y + 180, 145, 78, '↶  UNDO', () => this.undo(), {
+    const undo = this.createButton(354, 0, 88, 68, '↶ UNDO', () => this.undo(), {
       fill: 0xf1ddba,
       text: '#3f352a',
       border: 0xc89b62,
       small: true,
+      fontSize: 13,
       disabled: this.history.length === 0,
     });
     this.controlsLayer.add(undo);
 
-    const divider = this.add.graphics();
-    divider.lineStyle(2, 0xe5b74f, 0.45);
-    divider.lineBetween(PANEL_X + 24, PANEL_Y + 278, PANEL_X + PANEL_WIDTH - 24, PANEL_Y + 278);
-    this.controlsLayer.add(divider);
-
-    this.runButton = this.createButton(PANEL_X + 24, PANEL_Y + 302, PANEL_WIDTH - 48, 92, 'PULL THROTTLE', () => {
+    this.runButton = this.createButton(450, 0, 176, 68, 'RUN TRAIN', () => {
       void this.runTrain();
     }, {
       fill: 0xc85445,
       text: '#fff4d6',
       border: 0xf5d274,
+      fontSize: 18,
+      labelOffsetX: -10,
       disabled: this.isRunning,
     });
     this.controlsLayer.add(this.runButton);
 
     const lever = this.add.graphics();
     lever.fillStyle(0x243431);
-    lever.fillRoundedRect(PANEL_X + PANEL_WIDTH - 64, PANEL_Y + 318, 16, 55, 6);
+    lever.fillRoundedRect(602, 16, 9, 34, 4);
     lever.fillStyle(COLORS.brassLight);
-    lever.fillCircle(PANEL_X + PANEL_WIDTH - 56, PANEL_Y + 321, 13);
+    lever.fillCircle(606.5, 16, 8);
     this.controlsLayer.add(lever);
   }
 
-  private createToolButton(tool: Tool, x: number, y: number, label: string, count: number | null): void {
+  private createToolButton(tool: Tool, x: number, y: number, width: number, label: string, count: number | null): void {
     const selected = this.selectedTool === tool;
     const disabled = tool !== 'erase' && count === 0;
-    const button = this.createButton(x, y, 145, 78, label, () => {
+    const button = this.createButton(x, y, width, 68, label, () => {
       if (!disabled && !this.isRunning) {
         this.selectedTool = tool;
         this.play('place', 0.35);
@@ -447,43 +409,45 @@ export class WorkshopScene extends Phaser.Scene {
       text: '#3f352a',
       border: selected ? 0xfff4d6 : 0xc89b62,
       small: true,
+      fontSize: 13,
+      labelOffsetX: 14,
       disabled,
     });
 
     const icon = this.add.graphics();
     if (tool === 'straight') {
-      icon.lineStyle(4, COLORS.rail, 1);
-      icon.lineBetween(x + 19, y + 18, x + 53, y + 18);
-      icon.lineBetween(x + 19, y + 30, x + 53, y + 30);
-      icon.lineStyle(4, COLORS.wood, 1);
-      for (let px = x + 23; px < x + 53; px += 10) icon.lineBetween(px, y + 13, px, y + 35);
+      icon.lineStyle(3, COLORS.rail, 1);
+      icon.lineBetween(x + 12, y + 23, x + 42, y + 23);
+      icon.lineBetween(x + 12, y + 34, x + 42, y + 34);
+      icon.lineStyle(3, COLORS.wood, 1);
+      for (let px = x + 16; px < x + 43; px += 9) icon.lineBetween(px, y + 18, px, y + 39);
     } else if (tool === 'curve') {
-      icon.lineStyle(8, COLORS.wood, 1);
+      icon.lineStyle(7, COLORS.wood, 1);
       icon.beginPath();
-      icon.arc(x + 49, y + 14, 28, Math.PI / 2, Math.PI, false);
+      icon.arc(x + 41, y + 19, 24, Math.PI / 2, Math.PI, false);
       icon.strokePath();
-      icon.lineStyle(4, COLORS.rail, 1);
+      icon.lineStyle(3, COLORS.rail, 1);
       icon.beginPath();
-      icon.arc(x + 49, y + 14, 20, Math.PI / 2, Math.PI, false);
+      icon.arc(x + 41, y + 19, 17, Math.PI / 2, Math.PI, false);
       icon.strokePath();
       icon.beginPath();
-      icon.arc(x + 49, y + 14, 34, Math.PI / 2, Math.PI, false);
+      icon.arc(x + 41, y + 19, 30, Math.PI / 2, Math.PI, false);
       icon.strokePath();
     } else {
       icon.lineStyle(5, COLORS.red, 1);
-      icon.lineBetween(x + 22, y + 16, x + 48, y + 42);
-      icon.lineBetween(x + 48, y + 16, x + 22, y + 42);
+      icon.lineBetween(x + 15, y + 20, x + 39, y + 44);
+      icon.lineBetween(x + 39, y + 20, x + 15, y + 44);
     }
     this.controlsLayer.add([button, icon]);
 
     if (count !== null) {
-      const counter = this.add.text(x + 122, y + 14, String(count), {
+      const counter = this.add.text(x + width - 13, y + 13, String(count), {
         fontFamily: '"Trebuchet MS", sans-serif',
-        fontSize: '18px',
+        fontSize: '15px',
         color: '#fff4d6',
         fontStyle: 'bold',
         backgroundColor: '#36594d',
-        padding: { x: 7, y: 3 },
+        padding: { x: 5, y: 2 },
       }).setOrigin(0.5, 0.5);
       this.controlsLayer.add(counter);
     }
@@ -496,7 +460,15 @@ export class WorkshopScene extends Phaser.Scene {
     height: number,
     label: string,
     callback: () => void,
-    style: { fill: number; text: string; border: number; small?: boolean; disabled?: boolean },
+    style: {
+      fill: number;
+      text: string;
+      border: number;
+      small?: boolean;
+      disabled?: boolean;
+      fontSize?: number;
+      labelOffsetX?: number;
+    },
   ): Phaser.GameObjects.Container {
     const button = this.add.container(x + width / 2, y + height / 2);
     const background = this.add.graphics();
@@ -508,9 +480,9 @@ export class WorkshopScene extends Phaser.Scene {
     background.lineStyle(3, style.border, style.disabled === true ? 0.35 : 1);
     background.strokeRoundedRect(-width / 2, -height / 2, width, height - 5, 12);
 
-    const text = this.add.text(style.small === true ? 13 : -16, -3, label, {
+    const text = this.add.text(style.labelOffsetX ?? 0, -3, label, {
       fontFamily: '"Trebuchet MS", sans-serif',
-      fontSize: style.small === true ? '15px' : '21px',
+      fontSize: `${style.fontSize ?? (style.small === true ? 15 : 21)}px`,
       fontStyle: 'bold',
       color: style.disabled === true ? '#ddd2bd' : style.text,
       align: 'center',
@@ -669,6 +641,10 @@ export class WorkshopScene extends Phaser.Scene {
     }
 
     this.isRunning = false;
+    if (this.resizePending) {
+      this.scene.restart();
+      return;
+    }
     this.renderControls();
   }
 
@@ -705,8 +681,8 @@ export class WorkshopScene extends Phaser.Scene {
 
   private cellCenter(point: Point): Point {
     return {
-      x: BOARD_X + point.x * CELL_SIZE + CELL_SIZE / 2,
-      y: BOARD_Y + point.y * CELL_SIZE + CELL_SIZE / 2,
+      x: this.layout.boardX + (point.x + 0.5) * this.layout.cellSize,
+      y: this.layout.boardY + (point.y + 0.5) * this.layout.cellSize,
     };
   }
 
@@ -716,7 +692,8 @@ export class WorkshopScene extends Phaser.Scene {
 
   private makeSteam(): void {
     if (this.reducedMotion) return;
-    const puff = this.add.circle(this.train.x + 11, this.train.y - 22, 7, 0xfff4d6, 0.75).setDepth(49);
+    const scale = this.layout.boardScale;
+    const puff = this.add.circle(this.train.x + 11 * scale, this.train.y - 22 * scale, 7 * scale, 0xfff4d6, 0.75).setDepth(49);
     this.tweens.add({
       targets: puff,
       x: puff.x - 10,
@@ -731,17 +708,17 @@ export class WorkshopScene extends Phaser.Scene {
   private celebrate(): void {
     const colors = [COLORS.brassLight, COLORS.red, COLORS.blue, 0x88bd67, 0xfff4d6];
     for (let index = 0; index < 28; index += 1) {
-      const x = PANEL_X + 35 + (index * 47) % 285;
-      const piece = this.add.rectangle(x, 92, 8, 14, colors[index % colors.length]).setDepth(80);
+      const x = this.layout.boardX + 24 + ((index * 71) % Math.max(120, this.layout.boardWidth - 48));
+      const piece = this.add.rectangle(x, this.layout.hudY + 8, 8, 14, colors[index % colors.length]).setDepth(80);
       piece.setAngle(index * 37);
       if (this.reducedMotion) {
-        piece.setY(105 + (index % 4) * 10);
+        piece.setY(this.layout.hudY + 18 + (index % 4) * 10);
         this.time.delayedCall(450, () => piece.destroy());
       } else {
         this.tweens.add({
           targets: piece,
           x: x + ((index % 5) - 2) * 24,
-          y: 210 + (index % 7) * 43,
+          y: this.layout.boardY + this.layout.cellSize * (1.4 + (index % 7) * 0.48),
           angle: piece.angle + 240,
           alpha: 0,
           duration: 900 + (index % 5) * 90,
@@ -770,7 +747,8 @@ export class WorkshopScene extends Phaser.Scene {
 
   private bumpAt(point: Point): void {
     const center = this.cellCenter(point);
-    const ring = this.add.circle(center.x, center.y, 18, 0xffffff, 0).setStrokeStyle(3, COLORS.cream, 0.8);
+    const ring = this.add.circle(center.x, center.y, 18 * this.layout.boardScale, 0xffffff, 0)
+      .setStrokeStyle(3 * this.layout.boardScale, COLORS.cream, 0.8);
     this.tweens.add({
       targets: ring,
       scale: 1.8,
@@ -778,6 +756,15 @@ export class WorkshopScene extends Phaser.Scene {
       duration: this.reducedMotion ? 100 : 300,
       onComplete: () => ring.destroy(),
     });
+  }
+
+  private handleResize(gameSize: Phaser.Structs.Size): void {
+    if (gameSize.width === this.layout.width && gameSize.height === this.layout.height) return;
+    if (this.isRunning) {
+      this.resizePending = true;
+      return;
+    }
+    this.scene.restart();
   }
 
   private setStatus(message: string): void {

@@ -52,6 +52,7 @@ List only rules worth separating or testing, such as saves, pathfinding, generat
 
 - the main interaction is fun and understandable
 - touch controls work on the target tablet
+- the canvas fills the viewport and the playfield dominates landscape layouts
 - art and sound feel coherent
 - the built game opens without errors
 - the main path has been played

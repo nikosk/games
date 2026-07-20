@@ -4,13 +4,13 @@ import { WorkshopScene } from './scenes/WorkshopScene';
 const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
-  width: 960,
-  height: 640,
+  width: window.innerWidth,
+  height: window.innerHeight,
   backgroundColor: '#173f38',
   scene: [WorkshopScene],
   scale: {
-    mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
+    mode: Phaser.Scale.RESIZE,
+    autoCenter: Phaser.Scale.NO_CENTER,
   },
   render: {
     antialias: true,
