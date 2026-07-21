@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#799b72" />
+    <title>Wild Pairs · Field Journal</title>
+    <style>
+      * { box-sizing: border-box; }
+
+      html,
+      body,
+      #game {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+      }
+
+      body {
+        background: #b8cf9f;
+        touch-action: none;
+      }
+
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        outline: 3px solid transparent;
+        outline-offset: -3px;
+      }
+
+      canvas:focus-visible {
+        outline-color: #e8c875;
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+    </style>
+    <script type="module" crossorigin src="/games/wild-pairs/assets/index-BQ7cBC8i.js"></script>
+  </head>
+  <body>
+    <main id="game" aria-label="Wild Pairs animal matching game"></main>
+    <p class="sr-only">
+      Match four pairs of meadow animals. Tap two cards to turn them over. Keyboard players can
+      move between cards with the arrow keys, turn a card with Enter or Space, replay with R,
+      and toggle fullscreen with F.
+    </p>
+  </body>
+</html>

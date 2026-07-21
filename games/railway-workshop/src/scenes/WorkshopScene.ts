@@ -5,14 +5,13 @@ import placeUrl from '../../assets/audio/place.wav?url';
 import successUrl from '../../assets/audio/success.wav?url';
 import whistleUrl from '../../assets/audio/whistle.wav?url';
 import {
-  BLOCKED_CELLS,
   COLS,
-  GOAL,
+  LEVELS,
   ROWS,
-  START,
-  STARTING_INVENTORY,
   cellKey,
   createBoard,
+  getLevel,
+  type WorkshopLevel,
 } from '../game/level';
 import { createWorkshopLayout, DESIGN_CELL_SIZE, type WorkshopLayout } from '../game/layout';
 import {
@@ -54,11 +53,14 @@ interface Snapshot {
 type Tool = TrackKind | 'erase';
 
 export class WorkshopScene extends Phaser.Scene {
-  private board: BoardCell[][] = createBoard();
-  private inventory: Record<TrackKind, number> = { ...STARTING_INVENTORY };
+  private levelIndex = 0;
+  private level: WorkshopLevel = getLevel(0);
+  private board: BoardCell[][] = createBoard(this.level);
+  private inventory: Record<TrackKind, number> = { ...this.level.inventory };
   private history: Snapshot[] = [];
   private selectedTool: Tool = 'straight';
   private isRunning = false;
+  private completed = false;
   private reducedMotion = false;
   private resizePending = false;
   private layout!: WorkshopLayout;
@@ -66,6 +68,7 @@ export class WorkshopScene extends Phaser.Scene {
   private boardLayer!: Phaser.GameObjects.Container;
   private controlsLayer!: Phaser.GameObjects.Container;
   private statusText!: Phaser.GameObjects.Text;
+  private levelNameText!: Phaser.GameObjects.Text;
   private train!: Phaser.GameObjects.Container;
   private runButton!: Phaser.GameObjects.Container;
 
@@ -110,6 +113,14 @@ export class WorkshopScene extends Phaser.Scene {
       wordWrap: { width: 248 },
     });
     panelContent.add(this.statusText);
+    this.levelNameText = this.add.text(140, 98, '', {
+      fontFamily: '"Trebuchet MS", sans-serif',
+      fontSize: '12px',
+      color: '#ead7b4',
+      fontStyle: 'bold',
+      align: 'center',
+    }).setOrigin(0.5);
+    panelContent.add(this.levelNameText);
 
     this.controlsLayer = this.add.container(this.layout.controlsX, this.layout.controlsY)
       .setScale(this.layout.controlsScale)
@@ -170,7 +181,7 @@ export class WorkshopScene extends Phaser.Scene {
 
   private renderBoard(): void {
     this.boardLayer.removeAll(true);
-    const route = traceRoute(this.board, START, GOAL, 1);
+    const route = traceRoute(this.board, this.level.start, this.level.goal, this.level.direction);
     const connected = new Set(route.path.map((point) => cellKey(point)));
 
     for (let y = 0; y < ROWS; y += 1) {
@@ -184,7 +195,7 @@ export class WorkshopScene extends Phaser.Scene {
         this.boardLayer.add(graphics);
 
         const point = { x, y };
-        const scenery = BLOCKED_CELLS.get(cellKey(point));
+        const scenery = this.level.scenery[cellKey(point)];
         if (scenery !== undefined) this.drawScenery(point, scenery);
 
         const piece = this.board[y]?.[x] ?? null;
@@ -300,8 +311,8 @@ export class WorkshopScene extends Phaser.Scene {
   private drawDepotAndStation(): void {
     const labels = this.add.container(0, 0);
     const depot = this.add.graphics();
-    const startX = START.x * CELL_SIZE + 8;
-    const startY = START.y * CELL_SIZE + 7;
+    const startX = this.level.start.x * CELL_SIZE + 8;
+    const startY = this.level.start.y * CELL_SIZE + 7;
     depot.fillStyle(0x5f3824, 0.95);
     depot.fillRoundedRect(startX, startY, 35, 28, 4);
     depot.fillStyle(COLORS.red);
@@ -311,8 +322,8 @@ export class WorkshopScene extends Phaser.Scene {
     labels.add(depot);
 
     const station = this.add.graphics();
-    const goalX = GOAL.x * CELL_SIZE + 38;
-    const goalY = GOAL.y * CELL_SIZE + 8;
+    const goalX = this.level.goal.x * CELL_SIZE + 38;
+    const goalY = this.level.goal.y * CELL_SIZE + 8;
     station.fillStyle(COLORS.paper);
     station.fillRoundedRect(goalX, goalY, 33, 29, 4);
     station.fillStyle(COLORS.blue);
@@ -366,11 +377,12 @@ export class WorkshopScene extends Phaser.Scene {
     this.train.add(graphics);
     this.train.setScale(this.layout.boardScale);
     this.train.setDepth(50);
-    this.setTrainAt(START, 1);
+    this.setTrainAt(this.level.start, this.level.direction);
   }
 
   private renderControls(): void {
     this.controlsLayer.removeAll(true);
+    this.levelNameText?.setText(`PUZZLE ${this.levelIndex + 1} / ${LEVELS.length}  •  ${this.level.name.toUpperCase()}`);
 
     this.createToolButton('straight', 16, 115, 119, 'STRAIGHT', this.inventory.straight);
     this.createToolButton('curve', 145, 115, 119, 'CURVE', this.inventory.curve);
@@ -386,8 +398,9 @@ export class WorkshopScene extends Phaser.Scene {
     });
     this.controlsLayer.add(undo);
 
-    this.runButton = this.createButton(16, 279, 248, 76, 'RUN TRAIN', () => {
-      void this.runTrain();
+    this.runButton = this.createButton(16, 277, 248, 70, this.completed ? (this.levelIndex === LEVELS.length - 1 ? 'START OVER' : 'NEXT PUZZLE') : 'RUN TRAIN', () => {
+      if (this.completed) this.selectLevel(this.levelIndex === LEVELS.length - 1 ? 0 : this.levelIndex + 1);
+      else void this.runTrain();
     }, {
       fill: 0xc85445,
       text: '#fff4d6',
@@ -400,12 +413,12 @@ export class WorkshopScene extends Phaser.Scene {
 
     const lever = this.add.graphics();
     lever.fillStyle(0x243431);
-    lever.fillRoundedRect(238, 296, 10, 40, 4);
+    lever.fillRoundedRect(238, 292, 10, 36, 4);
     lever.fillStyle(COLORS.brassLight);
-    lever.fillCircle(243, 296, 9);
+    lever.fillCircle(243, 292, 9);
     this.controlsLayer.add(lever);
 
-    const fullscreen = this.createButton(16, 365, 248, 58, this.scale.isFullscreen ? 'EXIT FULL SCREEN' : 'FULL SCREEN', () => {
+    const fullscreen = this.createButton(16, 353, 248, 52, this.scale.isFullscreen ? 'EXIT FULL SCREEN' : 'FULL SCREEN', () => {
       this.scale.toggleFullscreen({ navigationUI: 'hide' });
     }, {
       fill: 0x36594d,
@@ -415,13 +428,27 @@ export class WorkshopScene extends Phaser.Scene {
     });
     this.controlsLayer.add(fullscreen);
 
-    const helper = this.add.text(140, 448, 'Tap track to rotate • Ctrl+Z undo', {
+    const previous = this.createButton(16, 414, 60, 48, '‹', () => this.selectLevel(this.levelIndex - 1), {
+      fill: 0x36594d,
+      text: '#fff4d6',
+      border: 0xe5b74f,
+      fontSize: 25,
+      disabled: this.levelIndex === 0,
+    });
+    const next = this.createButton(204, 414, 60, 48, '›', () => this.selectLevel(this.levelIndex + 1), {
+      fill: 0x36594d,
+      text: '#fff4d6',
+      border: 0xe5b74f,
+      fontSize: 25,
+      disabled: this.levelIndex === LEVELS.length - 1,
+    });
+    const levelCount = this.add.text(140, 438, `${this.levelIndex + 1} / ${LEVELS.length}`, {
       fontFamily: '"Trebuchet MS", sans-serif',
-      fontSize: '12px',
-      color: '#ead7b4',
-      align: 'center',
+      fontSize: '16px',
+      color: '#fff4d6',
+      fontStyle: 'bold',
     }).setOrigin(0.5);
-    this.controlsLayer.add(helper);
+    this.controlsLayer.add([previous, next, levelCount]);
   }
 
   private createToolButton(tool: Tool, x: number, y: number, width: number, label: string, count: number | null): void {
@@ -535,7 +562,7 @@ export class WorkshopScene extends Phaser.Scene {
 
   private handleCellTap(point: Point): void {
     if (this.isRunning) return;
-    if (BLOCKED_CELLS.has(cellKey(point))) {
+    if (this.level.scenery[cellKey(point)] !== undefined) {
       this.setStatus('Scenery stays put—build around it.');
       this.bumpAt(point);
       return;
@@ -543,7 +570,7 @@ export class WorkshopScene extends Phaser.Scene {
 
     const piece = this.board[point.y]?.[point.x] ?? null;
     if (piece?.fixed === true) {
-      this.setStatus(point.x === START.x ? 'The engine shed track is fixed.' : 'Pinecone Station is ready for you!');
+      this.setStatus(point.x === this.level.start.x ? 'The engine shed track is fixed.' : 'Pinecone Station is ready for you!');
       return;
     }
 
@@ -576,7 +603,7 @@ export class WorkshopScene extends Phaser.Scene {
   }
 
   private removePiece(point: Point): void {
-    if (this.isRunning || BLOCKED_CELLS.has(cellKey(point))) return;
+    if (this.isRunning || this.level.scenery[cellKey(point)] !== undefined) return;
     const piece = this.board[point.y]?.[point.x] ?? null;
     if (piece === null || piece.fixed === true) return;
 
@@ -608,20 +635,36 @@ export class WorkshopScene extends Phaser.Scene {
   private reset(): void {
     if (this.isRunning) return;
     this.saveSnapshot();
-    this.board = createBoard();
-    this.inventory = { ...STARTING_INVENTORY };
+    this.completed = false;
+    this.board = createBoard(this.level);
+    this.inventory = { ...this.level.inventory };
     this.afterBoardChange();
   }
 
+  private selectLevel(index: number): void {
+    if (this.isRunning) return;
+    const safeIndex = Math.min(LEVELS.length - 1, Math.max(0, Math.trunc(index)));
+    this.levelIndex = safeIndex;
+    this.level = getLevel(safeIndex);
+    this.completed = false;
+    this.history = [];
+    this.board = createBoard(this.level);
+    this.inventory = { ...this.level.inventory };
+    this.selectedTool = 'straight';
+    this.afterBoardChange();
+    this.setStatus(`Puzzle ${safeIndex + 1}: ${this.level.name}. Build the route.`);
+  }
+
   private afterBoardChange(): void {
+    this.completed = false;
     this.renderBoard();
     this.renderControls();
-    this.setTrainAt(START, 1);
+    this.setTrainAt(this.level.start, this.level.direction);
     this.updateRouteMessage();
   }
 
   private updateRouteMessage(): void {
-    const route = traceRoute(this.board, START, GOAL, 1);
+    const route = traceRoute(this.board, this.level.start, this.level.goal, this.level.direction);
     if (route.success) {
       this.setStatus('The line is ready! Pull the throttle.');
       if (!this.reducedMotion) {
@@ -639,8 +682,8 @@ export class WorkshopScene extends Phaser.Scene {
     if (this.isRunning) return;
     this.isRunning = true;
     this.renderControls();
-    this.setTrainAt(START, 1);
-    const route = traceRoute(this.board, START, GOAL, 1);
+    this.setTrainAt(this.level.start, this.level.direction);
+    const route = traceRoute(this.board, this.level.start, this.level.goal, this.level.direction);
 
     this.setStatus(route.success ? 'All aboard for Pinecone Station!' : 'Let’s test this line…');
     this.play('whistle', 0.55);
@@ -670,6 +713,7 @@ export class WorkshopScene extends Phaser.Scene {
     }
 
     this.isRunning = false;
+    if (route.success) this.completed = true;
     if (this.resizePending) {
       this.scene.restart();
       return;

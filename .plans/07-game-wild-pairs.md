@@ -29,14 +29,9 @@ Keep the current game's positive, pressure-free feel.
 
 Cards need generous spacing and readable art on the target tablet.
 
-## Smallest fun version
+## Current MVP
 
-- one attractive habitat
-- a board with a handful of pairs
-- smooth card turns
-- clear match and mismatch feedback
-- a few lovely animal cues
-- a satisfying board-complete moment
+One procedural watercolour meadow field journal with exactly four pairs (rabbit, hedgehog, fox, frog), smooth touch-friendly 4x2 cards, match/mismatch feedback, generated Web Audio cues, counters, replay, fullscreen, and a completion celebration. No timer, save data, levels, or collection.
 
 ## If it stays fun
 
