@@ -17,6 +17,7 @@ const fixedExpectedEntries = [
   'valley-explorer.html',
   'classic/train-tracks.html',
   'classic/animal-memory.html',
+  'classic/monkey-banana.html',
   'crocodile-game/index.html',
   'little-chef-kitchen/index.html',
   'thegame/index.html',
