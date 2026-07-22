@@ -8,6 +8,10 @@ import {
   markPairMatched,
   resolvePair,
   type GameState,
+  DIFFICULTIES,
+  getDifficulty,
+  type DifficultyConfig,
+  type DifficultyId,
 } from '../game/rules';
 
 const COLORS = {
@@ -29,21 +33,24 @@ interface ButtonResult {
 }
 
 export class WildPairsScene extends Phaser.Scene {
-  private state: GameState = createGameState();
+  private difficulty: DifficultyConfig = DIFFICULTIES[0]!;
+  private state: GameState = createGameState(Math.random, this.difficulty);
   private layout!: WildPairsLayout;
   private views: Phaser.GameObjects.Container[] = [];
   private cardBacks: Phaser.GameObjects.Graphics[] = [];
   private cardFronts: Phaser.GameObjects.Container[] = [];
+  private cardFrontGraphics: Phaser.GameObjects.Graphics[] = [];
+  private cardCaptions: Phaser.GameObjects.Text[] = [];
   private focusRings: Phaser.GameObjects.Graphics[] = [];
   private busy = false;
   private pendingRedraw = false;
   private reducedMotion = false;
   private keyboardIndex = 0;
   private status = 'Turn over two meadow friends.';
-  private movesText?: Phaser.GameObjects.Text;
-  private pairsText?: Phaser.GameObjects.Text;
-  private statusText?: Phaser.GameObjects.Text;
-  private fullscreenText?: Phaser.GameObjects.Text;
+  private movesText: Phaser.GameObjects.Text | undefined;
+  private pairsText: Phaser.GameObjects.Text | undefined;
+  private statusText: Phaser.GameObjects.Text | undefined;
+  private fullscreenText: Phaser.GameObjects.Text | undefined;
   private completionObjects: Phaser.GameObjects.GameObject[] = [];
   private transientObjects: Phaser.GameObjects.GameObject[] = [];
   private audio: AudioContext | undefined;
@@ -76,10 +83,16 @@ export class WildPairsScene extends Phaser.Scene {
     this.views = [];
     this.cardBacks = [];
     this.cardFronts = [];
+    this.cardFrontGraphics = [];
+    this.cardCaptions = [];
     this.focusRings = [];
     this.completionObjects = [];
     this.transientObjects = [];
-    this.layout = createWildPairsLayout(this.scale.width, this.scale.height);
+    this.movesText = undefined;
+    this.pairsText = undefined;
+    this.statusText = undefined;
+    this.fullscreenText = undefined;
+    this.layout = createWildPairsLayout(this.scale.width, this.scale.height, this.difficulty);
 
     this.drawMeadow();
     this.drawJournalBoard();
@@ -180,7 +193,7 @@ export class WildPairsScene extends Phaser.Scene {
       color: '#35483d',
       align: 'center',
     });
-    this.pairsText = this.add.text(panel.x + panel.width / 2 + 10, panel.y + 148, `PAIRS\n${this.state.pairs} / 4`, {
+    this.pairsText = this.add.text(panel.x + panel.width / 2 + 10, panel.y + 148, `PAIRS\n${this.state.pairs} / ${this.difficulty.pairs}`, {
       fontFamily: 'Georgia, serif',
       fontSize: '15px',
       fontStyle: 'bold',
@@ -197,6 +210,7 @@ export class WildPairsScene extends Phaser.Scene {
       panel.y + 210,
     );
 
+    this.drawDifficultyControls(panel.x + padding, panel.y + 270, panel.width - padding * 2);
     this.add.text(panel.x + padding, panel.y + 228, 'Tap two cards. Matches stay in your journal.', {
       fontFamily: 'Georgia, serif',
       fontSize: '13px',
@@ -231,10 +245,9 @@ export class WildPairsScene extends Phaser.Scene {
 
   private drawTopPanel(panel: Rect): void {
     const portrait = this.layout.mode === 'portrait';
-    const titleSize = portrait ? '17px' : '18px';
     this.add.text(panel.x + 12, panel.y + 8, 'WILD PAIRS', {
       fontFamily: 'Georgia, serif',
-      fontSize: titleSize,
+      fontSize: portrait ? '17px' : '18px',
       fontStyle: 'bold',
       color: '#35483d',
     });
@@ -244,7 +257,7 @@ export class WildPairsScene extends Phaser.Scene {
       fontSize: '13px',
       color: '#35483d',
     });
-    this.pairsText = this.add.text(panel.x + 92, panel.y + 36, `Pairs ${this.state.pairs}/4`, {
+    this.pairsText = this.add.text(panel.x + 92, panel.y + 36, `Pairs ${this.state.pairs}/${this.difficulty.pairs}`, {
       fontFamily: 'Georgia, serif',
       fontSize: '13px',
       color: '#35483d',
@@ -277,14 +290,47 @@ export class WildPairsScene extends Phaser.Scene {
     );
     this.fullscreenText = fullscreen.label;
 
-    const statusWidth = Math.max(120, panel.width - fullscreenWidth - replayWidth - 36);
-    this.statusText = this.add.text(panel.x + 176, panel.y + (portrait ? 62 : 42), this.status, {
-      fontFamily: 'Georgia, serif',
-      fontSize: portrait ? '12px' : '11px',
-      fontStyle: 'italic',
-      color: '#637453',
-      wordWrap: { width: statusWidth },
+    const selectorWidth = portrait ? panel.width - 24 : Math.min(360, panel.width - 250);
+    this.drawDifficultyControls(
+      panel.x + 12,
+      panel.y + (portrait ? 70 : 50),
+      selectorWidth,
+      portrait ? 34 : 28,
+    );
+
+    if (portrait) {
+      this.statusText = this.add.text(panel.x + 12, panel.y + 108, this.status, {
+        fontFamily: 'Georgia, serif',
+        fontSize: '11px',
+        fontStyle: 'italic',
+        color: '#637453',
+        wordWrap: { width: panel.width - 24 },
+      });
+    }
+  }
+
+  private drawDifficultyControls(x: number, y: number, width: number, height = 36): void {
+    const buttonWidth = (width - 12) / 4;
+    DIFFICULTIES.forEach((difficulty, index) => {
+      const button = this.createButton(
+        x + index * (buttonWidth + 4),
+        y,
+        buttonWidth,
+        height,
+        difficulty.label,
+        () => this.changeDifficulty(difficulty.id),
+        difficulty.id === this.difficulty.id ? COLORS.butter : COLORS.paperLight,
+        COLORS.ink,
+        11,
+      );
+      button.container.setDepth(5);
     });
+  }
+
+  private changeDifficulty(id: DifficultyId): void {
+    if (id === this.difficulty.id) return;
+    this.difficulty = getDifficulty(id);
+    this.resetBoard(`A fresh ${this.difficulty.label} meadow page.`);
   }
 
   private createButton(
@@ -384,9 +430,27 @@ export class WildPairsScene extends Phaser.Scene {
   }
 
   private createFrontFace(index: number, rect: Rect): Phaser.GameObjects.Container {
-    const card = this.state.cards[index]!;
     const face = this.add.container(0, 0);
     const graphics = this.add.graphics();
+    const caption = this.add.text(0, rect.height * 0.34, '', {
+      fontFamily: 'Georgia, serif',
+      fontSize: `${Math.max(9, Math.min(16, Math.round(rect.width / 12)))}px`,
+      fontStyle: 'bold',
+      color: '#596a4b',
+      letterSpacing: 1,
+    }).setOrigin(0.5);
+    caption.setVisible(rect.width >= 62 && rect.height >= 70);
+    face.add([graphics, caption]);
+    this.cardFrontGraphics[index] = graphics;
+    this.cardCaptions[index] = caption;
+    this.paintFrontFace(index, rect);
+    return face;
+  }
+
+  private paintFrontFace(index: number, rect: Rect): void {
+    const card = this.state.cards[index]!;
+    const graphics = this.cardFrontGraphics[index]!;
+    graphics.clear();
     graphics.fillStyle(COLORS.ink, 0.15);
     graphics.fillRoundedRect(-rect.width / 2 + 4, -rect.height / 2 + 6, rect.width, rect.height, 14);
     graphics.fillStyle(COLORS.paperLight, 1);
@@ -405,16 +469,7 @@ export class WildPairsScene extends Phaser.Scene {
       -rect.height * 0.07,
       Math.min(rect.width, rect.height) * 0.3,
     );
-
-    const caption = this.add.text(0, rect.height * 0.34, card.animal.toUpperCase(), {
-      fontFamily: 'Georgia, serif',
-      fontSize: `${Math.max(10, Math.min(16, Math.round(rect.width / 12)))}px`,
-      fontStyle: 'bold',
-      color: '#596a4b',
-      letterSpacing: 1,
-    }).setOrigin(0.5);
-    face.add([graphics, caption]);
-    return face;
+    this.cardCaptions[index]!.setText(card.animal.toUpperCase());
   }
 
   private createFocusRing(rect: Rect): Phaser.GameObjects.Graphics {
@@ -622,8 +677,8 @@ export class WildPairsScene extends Phaser.Scene {
       y + 27,
       140,
       42,
-      'PLAY AGAIN',
-      () => this.restartGame(),
+      this.difficulty.id === '6x6' ? 'PLAY AGAIN' : 'NEXT LEVEL',
+      () => this.difficulty.id === '6x6' ? this.restartGame() : this.startNextDifficulty(),
       0xe9edcf,
       COLORS.moss,
       13,
@@ -658,6 +713,12 @@ export class WildPairsScene extends Phaser.Scene {
     }
   }
 
+  private startNextDifficulty(): void {
+    const currentIndex = DIFFICULTIES.findIndex((difficulty) => difficulty.id === this.difficulty.id);
+    const nextDifficulty = DIFFICULTIES[Math.min(currentIndex + 1, DIFFICULTIES.length - 1)]!;
+    this.changeDifficulty(nextDifficulty.id);
+  }
+
   private restartGame(): void {
     this.tweens.killAll();
     this.time.removeAllEvents();
@@ -665,16 +726,34 @@ export class WildPairsScene extends Phaser.Scene {
     this.completionObjects = [];
     for (const object of this.transientObjects) object.destroy();
     this.transientObjects = [];
-    this.state = createGameState();
+    this.state = createGameState(Math.random, this.difficulty);
     this.busy = false;
     this.pendingRedraw = false;
     this.keyboardIndex = 0;
     this.status = 'A fresh page—find the meadow pairs.';
-    this.views.forEach((view) => view.setAngle(0).setScale(1));
+    this.views.forEach((view, index) => {
+      view.setAngle(0).setScale(1);
+      this.paintFrontFace(index, this.layout.cards[index]!);
+    });
     this.updateCounters();
     this.setStatus(this.status);
     this.updateKeyboardFocus();
     this.playTone(360, 90);
+  }
+
+  private resetBoard(status: string): void {
+    this.tweens.killAll();
+    this.time.removeAllEvents();
+    this.busy = true;
+    this.pendingRedraw = false;
+    this.time.delayedCall(40, () => {
+      this.state = createGameState(Math.random, this.difficulty);
+      this.busy = false;
+      this.keyboardIndex = 0;
+      this.status = status;
+      this.redraw();
+      this.playTone(360, 90);
+    });
   }
 
   private destroyTransientObject(object: Phaser.GameObjects.GameObject): void {
@@ -686,10 +765,10 @@ export class WildPairsScene extends Phaser.Scene {
   private updateCounters(): void {
     if (this.layout.mode === 'side') {
       this.movesText?.setText(`MOVES\n${this.state.moves}`);
-      this.pairsText?.setText(`PAIRS\n${this.state.pairs} / 4`);
+      this.pairsText?.setText(`PAIRS\n${this.state.pairs} / ${this.difficulty.pairs}`);
     } else {
       this.movesText?.setText(`Moves ${this.state.moves}`);
-      this.pairsText?.setText(`Pairs ${this.state.pairs}/4`);
+      this.pairsText?.setText(`Pairs ${this.state.pairs}/${this.difficulty.pairs}`);
     }
   }
 
@@ -790,13 +869,17 @@ export class WildPairsScene extends Phaser.Scene {
       event.preventDefault();
       this.chooseCard(this.keyboardIndex);
     });
+    keyboard.on('keydown-ONE', () => this.changeDifficulty('2x4'));
+    keyboard.on('keydown-TWO', () => this.changeDifficulty('3x4'));
+    keyboard.on('keydown-THREE', () => this.changeDifficulty('4x4'));
+    keyboard.on('keydown-FOUR', () => this.changeDifficulty('6x6'));
     keyboard.on('keydown-R', () => this.restartGame());
     keyboard.on('keydown-F', () => this.toggleFullscreen());
   }
 
   private moveKeyboardFocus(horizontal: number, vertical: number): void {
     const columns = this.layout.columns;
-    const rows = 8 / columns;
+    const rows = this.layout.rows;
     const currentColumn = this.keyboardIndex % columns;
     const currentRow = Math.floor(this.keyboardIndex / columns);
     const nextColumn = Phaser.Math.Clamp(currentColumn + horizontal, 0, columns - 1);

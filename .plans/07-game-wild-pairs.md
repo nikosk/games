@@ -31,7 +31,7 @@ Cards need generous spacing and readable art on the target tablet.
 
 ## Current MVP
 
-One procedural watercolour meadow field journal with exactly four pairs (rabbit, hedgehog, fox, frog), smooth touch-friendly 4x2 cards, match/mismatch feedback, generated Web Audio cues, counters, replay, fullscreen, and a completion celebration. No timer, save data, levels, or collection.
+A procedural watercolour meadow field journal with selectable 2×4, 3×4, 4×4, and 6×6 boards (4, 6, 8, or 18 pairs), touch-friendly cards, match/mismatch feedback, generated Web Audio cues, counters, replay, fullscreen, and a completion celebration.
 
 ## If it stays fun
 

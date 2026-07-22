@@ -1,6 +1,41 @@
-export type Animal = 'rabbit' | 'hedgehog' | 'fox' | 'frog';
+export const ANIMALS = [
+  'rabbit',
+  'hedgehog',
+  'fox',
+  'frog',
+  'badger',
+  'deer',
+  'owl',
+  'squirrel',
+  'otter',
+  'bear',
+  'wolf',
+  'raccoon',
+  'beaver',
+  'lynx',
+  'boar',
+  'hare',
+  'marten',
+  'stoat',
+] as const;
 
-export const ANIMALS: readonly Animal[] = ['rabbit', 'hedgehog', 'fox', 'frog'];
+export type Animal = (typeof ANIMALS)[number];
+export type DifficultyId = '2x4' | '3x4' | '4x4' | '6x6';
+
+export interface DifficultyConfig {
+  readonly id: DifficultyId;
+  readonly label: string;
+  readonly rows: number;
+  readonly columns: number;
+  readonly pairs: number;
+}
+
+export const DIFFICULTIES: readonly DifficultyConfig[] = [
+  { id: '2x4', label: '2 × 4', rows: 2, columns: 4, pairs: 4 },
+  { id: '3x4', label: '3 × 4', rows: 3, columns: 4, pairs: 6 },
+  { id: '4x4', label: '4 × 4', rows: 4, columns: 4, pairs: 8 },
+  { id: '6x6', label: '6 × 6', rows: 6, columns: 6, pairs: 18 },
+];
 
 export interface Card {
   readonly id: number;
@@ -17,8 +52,16 @@ export interface GameState {
 
 export type PairResult = 'match' | 'mismatch' | 'invalid';
 
-export function makeDeck(random: () => number = Math.random): Card[] {
+export function getDifficulty(id: DifficultyId): DifficultyConfig {
+  return DIFFICULTIES.find((difficulty) => difficulty.id === id) ?? DIFFICULTIES[0]!;
+}
+
+export function makeDeck(
+  random: () => number = Math.random,
+  difficulty: DifficultyConfig = DIFFICULTIES[0]!,
+): Card[] {
   const deck = ANIMALS
+    .slice(0, difficulty.pairs)
     .flatMap((animal) => [animal, animal])
     .map((animal, id) => ({ id, animal, matched: false }));
 
@@ -30,9 +73,12 @@ export function makeDeck(random: () => number = Math.random): Card[] {
   return deck;
 }
 
-export function createGameState(random: () => number = Math.random): GameState {
+export function createGameState(
+  random: () => number = Math.random,
+  difficulty: DifficultyConfig = DIFFICULTIES[0]!,
+): GameState {
   return {
-    cards: makeDeck(random),
+    cards: makeDeck(random, difficulty),
     open: [],
     moves: 0,
     pairs: 0,

@@ -1,3 +1,5 @@
+import { DIFFICULTIES, type DifficultyConfig } from './rules';
+
 export interface Rect {
   readonly x: number;
   readonly y: number;
@@ -12,24 +14,35 @@ export interface WildPairsLayout {
   readonly height: number;
   readonly mode: LayoutMode;
   readonly columns: number;
+  readonly rows: number;
   readonly gap: number;
   readonly grid: Rect;
   readonly panel: Rect;
   readonly cards: readonly Rect[];
+  readonly difficulty: DifficultyConfig;
 }
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value));
 }
 
-export function createWildPairsLayout(width: number, height: number): WildPairsLayout {
+export function createWildPairsLayout(
+  width: number,
+  height: number,
+  difficulty: DifficultyConfig = DIFFICULTIES[0]!,
+): WildPairsLayout {
   const margin = clamp(Math.min(width, height) * 0.025, 10, 24);
-  const gap = clamp(Math.min(width, height) * 0.018, 8, 16);
-  const side = width >= 820 && width > height;
+  const denseBoard = difficulty.pairs >= 18;
+  const gap = clamp(
+    Math.min(width, height) * (denseBoard ? 0.012 : 0.018),
+    denseBoard ? 5 : 8,
+    16,
+  );
+  const side = width >= 820 && width > height && height >= 520;
   const portrait = height > width;
   const mode: LayoutMode = side ? 'side' : portrait ? 'portrait' : 'compact';
-  const columns = portrait ? 2 : 4;
-  const rows = portrait ? 4 : 2;
+  const columns = mode === 'portrait' ? difficulty.rows : difficulty.columns;
+  const rows = mode === 'portrait' ? difficulty.columns : difficulty.rows;
 
   let panel: Rect;
   let cardWidth: number;
@@ -41,10 +54,14 @@ export function createWildPairsLayout(width: number, height: number): WildPairsL
     const panelWidth = clamp(width * 0.225, 220, 280);
     const contentGap = clamp(width * 0.015, 14, 20);
     const boardWidth = width - margin * 2 - panelWidth - contentGap;
-    cardWidth = (boardWidth - gap * 3) / 4;
-    cardHeight = Math.min((height - margin * 2 - gap) / 2, cardWidth * 1.25, 240);
-    const gridWidth = cardWidth * 4 + gap * 3;
-    const gridHeight = cardHeight * 2 + gap;
+    cardWidth = (boardWidth - gap * (columns - 1)) / columns;
+    cardHeight = Math.min(
+      (height - margin * 2 - gap * (rows - 1)) / rows,
+      cardWidth * 1.25,
+      240,
+    );
+    const gridWidth = cardWidth * columns + gap * (columns - 1);
+    const gridHeight = cardHeight * rows + gap * (rows - 1);
     gridX = margin + (boardWidth - gridWidth) / 2;
     gridY = (height - gridHeight) / 2;
     const panelHeight = Math.min(height - margin * 2, Math.max(470, gridHeight));
@@ -55,7 +72,7 @@ export function createWildPairsLayout(width: number, height: number): WildPairsL
       height: panelHeight,
     };
   } else {
-    const panelHeight = mode === 'portrait' ? 100 : 72;
+    const panelHeight = mode === 'portrait' ? 126 : 82;
     panel = {
       x: margin,
       y: margin,
@@ -64,33 +81,28 @@ export function createWildPairsLayout(width: number, height: number): WildPairsL
     };
     const gridTop = panel.y + panel.height + gap;
     const availableHeight = height - gridTop - margin;
-    const rawCardWidth = (width - margin * 2 - gap * (columns - 1)) / columns;
-    cardWidth = mode === 'portrait' ? Math.min(rawCardWidth, 240) : rawCardWidth;
-    cardHeight = Math.min(
-      (availableHeight - gap * (rows - 1)) / rows,
-      mode === 'portrait' ? cardWidth * 1.2 : Number.POSITIVE_INFINITY,
-    );
+    cardWidth = (width - margin * 2 - gap * (columns - 1)) / columns;
+    cardHeight = (availableHeight - gap * (rows - 1)) / rows;
+    if (mode === 'portrait') cardHeight = Math.min(cardHeight, cardWidth * 1.75);
     const gridWidth = cardWidth * columns + gap * (columns - 1);
     const gridHeight = cardHeight * rows + gap * (rows - 1);
     gridX = (width - gridWidth) / 2;
     gridY = gridTop + (availableHeight - gridHeight) / 2;
   }
 
-  const cards: Rect[] = [];
-  for (let index = 0; index < 8; index += 1) {
-    cards.push({
-      x: gridX + (index % columns) * (cardWidth + gap),
-      y: gridY + Math.floor(index / columns) * (cardHeight + gap),
-      width: cardWidth,
-      height: cardHeight,
-    });
-  }
+  const cards = Array.from({ length: difficulty.pairs * 2 }, (_unused, index) => ({
+    x: gridX + (index % columns) * (cardWidth + gap),
+    y: gridY + Math.floor(index / columns) * (cardHeight + gap),
+    width: cardWidth,
+    height: cardHeight,
+  }));
 
   return {
     width,
     height,
     mode,
     columns,
+    rows,
     gap,
     grid: {
       x: gridX,
@@ -100,5 +112,6 @@ export function createWildPairsLayout(width: number, height: number): WildPairsL
     },
     panel,
     cards,
+    difficulty,
   };
 }
