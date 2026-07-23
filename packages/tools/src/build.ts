@@ -89,6 +89,7 @@ async function buildWorkspaceGames(): Promise<void> {
 
 async function buildCritterTactics(): Promise<void> {
   const gameDirectory = join(root, 'thegame');
+  await rm(join(gameDirectory, 'node_modules'), { recursive: true, force: true });
   await run('npm', ['ci'], gameDirectory);
   await run('npm', ['run', 'build'], gameDirectory);
   await copy('thegame/dist', 'thegame');

@@ -63,6 +63,7 @@ export class WorkshopScene extends Phaser.Scene {
   private completed = false;
   private reducedMotion = false;
   private resizePending = false;
+  private lastPlacementTime = 0;
   private layout!: WorkshopLayout;
 
   private boardLayer!: Phaser.GameObjects.Container;
@@ -428,14 +429,14 @@ export class WorkshopScene extends Phaser.Scene {
     });
     this.controlsLayer.add(fullscreen);
 
-    const previous = this.createButton(16, 414, 60, 48, '‹', () => this.selectLevel(this.levelIndex - 1), {
+    const previous = this.createButton(12, 410, 68, 56, '‹', () => this.selectLevel(this.levelIndex - 1), {
       fill: 0x36594d,
       text: '#fff4d6',
       border: 0xe5b74f,
       fontSize: 25,
       disabled: this.levelIndex === 0,
     });
-    const next = this.createButton(204, 414, 60, 48, '›', () => this.selectLevel(this.levelIndex + 1), {
+    const next = this.createButton(200, 410, 68, 56, '›', () => this.selectLevel(this.levelIndex + 1), {
       fill: 0x36594d,
       text: '#fff4d6',
       border: 0xe5b74f,
@@ -465,7 +466,7 @@ export class WorkshopScene extends Phaser.Scene {
       text: '#3f352a',
       border: selected ? 0xfff4d6 : 0xc89b62,
       small: true,
-      fontSize: 13,
+      fontSize: 15,
       labelOffsetX: 14,
       disabled,
     });
@@ -554,6 +555,7 @@ export class WorkshopScene extends Phaser.Scene {
       });
       button.on('pointerup', () => button.setScale(1));
       button.on('pointerout', () => button.setScale(1));
+      button.on('pointercancel', () => button.setScale(1));
       button.on('pointerover', () => background.setAlpha(1.08));
       button.on('pointerout', () => background.setAlpha(1));
     }
@@ -580,8 +582,10 @@ export class WorkshopScene extends Phaser.Scene {
     }
 
     if (piece !== null) {
+      if (this.time.now - this.lastPlacementTime < 150) return;
       this.saveSnapshot();
       this.board[point.y]![point.x] = rotate(piece);
+      this.lastPlacementTime = this.time.now;
       this.play('place', 0.45);
       this.afterBoardChange();
       return;
@@ -598,6 +602,7 @@ export class WorkshopScene extends Phaser.Scene {
       rotation: this.selectedTool === 'straight' ? 1 : 0,
     };
     this.inventory[this.selectedTool] -= 1;
+    this.lastPlacementTime = this.time.now;
     this.play('place', 0.5);
     this.afterBoardChange();
   }
