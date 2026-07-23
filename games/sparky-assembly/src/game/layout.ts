@@ -40,16 +40,22 @@ function sideBySideLayout(width: number, height: number): AssemblyLayout {
 
   const availableBoardWidth = width - margin * 2 - gap - panelWidth;
   const beltHeight = clamp(availableBoardWidth * 0.17, 64, 112);
-  const beltWidth = availableBoardWidth;
-  const beltSlotSize = Math.floor(beltWidth / BELT_SLOTS);
 
   const availableBoardHeight = height - margin * 2 - gap - beltHeight;
   const cellSize = Math.min(availableBoardWidth / COLS, availableBoardHeight / ROWS);
   const boardWidth = cellSize * COLS;
   const boardHeight = cellSize * ROWS;
+
+  // Belt spans the actual board width so it stays aligned with the board
+  // even when the board height (not width) is what limits cell size.
+  const beltWidth = boardWidth;
+  const beltSlotSize = Math.floor(beltWidth / BELT_SLOTS);
+
   const contentHeight = boardHeight + gap + beltHeight;
 
-  const boardX = margin;
+  // Center the board + gap + panel group instead of anchoring it left.
+  const groupWidth = boardWidth + gap + panelWidth;
+  const boardX = Math.round((width - groupWidth) / 2);
   const boardY = Math.round((height - contentHeight) / 2);
   const boardScale = cellSize / DESIGN_CELL_SIZE;
 

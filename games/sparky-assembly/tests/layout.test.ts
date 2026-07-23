@@ -58,6 +58,37 @@ describe('createLayout – portrait (phone 390×844)', () => {
   });
 });
 
+describe('createLayout – short landscape (1280×657)', () => {
+  it('centers the board + belt + panel group and keeps the belt aligned', () => {
+    const layout = createLayout(1280, 657);
+    expect(layout.stacked).toBe(false);
+
+    // Belt width must match the actual (height-limited) board width, not the
+    // wider available board width.
+    expect(layout.beltWidth).toBe(layout.boardWidth);
+    expect(layout.beltSlotSize).toBe(Math.floor(layout.boardWidth / BELT_SLOTS));
+
+    // The board + gap + panel group is centered: equal left and right gutters.
+    const groupWidth = layout.boardWidth + (layout.panelX - (layout.boardX + layout.boardWidth)) + layout.panelWidth;
+    const left = layout.boardX;
+    const right = layout.width - (layout.panelX + layout.panelWidth);
+    expect(Math.abs(left - right)).toBeLessThanOrEqual(1);
+    expect(groupWidth).toBeLessThanOrEqual(layout.width);
+  });
+
+  it('keeps every region onscreen', () => {
+    const layout = createLayout(1280, 657);
+    expect(layout.boardX).toBeGreaterThanOrEqual(0);
+    expect(layout.beltX).toBeGreaterThanOrEqual(0);
+    expect(layout.panelX).toBeGreaterThanOrEqual(0);
+    expect(layout.boardX + layout.boardWidth).toBeLessThanOrEqual(layout.width);
+    expect(layout.beltX + Math.floor(layout.boardWidth / BELT_SLOTS) * BELT_SLOTS).toBeLessThanOrEqual(layout.width);
+    expect(layout.panelX + layout.panelWidth).toBeLessThanOrEqual(layout.width);
+    expect(layout.beltY + layout.beltHeight).toBeLessThanOrEqual(layout.height);
+    expect(layout.panelY + layout.panelHeight).toBeLessThanOrEqual(layout.height);
+  });
+});
+
 describe('createLayout – very narrow portrait', () => {
   it('still produces a usable stacked layout', () => {
     const layout = createLayout(320, 568);
