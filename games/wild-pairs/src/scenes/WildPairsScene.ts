@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
-import { drawPortrait } from '../game/animals';
 import { createWildPairsLayout, type Rect, type WildPairsLayout } from '../game/layout';
+import { PORTRAIT_URLS, portraitTextureKey } from '../game/portraitAssets';
 import {
   canChoose,
   createGameState,
@@ -8,6 +8,7 @@ import {
   markPairMatched,
   resolvePair,
   type GameState,
+  ANIMALS,
   DIFFICULTIES,
   getDifficulty,
   type DifficultyConfig,
@@ -40,6 +41,7 @@ export class WildPairsScene extends Phaser.Scene {
   private cardBacks: Phaser.GameObjects.Graphics[] = [];
   private cardFronts: Phaser.GameObjects.Container[] = [];
   private cardFrontGraphics: Phaser.GameObjects.Graphics[] = [];
+  private cardPortraits: Phaser.GameObjects.Image[] = [];
   private cardCaptions: Phaser.GameObjects.Text[] = [];
   private focusRings: Phaser.GameObjects.Graphics[] = [];
   private busy = false;
@@ -57,6 +59,12 @@ export class WildPairsScene extends Phaser.Scene {
 
   constructor() {
     super('WildPairs');
+  }
+
+  preload(): void {
+    for (const animal of ANIMALS) {
+      this.load.image(portraitTextureKey(animal), PORTRAIT_URLS[animal]);
+    }
   }
 
   create(): void {
@@ -84,6 +92,7 @@ export class WildPairsScene extends Phaser.Scene {
     this.cardBacks = [];
     this.cardFronts = [];
     this.cardFrontGraphics = [];
+    this.cardPortraits = [];
     this.cardCaptions = [];
     this.focusRings = [];
     this.completionObjects = [];
@@ -432,6 +441,7 @@ export class WildPairsScene extends Phaser.Scene {
   private createFrontFace(index: number, rect: Rect): Phaser.GameObjects.Container {
     const face = this.add.container(0, 0);
     const graphics = this.add.graphics();
+    const portrait = this.add.image(0, 0, portraitTextureKey(this.state.cards[index]!.animal));
     const caption = this.add.text(0, rect.height * 0.34, '', {
       fontFamily: 'Georgia, serif',
       fontSize: `${Math.max(9, Math.min(16, Math.round(rect.width / 12)))}px`,
@@ -439,9 +449,9 @@ export class WildPairsScene extends Phaser.Scene {
       color: '#596a4b',
       letterSpacing: 1,
     }).setOrigin(0.5);
-    caption.setVisible(rect.width >= 62 && rect.height >= 70);
-    face.add([graphics, caption]);
+    face.add([graphics, portrait, caption]);
     this.cardFrontGraphics[index] = graphics;
+    this.cardPortraits[index] = portrait;
     this.cardCaptions[index] = caption;
     this.paintFrontFace(index, rect);
     return face;
@@ -458,18 +468,18 @@ export class WildPairsScene extends Phaser.Scene {
     graphics.lineStyle(3, COLORS.terracotta, 0.58);
     graphics.strokeRoundedRect(-rect.width / 2, -rect.height / 2, rect.width, rect.height, 14);
 
-    graphics.fillStyle(COLORS.sky, 0.14);
-    graphics.fillCircle(-rect.width * 0.15, -rect.height * 0.1, Math.min(rect.width, rect.height) * 0.34);
-    graphics.fillStyle(COLORS.meadowLight, 0.12);
-    graphics.fillCircle(rect.width * 0.12, rect.height * 0.06, Math.min(rect.width, rect.height) * 0.3);
-    drawPortrait(
-      graphics,
-      card.animal,
-      0,
-      -rect.height * 0.07,
-      Math.min(rect.width, rect.height) * 0.3,
+    const showCaption = rect.width >= 62 && rect.height >= 70;
+    const portraitSize = Math.min(
+      rect.width * 0.82,
+      rect.height * (showCaption ? 0.64 : 0.82),
     );
-    this.cardCaptions[index]!.setText(card.animal.toUpperCase());
+    this.cardPortraits[index]!
+      .setTexture(portraitTextureKey(card.animal))
+      .setPosition(0, showCaption ? -rect.height * 0.08 : 0)
+      .setDisplaySize(portraitSize, portraitSize);
+    this.cardCaptions[index]!
+      .setText(card.animal.toUpperCase())
+      .setVisible(showCaption);
   }
 
   private createFocusRing(rect: Rect): Phaser.GameObjects.Graphics {
