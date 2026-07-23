@@ -4,6 +4,12 @@ import clackUrl from '../../assets/audio/clack.wav?url';
 import placeUrl from '../../assets/audio/place.wav?url';
 import successUrl from '../../assets/audio/success.wav?url';
 import whistleUrl from '../../assets/audio/whistle.wav?url';
+import engineShedUrl from '../../assets/images/engine-shed.webp?url';
+import locomotiveUrl from '../../assets/images/locomotive.webp?url';
+import pineTreesUrl from '../../assets/images/pine-trees.webp?url';
+import pondUrl from '../../assets/images/pond.webp?url';
+import rocksUrl from '../../assets/images/rocks.webp?url';
+import stationUrl from '../../assets/images/station.webp?url';
 import {
   COLS,
   LEVELS,
@@ -42,7 +48,6 @@ const COLORS = {
   railShine: 0xaeb9b7,
   red: 0xc85445,
   blue: 0x438599,
-  paper: 0xf6e8c8,
 } as const;
 
 interface Snapshot {
@@ -83,6 +88,12 @@ export class WorkshopScene extends Phaser.Scene {
     this.load.audio('whistle', whistleUrl);
     this.load.audio('success', successUrl);
     this.load.audio('bump', bumpUrl);
+    this.load.image('engine-shed', engineShedUrl);
+    this.load.image('locomotive', locomotiveUrl);
+    this.load.image('pine-trees', pineTreesUrl);
+    this.load.image('pond', pondUrl);
+    this.load.image('rocks', rocksUrl);
+    this.load.image('station', stationUrl);
   }
 
   create(): void {
@@ -221,34 +232,14 @@ export class WorkshopScene extends Phaser.Scene {
   }
 
   private drawScenery(point: Point, scenery: 'trees' | 'pond' | 'rocks'): void {
-    const x = point.x * CELL_SIZE;
-    const y = point.y * CELL_SIZE;
-    const graphics = this.add.graphics();
-
-    if (scenery === 'pond') {
-      graphics.fillStyle(0x3f8793, 0.92);
-      graphics.fillEllipse(x + 39, y + 41, 58, 40);
-      graphics.lineStyle(3, 0x9bd1c5, 0.8);
-      graphics.strokeEllipse(x + 39, y + 41, 55, 37);
-      graphics.fillStyle(0xf2d35d);
-      graphics.fillCircle(x + 52, y + 34, 4);
-    } else if (scenery === 'rocks') {
-      graphics.fillStyle(0x596a61);
-      graphics.fillCircle(x + 31, y + 44, 18);
-      graphics.fillStyle(0x6f8177);
-      graphics.fillCircle(x + 49, y + 39, 16);
-      graphics.fillStyle(0xa7b0a1, 0.6);
-      graphics.fillEllipse(x + 42, y + 31, 19, 8);
-    } else {
-      graphics.fillStyle(0x704628);
-      graphics.fillRoundedRect(x + 35, y + 42, 8, 24, 3);
-      graphics.fillStyle(0x285e3d);
-      graphics.fillTriangle(x + 39, y + 8, x + 15, y + 49, x + 63, y + 49);
-      graphics.fillStyle(0x34764a);
-      graphics.fillTriangle(x + 39, y + 20, x + 17, y + 59, x + 61, y + 59);
-    }
-
-    this.boardLayer.add(graphics);
+    const texture = scenery === 'trees' ? 'pine-trees' : scenery;
+    const size = scenery === 'trees' ? 60 : scenery === 'rocks' ? 58 : 60;
+    const image = this.add.image(
+      point.x * CELL_SIZE + CELL_SIZE / 2,
+      point.y * CELL_SIZE + CELL_SIZE / 2,
+      texture,
+    ).setDisplaySize(size, size);
+    this.boardLayer.add(image);
   }
 
   private drawTrack(point: Point, piece: TrackPiece): void {
@@ -311,26 +302,14 @@ export class WorkshopScene extends Phaser.Scene {
 
   private drawDepotAndStation(): void {
     const labels = this.add.container(0, 0);
-    const depot = this.add.graphics();
     const startX = this.level.start.x * CELL_SIZE + 8;
     const startY = this.level.start.y * CELL_SIZE + 7;
-    depot.fillStyle(0x5f3824, 0.95);
-    depot.fillRoundedRect(startX, startY, 35, 28, 4);
-    depot.fillStyle(COLORS.red);
-    depot.fillTriangle(startX - 4, startY + 4, startX + 18, startY - 9, startX + 41, startY + 4);
-    depot.fillStyle(0x1f2d29);
-    depot.fillRect(startX + 13, startY + 12, 13, 16);
+    const depot = this.add.image(startX + 18, startY + 11, 'engine-shed').setDisplaySize(40, 40);
     labels.add(depot);
 
-    const station = this.add.graphics();
     const goalX = this.level.goal.x * CELL_SIZE + 38;
     const goalY = this.level.goal.y * CELL_SIZE + 8;
-    station.fillStyle(COLORS.paper);
-    station.fillRoundedRect(goalX, goalY, 33, 29, 4);
-    station.fillStyle(COLORS.blue);
-    station.fillTriangle(goalX - 4, goalY + 4, goalX + 16, goalY - 8, goalX + 37, goalY + 4);
-    station.fillStyle(0x73482d);
-    station.fillRect(goalX + 12, goalY + 14, 10, 15);
+    const station = this.add.image(goalX + 16, goalY + 11, 'station').setDisplaySize(40, 40);
     labels.add(station);
 
     const shedLabel = this.add.text(startX + 17, startY + 34, 'SHED', {
@@ -353,29 +332,9 @@ export class WorkshopScene extends Phaser.Scene {
 
   private createTrain(): void {
     this.train = this.add.container(0, 0);
-    const graphics = this.add.graphics();
-    graphics.fillStyle(0x102a26, 0.35);
-    graphics.fillEllipse(0, 17, 58, 15);
-    graphics.fillStyle(0x272f32);
-    graphics.fillCircle(-18, 15, 9);
-    graphics.fillCircle(17, 15, 9);
-    graphics.fillStyle(COLORS.brassLight);
-    graphics.fillCircle(-18, 15, 4);
-    graphics.fillCircle(17, 15, 4);
-    graphics.fillStyle(COLORS.red);
-    graphics.fillRoundedRect(-25, -8, 48, 24, 7);
-    graphics.fillStyle(0x993c34);
-    graphics.fillRect(-20, -18, 19, 16);
-    graphics.fillStyle(0xcce3dd);
-    graphics.fillRect(-16, -14, 10, 8);
-    graphics.fillStyle(COLORS.brass);
-    graphics.fillCircle(20, 0, 10);
-    graphics.fillStyle(0x252d2c);
-    graphics.fillRect(9, -19, 7, 14);
-    graphics.fillRect(6, -20, 13, 5);
-    graphics.fillStyle(COLORS.brassLight);
-    graphics.fillRect(-29, 4, 6, 8);
-    this.train.add(graphics);
+    const shadow = this.add.ellipse(0, 12, 50, 12, 0x102a26, 0.28);
+    const locomotive = this.add.image(0, 0, 'locomotive').setDisplaySize(62, 62);
+    this.train.add([shadow, locomotive]);
     this.train.setScale(this.layout.boardScale);
     this.train.setDepth(50);
     this.setTrainAt(this.level.start, this.level.direction);

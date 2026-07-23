@@ -147,12 +147,15 @@ function optimize(source, destination, { maxDim, quality, transparent }) {
   const format = outputFormat(destination);
   if (transparent && format === 'jpeg') fail('transparent output requires PNG or WebP');
 
-  const args = [source, '-auto-orient', '-strip'];
+  const args = [source, '-auto-orient', '-strip', '-resize', `${maxDim}x${maxDim}>`];
   if (transparent) {
-    args.push('-alpha', 'on', '-fuzz', '15%', '-transparent', '#ff00ff');
+    args.push(
+      '(', '+clone', '-colorspace', 'HSL', '-channel', 'R', '-separate', '+channel',
+      '-threshold', '86%', '-negate', '-morphology', 'Close', 'Disk:10', ')',
+      '-alpha', 'off', '-compose', 'CopyOpacity', '-composite',
+    );
   }
-  args.push('-resize', `${maxDim}x${maxDim}>`);
-  if (format === 'webp') args.push('-define', 'webp:method=6', '-quality', String(quality));
+  if (format === 'webp') args.push('-define', 'webp:method=6', '-define', 'webp:alpha-quality=100', '-quality', String(quality));
   else if (format === 'jpeg') args.push('-quality', String(quality));
   args.push(destination);
   execFileSync('magick', args, { stdio: 'inherit' });
