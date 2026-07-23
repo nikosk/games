@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#16292e" />
+    <title>Sparky's Assembly Line</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: "Trebuchet MS", "Avenir Next", sans-serif;
+        background: #16292e;
+      }
+
+      * { box-sizing: border-box; }
+
+      html,
+      body,
+      #game {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+      }
+
+      body {
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 50% 22%, rgba(120, 180, 200, 0.10), transparent 40%),
+          repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.014) 0 1px, transparent 1px 9px),
+          #16292e;
+        touch-action: none;
+      }
+
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+        outline: none;
+      }
+
+      canvas:focus-visible {
+        outline: 4px solid #ffd166;
+        outline-offset: -4px;
+      }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <main id="game" aria-label="Sparky's Assembly Line game"></main>
+    <p class="sr-only">
+      Program the toy robot Sparky: choose a command from the palette, tap a belt slot to place it,
+      then press Run or Step. Move forward, turn left, turn right, and grab or release the crate so it
+      lands on the marked goal. Keyboard shortcuts: 1 to 4 choose a command, Space runs, S steps,
+      R resets, and Backspace clears the last command.
+    </p>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

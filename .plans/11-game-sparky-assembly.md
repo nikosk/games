@@ -2,6 +2,12 @@
 
 **Existing version:** `robot-factory.html`
 
+**Status (implemented):** First playable Phaser+TS rewrite lives at `games/sparky-assembly/`.
+One 5×5 puzzle (Sparky at (0,4) facing east, crate at (0,2), goal at (2,2)); commands move /
+turn-left / turn-right / grab(release) on an 8-slot belt; Run, Step, Reset; procedural visuals +
+procedural Web Audio sound. `robot-factory.html` redirects to the new game and the original is kept at
+`classic/robot-factory.html`. Root build + validate pass. Still needs: tablet playtest and tuning.
+
 ## Idea
 
 A tactile programming puzzle where command modules are snapped onto a conveyor and Sparky carries them out on a factory floor.
