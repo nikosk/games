@@ -2,9 +2,9 @@
 
 **Existing version:** `thegame/`
 
-## Immediate fix
+## Current version
 
-The current public entry serves raw Vite source and is broken. Before any large rewrite, build the existing game and publish its built output so the portfolio version works again.
+The portfolio builder now installs and builds the existing Vite game, then publishes its built output under `docs/thegame/`. The immediate broken raw-source entry has been fixed. A Phaser/TypeScript rewrite remains an optional future game, not urgent repair work.
 
 ## Idea
 
@@ -71,4 +71,4 @@ Illustrated woodland board, distinct critter silhouettes, charming clockwork ene
 
 ## Ready for the portfolio when
 
-The current live game works again, then one rewritten battle is tactically interesting, readable on tablet, deterministic under the rules, and satisfying to complete.
+The existing portfolio game continues to build and open correctly. If it is rewritten, one battle should be tactically interesting, readable on tablet, deterministic under the rules, and satisfying to complete.

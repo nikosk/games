@@ -38,6 +38,12 @@ Touch movement and jump must work together reliably.
 - camera movement that keeps the route readable
 - jump, landing, vine, collect, and completion sounds
 
+## Current version
+
+One authored vertical climb now lives in `games/canopy-caper/`. It includes running and jumping, one mandatory vine crossing, six pieces of fruit, two checkpoints, respawning, camera tracking, touch and keyboard controls, pause and completion screens, fullscreen support, and procedural visuals and sound. The original is preserved at `classic/monkey-banana.html`.
+
+Tablet playtesting found that the touch controls make it difficult to combine direction and jumping. The next change should make simultaneous movement and jump input reliable and comfortable, then retest the full climb before tuning the vine or adding content.
+
 ## If it stays fun
 
 - moving branches

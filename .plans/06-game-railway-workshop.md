@@ -69,7 +69,7 @@ Warm handmade model railway: painted scenery, chunky wooden track, brass and woo
 
 Five handcrafted puzzles now live in `games/railway-workshop/`, progressing from Pinecone Path's short first route through Garden Zigzag, Meadow Loop, Rocky Ridge, and the tighter Sunset Express. They share straight and curved pieces, rotation, removal, undo, route highlighting, a moving train, original sound effects, level selection, and next/replay actions. Its responsive canvas fills the viewport, the map dominates landscape screens, and the compact controls sit in a right-side panel with a fullscreen toggle. The original is preserved at `classic/train-tracks.html`.
 
-Before calling it finished, play it together on the target tablet and tune anything that feels unclear or awkward.
+It has been playtested on the target tablet. The puzzle, touch controls, layout, and feedback are working well.
 
 ## Ready for the portfolio when
 

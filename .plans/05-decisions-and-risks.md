@@ -42,9 +42,10 @@ Try the simplest likely solution first. Research only if an unknown blocks usefu
 
 ## Known things to handle
 
-- The root workspace and portfolio builder exist; the generated `docs/` still needs to be published.
+- The root workspace and portfolio builder are working, and generated `docs/` output is committed for GitHub Pages.
+- Railway Workshop, Wild Pairs, and Canopy Caper are in the generated portfolio with their originals preserved.
 - The builder includes a working transitional Critter Tactics build.
-- The exact target tablet should be noted when device tuning begins.
+- Railway Workshop and Wild Pairs passed hands-on tablet playtesting. Canopy Caper's touch controls need work because combining direction and jump is difficult.
 - Games with old saves may either import them or start fresh; leave old keys untouched either way.
 - Third-party art and audio need clear permission and credits.
 

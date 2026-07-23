@@ -79,25 +79,37 @@ A game is ready when:
 
 A game does not need a large campaign, a fixed number of levels, every idea in its brief, or elaborate supporting systems to be done.
 
+## Current status
+
+The small technical foundation is working: the npm workspace, strict TypeScript setup, tests, portfolio build, and generated-site validation are in place.
+
+Three Phaser rewrites are included in the generated portfolio:
+
+- **Railway Workshop:** five handcrafted track puzzles with touch controls, sound, level selection, and responsive layout. Playtested on the target tablet and working well.
+- **Wild Pairs:** four board sizes with procedural animal art, touch and keyboard controls, sound, and a completion celebration. Playtested on the target tablet and working well.
+- **Canopy Caper:** one authored jungle climb with running, jumping, a vine swing, fruit, checkpoints, touch controls, and procedural sound. Tablet playtesting found that combining direction and jump is difficult.
+
+The originals of those three games are preserved under `classic/`. Type checking, tests, and generated-site validation currently pass. The main unfinished work is fixing and retesting Canopy Caper's touch controls.
+
 ## Portfolio
 
 These are available ideas, not a binding schedule:
 
-| Existing game | Possible rewrite |
-|---|---|
-| Train Tracks | [Railway Workshop](06-game-railway-workshop.md) |
-| Animal Memory | [Wild Pairs](07-game-wild-pairs.md) |
-| Monkey Banana | [Canopy Caper](08-game-canopy-caper.md) |
-| Mouse Adventure | [Cheese Heist](09-game-cheese-heist.md) |
-| Valley Explorer | [Valley of Echoes](10-game-valley-echoes.md) |
-| Robot Factory | [Sparky's Assembly Line](11-game-sparky-assembly.md) |
-| Code Adventure | [Bit's Grand Adventure](12-game-bit-adventure.md) |
-| Coco's Lost Hat | [Coco's Lost Hat](13-game-coco-hat.md) |
-| Hippo | [Hippo's Great Feast](14-game-hippo-feast.md) |
-| Little Chef's Kitchen | [Little Chef's Grand Kitchen](15-game-little-chef.md) |
-| Critter Tactics | [Critter Tactics](16-game-critter-tactics.md) |
+| Existing game | Possible rewrite | Status |
+|---|---|---|
+| Train Tracks | [Railway Workshop](06-game-railway-workshop.md) | In portfolio; tablet playtest passed |
+| Animal Memory | [Wild Pairs](07-game-wild-pairs.md) | In portfolio; tablet playtest passed |
+| Monkey Banana | [Canopy Caper](08-game-canopy-caper.md) | In portfolio; touch direction and jumping need work |
+| Mouse Adventure | [Cheese Heist](09-game-cheese-heist.md) | Idea |
+| Valley Explorer | [Valley of Echoes](10-game-valley-echoes.md) | Idea |
+| Robot Factory | [Sparky's Assembly Line](11-game-sparky-assembly.md) | Idea |
+| Code Adventure | [Bit's Grand Adventure](12-game-bit-adventure.md) | Idea |
+| Coco's Lost Hat | [Coco's Lost Hat](13-game-coco-hat.md) | Idea |
+| Hippo | [Hippo's Great Feast](14-game-hippo-feast.md) | Idea |
+| Little Chef's Kitchen | [Little Chef's Grand Kitchen](15-game-little-chef.md) | Idea |
+| Critter Tactics | [Critter Tactics](16-game-critter-tactics.md) | Existing Vite game builds correctly; rewrite is optional |
 
-Start with Railway Workshop if no other idea is more exciting. After that, choose freely.
+Choose the next game freely. Cheese Heist is the next unbuilt brief in the table, but there is no required order.
 
 The numbered game briefs in this directory are idea banks and creative references. Their feature counts and detailed scopes are wishes, not promises. Change or shrink them whenever that makes a game more fun or more likely to ship.
 
@@ -124,7 +136,8 @@ Before publishing, run the relevant checks, open the built game, play its main p
 
 ## Next steps
 
-1. Play Railway Workshop together on the target tablet and tune what feels awkward.
-2. Publish it when the puzzle, controls, and feedback feel good.
-3. Extract only the shared pieces that the finished example proves useful.
-4. Add a lightweight game starter when it will genuinely speed up the next idea.
+1. Fix Canopy Caper's touch controls so the player can hold a direction and jump reliably at the same time.
+2. Replay the full climb on the target tablet and tune the control size, placement, jump timing, and vine release until movement feels comfortable.
+3. Run the production build, open Canopy Caper, and play its main path before publishing the revision.
+4. Pick whichever game idea sounds most fun next. Use Cheese Heist only as the default when no other idea is more exciting.
+5. Add a lightweight game starter or extract shared code only when starting that next game proves it will save time.

@@ -20,6 +20,7 @@ The purpose of the repository is to make it fast and enjoyable to turn an idea i
 - Ask a question only when a real product choice or missing fact prevents useful work.
 - After changing files, briefly say what changed, what was checked, and anything still unfinished.
 - Do not produce elaborate completion reports unless the owner asks for one.
+- Do not spin up subagents unless the user specifically asks you to.
 
 ## How to work
 

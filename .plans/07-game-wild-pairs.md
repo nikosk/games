@@ -33,6 +33,8 @@ Cards need generous spacing and readable art on the target tablet.
 
 A procedural watercolour meadow field journal with selectable 2×4, 3×4, 4×4, and 6×6 boards (4, 6, 8, or 18 pairs), touch-friendly cards, match/mismatch feedback, generated Web Audio cues, counters, replay, fullscreen, and a completion celebration.
 
+It has been playtested on the target tablet. The cards, controls, layout, and complete play loop are working well.
+
 ## If it stays fun
 
 - more habitats and animal sets
