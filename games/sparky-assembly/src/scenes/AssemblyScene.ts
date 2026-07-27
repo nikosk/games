@@ -1,7 +1,18 @@
 import Phaser from 'phaser';
+import sparkyTextureUrl from '../../assets/images/sparky-topdown.webp';
+import gearBinTextureUrl from '../../assets/images/gear-bin.webp';
+import workbenchTextureUrl from '../../assets/images/factory-workbench.webp';
 import { COLS, ROWS, BELT_SLOTS, FIRST_LEVEL, initialState, type SparkyLevel } from '../game/level';
-import { createLayout, DESIGN_CELL_SIZE, type AssemblyLayout } from '../game/layout';
-import { angleFor, type Direction } from '../game/direction';
+import {
+  createLayout,
+  computeControls,
+  beltSlotRect,
+  DESIGN_CELL_SIZE,
+  type AssemblyLayout,
+  type ControlLayout,
+  type ControlRect,
+} from '../game/layout';
+import { angleFor, DIRECTION_VECTORS, type Direction } from '../game/direction';
 import {
   executeStep,
   isSolved,
@@ -10,46 +21,49 @@ import {
   type FloorState,
   type StepResult,
 } from '../game/rules';
+import { COMMANDS, commandMeta } from '../game/commands';
+import { appendCommand as appendToBelt, clearBelt, removeCommandAt, removeLastCommand } from '../game/belt';
 import { Sfx } from '../game/sfx';
 
 const CELL = DESIGN_CELL_SIZE;
+const SPARKY_TEXTURE = 'sparky-topdown';
+const GEAR_BIN_TEXTURE = 'gear-bin';
+const WORKBENCH_TEXTURE = 'factory-workbench';
 
+/** Sunny snap-together factory palette. */
 const COLORS = {
-  floorA: 0x2d4a4f,
-  floorB: 0x34555a,
-  floorEdge: 0x1b3236,
-  panel: 0x223a3f,
-  panelEdge: 0x3a5560,
-  belt: 0x3b3a36,
-  beltSlot: 0x4a4943,
-  beltSlotEdge: 0x5d5b52,
-  cream: 0xfff4d6,
-  ink: 0x16292e,
+  workbench: 0xf6ead2,
+  workbenchEdge: 0xe6cf9a,
+  workbenchTint: 0xeaf0ef,
+  panel: 0xfff7e6,
+  panelEdge: 0xe6c97a,
+  panelFastener: 0xffd166,
+  floorA: 0xb7ece2,
+  floorB: 0xa8e3d6,
+  floorEdge: 0x6fc4b5,
+  floorGutter: 0xf6ead2,
+  belt: 0x2a3a6b,
+  beltEdge: 0xf5c542,
+  beltSlot: 0x3a4a7b,
+  beltSlotEdge: 0x5a6a9b,
+  ink: 0x22365a,
+  inkSoft: 0x4a5a7a,
   brass: 0xffd166,
   green: 0x6bbf67,
+  greenAccent: 0x4f9e4f,
   blue: 0x5aa9e6,
   yellow: 0xf5c542,
-  rose: 0xe8717a,
-  robotBody: 0x5aa9e6,
-  robotBodyDark: 0x3f7fb5,
-  crate: 0xc8843f,
-  crateDark: 0x9c5f28,
-  goal: 0xffd166,
+  yellowAccent: 0xd9a52e,
+  red: 0xe8717a,
+  redDark: 0xb5516a,
+  robotBody: 0x9fd8f0,
+  robotBodyDark: 0x5aa9e6,
+  crate: 0xe8717a,
+  crateDark: 0xb5516a,
+  goal: 0xf5c542,
+  goalStripe: 0x22365a,
   highlight: 0xfff4d6,
 } as const;
-
-interface CommandStyle {
-  readonly label: string;
-  readonly color: number;
-  readonly key: string;
-}
-
-const COMMANDS: readonly CommandStyle[] = [
-  { label: 'MOVE', color: COLORS.green, key: 'move' },
-  { label: 'LEFT', color: COLORS.blue, key: 'turn-left' },
-  { label: 'RIGHT', color: COLORS.blue, key: 'turn-right' },
-  { label: 'GRAB', color: COLORS.yellow, key: 'grab' },
-];
 
 const STEP_MS = 460;
 const TURN_MS = 320;
@@ -59,10 +73,10 @@ type Phase = 'idle' | 'running' | 'done';
 export class AssemblyScene extends Phaser.Scene {
   private level: SparkyLevel = FIRST_LEVEL;
   private layout!: AssemblyLayout;
+  private controls!: ControlLayout;
   private readonly sfx = new Sfx();
 
   private belt: Command[] = [];
-  private selectedCommand: Command = 'move';
   private stepIndex = 0;
   private liveState!: FloorState;
   private phase: Phase = 'idle';
@@ -77,18 +91,30 @@ export class AssemblyScene extends Phaser.Scene {
   private robot!: Phaser.GameObjects.Container;
   private crate!: Phaser.GameObjects.Container;
   private glow!: Phaser.GameObjects.Graphics;
+  private nextMarker!: Phaser.GameObjects.Graphics;
+  private objectiveText!: Phaser.GameObjects.Text;
   private statusText!: Phaser.GameObjects.Text;
   private beltSlots: Phaser.GameObjects.Container[] = [];
-  private runButton!: Phaser.GameObjects.Container;
-  private soundButton!: Phaser.GameObjects.Container;
+  private soundText!: Phaser.GameObjects.Text;
+  private fullscreenText!: Phaser.GameObjects.Text;
+
+  private keyboardBindings: Array<{ event: string; cb: (...args: unknown[]) => void }> = [];
 
   constructor() {
     super('AssemblyScene');
   }
 
+  preload(): void {
+    this.load.image(SPARKY_TEXTURE, sparkyTextureUrl);
+    this.load.image(GEAR_BIN_TEXTURE, gearBinTextureUrl);
+    this.load.image(WORKBENCH_TEXTURE, workbenchTextureUrl);
+  }
+
   create(): void {
+    this.resizePending = false;
     this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.layout = createLayout(this.scale.width, this.scale.height);
+    this.controls = computeControls(this.layout);
     this.input.mouse?.disableContextMenu();
     this.drawBackground();
 
@@ -100,47 +126,77 @@ export class AssemblyScene extends Phaser.Scene {
     this.controlsLayer = this.add.container(0, 0).setDepth(30);
 
     this.glow = this.add.graphics().setDepth(9);
+    this.nextMarker = this.add.graphics().setDepth(21);
 
     this.renderBoard();
     this.renderBelt();
     this.renderControls();
     this.liveState = initialState(this.level);
     this.placeActors(this.liveState.robot, this.liveState.crate, false, true);
+    this.markNextSlot();
 
     this.installKeyboard();
-    this.scale.on(Phaser.Scale.Events.RESIZE, this.handleResize, this);
+    this.installScaleEvents();
+    this.scale.on('fullscreenchange', this.handleFullscreenChange, this);
 
-    this.input.once('pointerdown', () => this.sfx.unlock());
     const canvas = this.game.canvas;
     canvas.setAttribute('tabindex', '0');
     canvas.setAttribute('aria-label', "Sparky's Assembly Line");
 
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.scale.off(Phaser.Scale.Events.RESIZE, this.handleResize, this);
-      this.input.keyboard?.removeAllListeners();
-      this.tweens.killAll();
-    });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.handleShutdown, this);
+  }
+
+  private handleShutdown(): void {
+    this.scale.off(Phaser.Scale.Events.RESIZE, this.handleResize, this);
+    this.scale.off('fullscreenchange', this.handleFullscreenChange, this);
+    this.scale.off('fullscreenunsupported', this.handleFullscreenUnsupported, this);
+    const kb = this.input.keyboard;
+    if (kb !== null) {
+      for (const b of this.keyboardBindings) kb.off(b.event, b.cb as never, this);
+    }
+    this.keyboardBindings = [];
+    this.tweens.killAll();
   }
 
   // ── background ──────────────────────────────────────────────
   private drawBackground(): void {
     const { width, height, panelX, panelY, panelWidth, panelHeight } = this.layout;
-    this.cameras.main.setBackgroundColor(COLORS.ink);
+    this.cameras.main.setBackgroundColor(COLORS.workbench);
 
-    const bg = this.add.graphics();
-    bg.fillStyle(0x1b353a);
+    // Cover the viewport without stretching the workbench illustration.
+    const workbench = this.add.image(width / 2, height / 2, WORKBENCH_TEXTURE).setDepth(-2);
+    workbench.setScale(Math.max(width / workbench.width, height / workbench.height));
+
+    const bg = this.add.graphics().setDepth(-1);
+    // A light wash keeps the detailed surface quiet behind controls and tiles.
+    bg.fillStyle(COLORS.workbench, 0.52);
     bg.fillRect(0, 0, width, height);
-    bg.fillStyle(0xffffff, 0.02);
-    for (let x = 10; x < width; x += 20) bg.fillRect(x, 0, 1, height);
-    bg.fillStyle(0xffffff, 0.012);
-    for (let y = 14; y < height; y += 20) bg.fillRect(0, y, width, 1);
+    bg.fillStyle(COLORS.workbenchTint, 0.12);
+    for (let y = 14; y < height; y += 26) {
+      for (let x = 18; x < width; x += 26) {
+        bg.fillCircle(x + ((y / 26) % 2) * 13, y, 1.6);
+      }
+    }
 
+    // Cream molded-plastic panel board.
     bg.lineStyle(3, COLORS.panelEdge, 1);
-    bg.strokeRoundedRect(panelX, panelY, panelWidth, panelHeight, 16);
-    bg.fillStyle(0x2a4549, 0.55);
-    bg.fillRoundedRect(panelX - 4, panelY - 4, panelWidth + 8, panelHeight + 8, 18);
+    bg.strokeRoundedRect(panelX - 4, panelY - 4, panelWidth + 8, panelHeight + 8, 18);
+    bg.fillStyle(0xe6cf9a, 0.4);
+    bg.fillRoundedRect(panelX - 6, panelY - 6, panelWidth + 12, panelHeight + 12, 20);
     bg.fillStyle(COLORS.panel);
     bg.fillRoundedRect(panelX, panelY, panelWidth, panelHeight, 16);
+    // Colored corner fasteners.
+    this.drawFastener(bg, panelX, panelY);
+    this.drawFastener(bg, panelX + panelWidth, panelY);
+    this.drawFastener(bg, panelX, panelY + panelHeight);
+    this.drawFastener(bg, panelX + panelWidth, panelY + panelHeight);
+  }
+
+  private drawFastener(g: Phaser.GameObjects.Graphics, x: number, y: number): void {
+    g.fillStyle(0xe6d4a8, 1);
+    g.fillCircle(x, y, 5);
+    g.fillStyle(COLORS.panelFastener, 1);
+    g.fillCircle(x, y, 3);
   }
 
   // ── board ───────────────────────────────────────────────────
@@ -156,13 +212,22 @@ export class AssemblyScene extends Phaser.Scene {
 
   private drawFloorTile(x: number, y: number): void {
     const g = this.add.graphics();
+    // Aqua snap-toy plate sitting on a cream gutter seam.
+    g.fillStyle(COLORS.floorGutter, 1);
+    g.fillRoundedRect(x * CELL + 2, y * CELL + 2, CELL - 4, CELL - 4, 8);
     const base = (x + y) % 2 === 0 ? COLORS.floorA : COLORS.floorB;
     g.fillStyle(base, 0.96);
-    g.fillRoundedRect(x * CELL + 3, y * CELL + 3, CELL - 6, CELL - 6, 10);
-    g.lineStyle(2, COLORS.floorEdge, 0.5);
-    g.strokeRoundedRect(x * CELL + 4, y * CELL + 4, CELL - 8, CELL - 8, 9);
-    g.fillStyle(0xffffff, 0.05);
-    g.fillRoundedRect(x * CELL + 8, y * CELL + 7, CELL - 16, 10, 5);
+    g.fillRoundedRect(x * CELL + 4, y * CELL + 4, CELL - 8, CELL - 8, 7);
+    g.lineStyle(2, COLORS.floorEdge, 0.55);
+    g.strokeRoundedRect(x * CELL + 5, y * CELL + 5, CELL - 10, CELL - 10, 6);
+    // soft upper-left light
+    g.fillStyle(0xffffff, 0.18);
+    g.fillRoundedRect(x * CELL + 9, y * CELL + 8, CELL - 18, 8, 4);
+    // corner rivets
+    g.fillStyle(COLORS.floorEdge, 0.8);
+    for (const [dx, dy] of [[12, 12], [CELL - 12, 12], [12, CELL - 12], [CELL - 12, CELL - 12]] as const) {
+      g.fillCircle(x * CELL + dx, y * CELL + dy, 1.6);
+    }
     this.boardLayer.add(g);
   }
 
@@ -170,76 +235,60 @@ export class AssemblyScene extends Phaser.Scene {
     const g = this.add.graphics();
     const cx = this.level.goal.x * CELL + CELL / 2;
     const cy = this.level.goal.y * CELL + CELL / 2;
-    g.lineStyle(4, COLORS.goal, 0.9);
-    g.strokeRoundedRect(cx - CELL / 2 + 7, cy - CELL / 2 + 7, CELL - 14, CELL - 14, 8);
-    g.fillStyle(COLORS.goal, 0.16);
-    g.fillRoundedRect(cx - CELL / 2 + 7, cy - CELL / 2 + 7, CELL - 14, CELL - 14, 8);
-    const flag = this.add.text(cx, cy - 2, 'TARGET', {
-      fontFamily: '"Trebuchet MS", sans-serif',
-      fontSize: '11px',
-      color: '#ffd166',
-      fontStyle: 'bold',
-    }).setOrigin(0.5);
-    this.boardLayer.add([g, flag]);
+    const size = CELL - 16;
+    // Yellow / charcoal striped loading dock.
+    g.fillStyle(COLORS.goal, 0.2);
+    g.fillRoundedRect(cx - size / 2, cy - size / 2, size, size, 8);
+    g.lineStyle(4, COLORS.goal, 0.95);
+    g.strokeRoundedRect(cx - size / 2, cy - size / 2, size, size, 8);
+    // Hazard stripe band across the middle.
+    g.fillStyle(COLORS.goal, 0.95);
+    g.fillRect(cx - size / 2 + 4, cy - 6, size - 8, 12);
+    g.fillStyle(COLORS.goalStripe, 0.95);
+    for (let sx = -size / 2 + 4; sx < size / 2 - 4; sx += 8) {
+      g.fillTriangle(
+        cx + sx, cy - 6,
+        cx + sx + 6, cy - 6,
+        cx + sx + 12, cy + 6,
+      );
+      g.fillTriangle(
+        cx + sx + 6, cy + 6,
+        cx + sx + 12, cy + 6,
+        cx + sx + 6, cy - 6,
+      );
+    }
+    // Simple gear outline around the dock.
+    g.lineStyle(2, COLORS.brass, 0.6);
+    this.boardLayer.add(g);
   }
 
   // ── actors ──────────────────────────────────────────────────
   private buildRobot(): void {
     this.robot = this.add.container(0, 0);
-    const body = this.add.graphics();
-    const w = 54;
-    body.fillStyle(0x223a3f, 0.3);
-    body.fillEllipse(0, 22, w + 14, 12);
-    body.fillStyle(COLORS.robotBodyDark);
-    body.fillRoundedRect(-w / 2, -w / 2 - 6, w, w + 6, 12);
-    body.fillStyle(COLORS.robotBody);
-    body.fillRoundedRect(-w / 2 + 3, -w / 2 - 6, w - 6, w + 4, 11);
-    body.fillStyle(0xffffff, 0.85);
-    body.fillRoundedRect(-16, -w / 2 - 4, 32, 18, 6);
-    body.fillStyle(0x16292e);
-    body.fillCircle(-8, -w / 2 + 3, 5);
-    body.fillCircle(8, -w / 2 + 3, 5);
-    body.fillStyle(0xffffff, 0.9);
-    body.fillCircle(-7, -w / 2 + 1, 2);
-    body.fillCircle(9, -w / 2 + 1, 2);
-    body.lineStyle(3, 0x3f7fb5, 1);
-    body.beginPath();
-    body.moveTo(-5, -w / 2 + 12);
-    body.lineTo(5, -w / 2 + 12);
-    body.strokePath();
-    body.lineStyle(4, 0x93a3a6, 1);
-    body.lineBetween(0, -w / 2 - 6, 0, -w / 2 - 22);
-    body.fillStyle(COLORS.brass);
-    body.fillCircle(0, -w / 2 - 26, 7);
-    body.lineStyle(2, 0xe6b84f, 1);
-    body.strokeCircle(0, -w / 2 - 26, 7);
-    this.robot.add(body);
+    const shadow = this.add.graphics();
+    shadow.fillStyle(0x22365a, 0.22);
+    shadow.fillEllipse(0, 25, 62, 12);
+    const texture = this.textures.get(SPARKY_TEXTURE);
+    if (!texture.has('silhouette')) texture.add('silhouette', 0, 112, 57, 272, 380);
+    const body = this.add.image(0, 0, SPARKY_TEXTURE, 'silhouette').setDisplaySize(50, 70);
+    this.robot.add([shadow, body]);
     this.robot.setDepth(15);
     this.boardLayer.add(this.robot);
   }
 
   private buildCrate(): void {
     this.crate = this.add.container(0, 0);
-    const g = this.add.graphics();
-    const s = 44;
-    g.fillStyle(0x5b3a18, 0.35);
-    g.fillEllipse(0, 14, s + 10, 8);
-    g.fillStyle(COLORS.crateDark);
-    g.fillRoundedRect(-s / 2 - 1, -s / 2, s + 2, s, 5);
-    g.fillStyle(COLORS.crate);
-    g.fillRoundedRect(-s / 2 + 3, -s / 2 + 2, s - 6, s - 8, 4);
-    g.lineStyle(3, COLORS.crateDark, 1);
-    g.lineBetween(-s / 2 + 3, -s / 2 + 3, s / 2 - 3, s / 2 - 6);
-    g.lineBetween(s / 2 - 3, -s / 2 + 3, -s / 2 + 3, s / 2 - 6);
-    this.crate.add(g);
+    const shadow = this.add.graphics();
+    shadow.fillStyle(0x22365a, 0.25);
+    shadow.fillEllipse(0, 20, 62, 10);
+    const texture = this.textures.get(GEAR_BIN_TEXTURE);
+    if (!texture.has('silhouette')) texture.add('silhouette', 0, 24, 53, 325, 290);
+    const bin = this.add.image(0, 0, GEAR_BIN_TEXTURE, 'silhouette').setDisplaySize(65, 58);
+    this.crate.add([shadow, bin]);
     this.crate.setDepth(14);
     this.boardLayer.add(this.crate);
   }
 
-  /**
-   * Place robot/crate instantly (used on reset and first build).
-   * Builds the containers on first use.
-   */
   private placeActors(
     robot: { x: number; y: number; direction: Direction },
     crate: { x: number; y: number },
@@ -251,8 +300,8 @@ export class AssemblyScene extends Phaser.Scene {
     const rc = this.cellLocal(robot);
     this.robot.setPosition(rc.x, rc.y);
     this.robot.setAngle(angleFor(robot.direction));
-    const cc = this.cellLocal(crate);
-    this.crate.setPosition(cc.x, holding ? cc.y - CELL * 0.22 : cc.y);
+    const cc = this.crateVisualPosition(crate, robot);
+    this.crate.setPosition(cc.x, cc.y);
     this.crate.setScale(holding ? 0.78 : 1);
   }
 
@@ -260,11 +309,24 @@ export class AssemblyScene extends Phaser.Scene {
     return { x: (point.x + 0.5) * CELL, y: (point.y + 0.5) * CELL };
   }
 
+  private crateVisualPosition(
+    crate: { x: number; y: number },
+    robot: { x: number; y: number; direction: Direction },
+  ): { x: number; y: number } {
+    const position = this.cellLocal(crate);
+    if (crate.x !== robot.x || crate.y !== robot.y) return position;
+    const facing = DIRECTION_VECTORS[robot.direction];
+    return {
+      x: position.x + facing.x * CELL * 0.28,
+      y: position.y + facing.y * CELL * 0.28,
+    };
+  }
+
   private highlightCell(point: { x: number; y: number }): void {
     const cx = this.layout.boardX + (point.x + 0.5) * this.layout.cellSize;
     const cy = this.layout.boardY + (point.y + 0.5) * this.layout.cellSize;
     this.glow.clear();
-    this.glow.lineStyle(5 * this.layout.boardScale, COLORS.highlight, 0.85);
+    this.glow.lineStyle(5 * this.layout.boardScale, COLORS.highlight, 0.9);
     this.glow.strokeRoundedRect(
       cx - this.layout.cellSize / 2 + 4,
       cy - this.layout.cellSize / 2 + 4,
@@ -275,7 +337,7 @@ export class AssemblyScene extends Phaser.Scene {
     if (!this.reducedMotion) {
       this.tweens.add({
         targets: this.glow,
-        alpha: { from: 0.85, to: 0.35 },
+        alpha: { from: 0.9, to: 0.4 },
         duration: 600,
         yoyo: true,
         repeat: -1,
@@ -292,28 +354,29 @@ export class AssemblyScene extends Phaser.Scene {
   // ── belt rendering ───────────────────────────────────────────
   private renderBelt(): void {
     this.beltLayer.removeAll(true);
-    const { beltX, beltY, beltHeight, beltSlotSize } = this.layout;
+    const { beltX, beltY, beltWidth, beltHeight, beltSlotWidth, beltSlotHeight, beltRows, beltCols, beltGap } =
+      this.layout;
 
     const strip = this.add.graphics();
-    strip.fillStyle(0x1b3236, 0.5);
-    strip.fillRoundedRect(beltX - 10, beltY - 10, beltSlotSize * BELT_SLOTS + 20, beltHeight + 20, 16);
+    // yellow frame
+    strip.fillStyle(COLORS.beltEdge, 0.55);
+    strip.fillRoundedRect(beltX - 10, beltY - 10, beltWidth + 20, beltHeight + 20, 16);
+    // navy rubber
     strip.fillStyle(COLORS.belt);
-    strip.fillRoundedRect(beltX - 4, beltY - 4, beltSlotSize * BELT_SLOTS + 8, beltHeight + 8, 14);
-    strip.lineStyle(2, 0x5d5b52, 0.8);
-    for (let i = 1; i < BELT_SLOTS; i += 1) {
-      strip.lineBetween(
-        beltX + i * beltSlotSize,
-        beltY + 8,
-        beltX + i * beltSlotSize,
-        beltY + beltHeight - 8,
-      );
+    strip.fillRoundedRect(beltX - 4, beltY - 4, beltWidth + 8, beltHeight + 8, 14);
+    // roller seams across each row
+    strip.lineStyle(2, COLORS.beltSlotEdge, 0.5);
+    for (let r = 0; r < beltRows; r += 1) {
+      const ry = beltY + r * (beltSlotHeight + beltGap);
+      strip.lineBetween(beltX, ry + beltSlotHeight - 6, beltX + beltWidth, ry + beltSlotHeight - 6);
+      strip.lineBetween(beltX, ry + 6, beltX + beltWidth, ry + 6);
     }
     this.beltLayer.add(strip);
 
-    const label = this.add.text(beltX, beltY - 24, 'COMMAND BELT', {
+    const label = this.add.text(beltX, beltY - 22, 'COMMAND BELT', {
       fontFamily: '"Trebuchet MS", sans-serif',
-      fontSize: '13px',
-      color: '#cfe3e3',
+      fontSize: '12px',
+      color: '#4a5a7a',
       fontStyle: 'bold',
       letterSpacing: 1.5,
     });
@@ -321,10 +384,13 @@ export class AssemblyScene extends Phaser.Scene {
 
     this.beltSlots = [];
     for (let i = 0; i < BELT_SLOTS; i += 1) {
-      const slot = this.add.container(beltX + i * beltSlotSize, beltY);
+      const rect = beltSlotRect(this.layout, i);
+      const slot = this.add.container(rect.x, rect.y);
       this.beltSlots.push(slot);
-      this.drawBeltSlot(slot, i, beltSlotSize, beltHeight);
+      this.drawBeltSlot(slot, i, rect.width, rect.height);
     }
+
+    this.markNextSlot();
   }
 
   private drawBeltSlot(
@@ -334,25 +400,34 @@ export class AssemblyScene extends Phaser.Scene {
     height: number,
   ): void {
     const g = this.add.graphics();
-    g.fillStyle(COLORS.beltSlot, 0.9);
-    g.fillRoundedRect(4, 4, size - 8, height - 8, 10);
+    g.fillStyle(COLORS.beltSlot, 0.92);
+    g.fillRoundedRect(3, 3, size - 6, height - 6, 10);
     g.lineStyle(2, COLORS.beltSlotEdge, 0.8);
-    g.strokeRoundedRect(5, 5, size - 10, height - 10, 9);
+    g.strokeRoundedRect(4, 4, size - 8, height - 8, 9);
     slot.add(g);
 
     const command = this.belt[index];
     if (command !== undefined) {
-      const style = this.commandStyle(command);
-      g.fillStyle(style.color, 0.95);
-      g.fillRoundedRect(8, 8, size - 16, height - 16, 8);
-      g.lineStyle(2, 0xffffff, 0.25);
-      g.strokeRoundedRect(9, 9, size - 18, height - 18, 7);
-      this.drawCommandIcon(slot, command, size / 2, height / 2, Math.min(size, height) * 0.4);
+      const meta = commandMeta(command);
+      g.fillStyle(meta.color, 0.96);
+      g.fillRoundedRect(7, 7, size - 14, height - 14, 8);
+      g.lineStyle(2, 0xffffff, 0.28);
+      g.strokeRoundedRect(8, 8, size - 16, height - 16, 7);
+      g.fillStyle(meta.accent, 0.5);
+      g.fillRoundedRect(7, height - 14, size - 14, 6, 3);
+      this.drawCommandIcon(slot, command, size / 2, height / 2 - 6, Math.min(size, height) * 0.34);
     }
 
     const zone = this.add.zone(size / 2, height / 2, size, height);
     zone.setInteractive({ useHandCursor: true });
-    zone.on('pointerdown', () => this.handleBeltTap(index));
+    // Activation on pointerup avoids firing during a scroll/cancel gesture.
+    zone.on('pointerdown', () => slot.setScale(0.95));
+    zone.on('pointerup', () => {
+      slot.setScale(1);
+      this.handleBeltTap(index);
+    });
+    zone.on('pointerout', () => slot.setScale(1));
+    zone.on('pointercancel', () => slot.setScale(1));
     slot.add(zone);
     this.beltLayer.add(slot);
   }
@@ -368,14 +443,14 @@ export class AssemblyScene extends Phaser.Scene {
     g.lineStyle(5, 0xffffff, 1);
     if (command === 'move') {
       g.beginPath();
-      g.moveTo(cx - s * 0.55, cy);
-      g.lineTo(cx + s * 0.45, cy);
+      g.moveTo(cx - s * 0.5, cy);
+      g.lineTo(cx + s * 0.4, cy);
       g.strokePath();
       g.fillStyle(0xffffff, 1);
       g.fillTriangle(
         cx + s * 0.55, cy,
-        cx + s * 0.3, cy - s * 0.3,
-        cx + s * 0.3, cy + s * 0.3,
+        cx + s * 0.28, cy - s * 0.32,
+        cx + s * 0.28, cy + s * 0.32,
       );
     } else if (command === 'turn-left') {
       g.beginPath();
@@ -398,7 +473,7 @@ export class AssemblyScene extends Phaser.Scene {
         cx + s * 0.2, cy + s * 0.25,
       );
     } else {
-      // grab/release hand
+      // grab / drop hand
       g.fillStyle(0xffffff, 1);
       g.fillRoundedRect(cx - s * 0.35, cy - s * 0.15, s * 0.7, s * 0.45, 6);
       for (let i = 0; i < 4; i += 1) {
@@ -410,10 +485,8 @@ export class AssemblyScene extends Phaser.Scene {
   }
 
   private beltSlotCenter(index: number): { x: number; y: number } {
-    return {
-      x: this.layout.beltX + (index + 0.5) * this.layout.beltSlotSize,
-      y: this.layout.beltY + this.layout.beltHeight / 2,
-    };
+    const rect = beltSlotRect(this.layout, index);
+    return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
   }
 
   private highlightBeltSlot(index: number): void {
@@ -430,224 +503,174 @@ export class AssemblyScene extends Phaser.Scene {
     }
   }
 
+  /** Outline the next free belt slot so the player knows where a tap will land. */
+  private markNextSlot(): void {
+    this.tweens.killTweensOf(this.nextMarker);
+    this.nextMarker.setAlpha(1);
+    this.nextMarker.clear();
+    if (this.phase !== 'idle' && this.phase !== 'done') return;
+    const next = this.belt.length;
+    if (next >= BELT_SLOTS) return;
+    const rect = beltSlotRect(this.layout, next);
+    const pad = 4;
+    const g = this.nextMarker;
+    g.lineStyle(3, COLORS.brass, this.reducedMotion ? 0.9 : 0.9);
+    g.strokeRoundedRect(
+      rect.x + pad,
+      rect.y + pad,
+      rect.width - pad * 2,
+      rect.height - pad * 2,
+      9,
+    );
+    if (!this.reducedMotion) {
+      this.tweens.add({
+        targets: this.nextMarker,
+        alpha: { from: 0.9, to: 0.4 },
+        duration: 700,
+        yoyo: true,
+        repeat: -1,
+      });
+    }
+  }
+
   // ── controls / palette ─────────────────────────────────────
   private renderControls(): void {
     this.controlsLayer.removeAll(true);
-    if (this.layout.stacked) this.renderControlsStacked();
-    else this.renderControlsSideBySide();
-  }
+    const c = this.controls;
 
-  private renderControlsSideBySide(): void {
-    const { panelX, panelY, panelWidth, panelHeight } = this.layout;
-
-    const title = this.add.text(panelX + panelWidth / 2, panelY + 22, "SPARKY'S ASSEMBLY LINE", {
+    this.objectiveText = this.add.text(c.objective.x, c.objective.y, 'GOAL', {
       fontFamily: '"Trebuchet MS", sans-serif',
-      fontSize: '15px',
-      color: '#ffd166',
+      fontSize: this.layout.stacked ? '12px' : '13px',
+      color: '#b5841f',
       fontStyle: 'bold',
       letterSpacing: 1,
-      align: 'center',
-    }).setOrigin(0.5);
-    this.controlsLayer.add(title);
+      wordWrap: { width: c.objective.width },
+    });
+    this.objectiveText.setText(
+      this.layout.stacked
+        ? 'GOAL: Dock the gear bin, then DROP.'
+        : 'GOAL: get the gear bin onto the dock, then DROP.',
+    );
+    this.controlsLayer.add(this.objectiveText);
 
-    this.statusText = this.add.text(panelX + 16, panelY + 44, 'Pick a command, then tap a belt slot.', {
+    this.statusText = this.add.text(c.status.x, c.status.y, 'Tap commands to build a program.', {
       fontFamily: '"Trebuchet MS", sans-serif',
       fontSize: '13px',
-      color: '#eaf4f4',
+      color: '#4a5a7a',
       fontStyle: 'bold',
-      wordWrap: { width: panelWidth - 32 },
+      wordWrap: { width: c.status.width },
     });
     this.controlsLayer.add(this.statusText);
 
-    let y = panelY + 96;
-    const buttonWidth = panelWidth - 32;
-    const buttonHeight = Math.min(62, (panelHeight - 330) / 5);
-
     for (let i = 0; i < COMMANDS.length; i += 1) {
-      const cmd = COMMANDS[i]!;
-      const btn = this.createButton(panelX + 16, y, buttonWidth, buttonHeight, cmd.key as Command, cmd.label, cmd.color);
-      this.controlsLayer.add(btn);
-      y += buttonHeight + 8;
-    }
-
-    y += 4;
-    this.runButton = this.createButton(panelX + 16, y, buttonWidth, 56, 'run', '▶  RUN', COLORS.green);
-    this.controlsLayer.add(this.runButton);
-    y += 64;
-
-    const stepW = (buttonWidth - 8) / 2;
-    const step = this.createButton(panelX + 16, y, stepW, 50, 'step', 'STEP', COLORS.blue);
-    const reset = this.createButton(panelX + 24 + stepW, y, stepW, 50, 'reset', 'RESET', COLORS.rose);
-    this.controlsLayer.add([step, reset]);
-    y += 58;
-
-    const clear = this.createButton(panelX + 16, y, buttonWidth, 44, 'clear', 'CLEAR BELT', COLORS.beltSlot);
-    this.controlsLayer.add(clear);
-
-    const sb = panelX + panelWidth - 32;
-    this.soundButton = this.createRoundButton(panelX + 16, panelY + panelHeight - 40, 28, this.soundOn ? '🔊' : '🔇');
-    this.controlsLayer.add(this.soundButton);
-    const hint = this.add.text(sb - 100, panelY + panelHeight - 34, '1–4  S  R  Space', {
-      fontFamily: '"Trebuchet MS", sans-serif',
-      fontSize: '11px',
-      color: '#9fc2c2',
-    });
-    this.controlsLayer.add(hint);
-  }
-
-  private renderControlsStacked(): void {
-    const { panelX, panelY, panelWidth, panelHeight } = this.layout;
-    const pad = 14;
-    const gap = 8;
-    const innerWidth = panelWidth - pad * 2;
-
-    const title = this.add.text(panelX + panelWidth / 2, panelY + 16, "SPARKY'S ASSEMBLY LINE", {
-      fontFamily: '"Trebuchet MS", sans-serif',
-      fontSize: '14px',
-      color: '#ffd166',
-      fontStyle: 'bold',
-      letterSpacing: 1,
-      align: 'center',
-    }).setOrigin(0.5);
-    this.controlsLayer.add(title);
-
-    this.statusText = this.add.text(panelX + pad, panelY + 32, 'Pick a command, then tap a belt slot.', {
-      fontFamily: '"Trebuchet MS", sans-serif',
-      fontSize: '12px',
-      color: '#eaf4f4',
-      fontStyle: 'bold',
-      wordWrap: { width: innerWidth },
-    });
-    this.controlsLayer.add(this.statusText);
-
-    // Four command buttons in one row.
-    const cmdW = (innerWidth - gap * (COMMANDS.length - 1)) / COMMANDS.length;
-    const cmdH = Math.min(56, Math.max(40, panelHeight * 0.16));
-    let y = panelY + 56;
-    for (let i = 0; i < COMMANDS.length; i += 1) {
-      const cmd = COMMANDS[i]!;
-      const x = panelX + pad + i * (cmdW + gap);
-      const btn = this.createButton(x, y, cmdW, cmdH, cmd.key as Command, cmd.label, cmd.color);
+      const meta = COMMANDS[i]!;
+      const rect = c.palette[i]!;
+      const btn = this.createButton(rect, meta.key, meta.label, meta.color, meta.accent, meta.hint, true);
       this.controlsLayer.add(btn);
     }
-    y += cmdH + gap;
 
-    // Run button full width.
-    const runH = Math.min(50, Math.max(38, panelHeight * 0.13));
-    this.runButton = this.createButton(panelX + pad, y, innerWidth, runH, 'run', '▶  RUN', COLORS.green);
-    this.controlsLayer.add(this.runButton);
-    y += runH + gap;
+    this.controlsLayer.add(this.createButton(c.play, 'play', '▶ PLAY', COLORS.green, COLORS.greenAccent, 'Space', false));
+    this.controlsLayer.add(this.createButton(c.step, 'step', 'STEP', COLORS.blue, 0x3f7fb5, 'S', false));
+    this.controlsLayer.add(this.createButton(c.undo, 'undo', 'UNDO', COLORS.blue, 0x3f7fb5, '⌫', false));
+    this.controlsLayer.add(this.createButton(c.clear, 'clear', 'CLEAR', COLORS.beltSlot, 0x5a6a9b, 'C', false));
 
-    // Step + Reset side by side.
-    const halfW = (innerWidth - gap) / 2;
-    const actionH = Math.min(46, Math.max(34, panelHeight * 0.12));
-    const step = this.createButton(panelX + pad, y, halfW, actionH, 'step', 'STEP', COLORS.blue);
-    const reset = this.createButton(panelX + pad + halfW + gap, y, halfW, actionH, 'reset', 'RESET', COLORS.rose);
-    this.controlsLayer.add([step, reset]);
-    y += actionH + gap;
-
-    // Clear belt full width.
-    const clearH = Math.min(42, Math.max(32, panelHeight * 0.11));
-    const clear = this.createButton(panelX + pad, y, innerWidth, clearH, 'clear', 'CLEAR BELT', COLORS.beltSlot);
-    this.controlsLayer.add(clear);
-
-    // Sound button bottom-left, hint bottom-right.
-    this.soundButton = this.createRoundButton(panelX + pad + 22, panelY + panelHeight - 28, 20, this.soundOn ? '🔊' : '🔇');
-    this.controlsLayer.add(this.soundButton);
-    const hint = this.add.text(panelX + panelWidth - pad, panelY + panelHeight - 22, '1–4  S  R  Space', {
-      fontFamily: '"Trebuchet MS", sans-serif',
-      fontSize: '11px',
-      color: '#9fc2c2',
-    }).setOrigin(1, 0.5);
-    this.controlsLayer.add(hint);
-  }
-
-  private commandStyle(command: Command): CommandStyle {
-    return COMMANDS.find((c) => c.key === command) ?? COMMANDS[0]!;
+    // Sound + fullscreen footer controls.
+    this.controlsLayer.add(this.createIconButton(c.sound, this.soundOn ? '🔊' : '🔇', 'sound'));
+    this.controlsLayer.add(this.createIconButton(c.fullscreen, this.isFullscreen() ? '🗗' : '⛶', 'fullscreen'));
   }
 
   private createButton(
-    x: number,
-    y: number,
-    width: number,
-    height: number,
+    rect: ControlRect,
     action: string,
     label: string,
     fill: number,
+    accent: number,
+    hint: string,
+    isPalette: boolean,
   ): Phaser.GameObjects.Container {
+    const { x, y, width, height } = rect;
     const container = this.add.container(x + width / 2, y + height / 2);
     const bg = this.add.graphics();
-    const selected = action === this.selectedCommand;
-    const isPalette = COMMANDS.some((c) => c.key === action);
-
-    bg.fillStyle(0x0e1a1d, 0.4);
-    bg.fillRoundedRect(-width / 2, -height / 2 + 4, width, height, 12);
-    bg.fillStyle(selected ? 0xffffff : fill, selected ? 1 : 0.92);
+    bg.fillStyle(accent, 0.5);
+    bg.fillRoundedRect(-width / 2, -height / 2 + 3, width, height - 3, 12);
+    bg.fillStyle(fill, 0.96);
     bg.fillRoundedRect(-width / 2, -height / 2, width, height - 4, 12);
-    bg.lineStyle(3, selected ? COLORS.brass : 0xffffff, selected ? 1 : 0.3);
+    bg.lineStyle(2, 0xffffff, 0.35);
     bg.strokeRoundedRect(-width / 2, -height / 2, width, height - 4, 12);
+    bg.fillStyle(0xffffff, 0.16);
+    bg.fillRoundedRect(-width / 2 + 3, -height / 2 + 3, width - 6, 10, 6);
     container.add(bg);
 
-    if (isPalette) {
-      const num = this.add.text(-width / 2 + 10, 0, String(COMMANDS.findIndex((c) => c.key === action) + 1), {
-        fontFamily: '"Trebuchet MS", sans-serif',
-        fontSize: '11px',
-        color: selected ? '#16292e' : '#ffffff',
-        fontStyle: 'bold',
-        backgroundColor: selected ? '#ffd166' : 'rgba(0,0,0,0.25)',
-        padding: { x: 4, y: 2 },
-      }).setOrigin(0.5, 0.5);
-      container.add(num);
-    }
-
-    const text = this.add.text(isPalette ? 14 : 0, 0, label, {
+    const longPaletteLabel = isPalette && label.length > 8;
+    const fontSize = Math.round(Math.min(height * 0.36, width * (longPaletteLabel ? 0.125 : 0.17)));
+    const text = this.add.text(isPalette ? 5 : 0, isPalette ? -3 : 0, label, {
       fontFamily: '"Trebuchet MS", sans-serif',
-      fontSize: `${Math.round(Math.min(height * 0.34, width * 0.16))}px`,
+      fontSize: `${fontSize}px`,
       fontStyle: 'bold',
-      color: selected ? '#16292e' : '#ffffff',
+      color: action === 'clear' ? '#f7f1df' : '#22365a',
       align: 'center',
     }).setOrigin(0.5);
     container.add(text);
 
+    if (hint) {
+      const tag = this.add.text(-width / 2 + 12, height / 2 - 12, hint, {
+        fontFamily: '"Trebuchet MS", sans-serif',
+        fontSize: '10px',
+        color: '#22365a',
+        fontStyle: 'bold',
+        backgroundColor: 'rgba(255,255,255,0.55)',
+        padding: { x: 4, y: 1 },
+      }).setOrigin(0.5, 0.5);
+      container.add(tag);
+    }
+
     container.setSize(width, height);
     container.setInteractive({ useHandCursor: true });
-    container.on('pointerdown', () => {
-      container.setScale(0.96);
+    container.on('pointerdown', () => container.setScale(0.95));
+    container.on('pointerup', () => {
+      container.setScale(1);
       this.sfx.unlock();
       this.handleAction(action);
     });
-    container.on('pointerup', () => container.setScale(1));
     container.on('pointerout', () => container.setScale(1));
     container.on('pointercancel', () => container.setScale(1));
     return container;
   }
 
-  private createRoundButton(x: number, y: number, r: number, label: string): Phaser.GameObjects.Container {
-    const container = this.add.container(x, y);
+  private createIconButton(rect: ControlRect, label: string, action: string): Phaser.GameObjects.Container {
+    const { x, y, width, height } = rect;
+    const r = Math.min(width, height) / 2;
+    const container = this.add.container(x + r, y + r);
     const bg = this.add.graphics();
-    bg.fillStyle(0x2a4549, 1);
+    bg.fillStyle(0xe6cf9a, 1);
     bg.fillCircle(0, 0, r);
     bg.lineStyle(2, COLORS.panelEdge, 1);
     bg.strokeCircle(0, 0, r);
     container.add(bg);
     const text = this.add.text(0, 0, label, {
       fontFamily: '"Trebuchet MS", sans-serif',
-      fontSize: '16px',
+      fontSize: `${Math.round(r * 0.9)}px`,
     }).setOrigin(0.5);
     container.add(text);
-    container.setSize(r * 2, r * 2);
+    container.setSize(width, height);
     container.setInteractive({ useHandCursor: true });
-    container.on('pointerdown', () => {
-      this.soundOn = this.sfx.toggle();
-      text.setText(this.soundOn ? '🔊' : '🔇');
+    container.on('pointerdown', () => container.setScale(0.95));
+    container.on('pointerup', () => {
+      container.setScale(1);
+      this.sfx.unlock();
+      this.handleAction(action);
     });
+    container.on('pointerout', () => container.setScale(1));
+    container.on('pointercancel', () => container.setScale(1));
+    if (action === 'sound') this.soundText = text;
+    if (action === 'fullscreen') this.fullscreenText = text;
     return container;
   }
 
   // ── interaction ─────────────────────────────────────────────
   private handleAction(action: string): void {
-    if (this.phase === 'running') return;
-    if (action === 'run') {
+    if (this.phase === 'running' && action !== 'fullscreen') return;
+    if (action === 'play') {
       void this.runProgram();
       return;
     }
@@ -655,44 +678,72 @@ export class AssemblyScene extends Phaser.Scene {
       void this.stepProgram();
       return;
     }
-    if (action === 'reset') {
-      this.resetExecution(true);
+    if (action === 'undo') {
+      this.undoCommand();
       return;
     }
     if (action === 'clear') {
-      this.belt = [];
-      this.stepIndex = 0;
-      this.resetExecution(false);
-      this.setStatus('Belt cleared. Build a new program.');
-      this.sfx.place();
+      this.clearProgram();
       return;
     }
-    // palette selection
-    this.selectedCommand = action as Command;
+    if (action === 'sound') {
+      this.soundOn = this.sfx.toggle();
+      if (this.soundText !== undefined) this.soundText.setText(this.soundOn ? '🔊' : '🔇');
+      return;
+    }
+    if (action === 'fullscreen') {
+      this.toggleFullscreen();
+      return;
+    }
+    // palette command → append directly to the next belt slot
+    this.appendCommand(action as Command);
+  }
+
+  private appendCommand(command: Command): void {
+    if (this.phase === 'running') return;
+    if (this.belt.length >= BELT_SLOTS) {
+      this.setStatus('Belt is full. Tap a filled slot to remove it.');
+      return;
+    }
+    const edit = appendToBelt(this.belt, command);
+    if (!edit.changed) return;
+    this.belt = [...edit.belt];
+    this.resetExecution(false);
+    this.renderBelt();
+    this.setStatus(`${commandMeta(command).label} added. Keep building, then PLAY.`);
     this.sfx.place();
-    this.renderControls();
+  }
+
+  private undoCommand(): void {
+    if (this.phase === 'running') return;
+    const edit = removeLastCommand(this.belt);
+    if (!edit.changed) return;
+    this.belt = [...edit.belt];
+    this.resetExecution(false);
+    this.renderBelt();
+    this.setStatus('Undid the last command.');
+    this.sfx.place();
+  }
+
+  private clearProgram(): void {
+    if (this.phase === 'running') return;
+    this.belt = [...clearBelt()];
+    this.resetExecution(false);
+    this.renderBelt();
+    this.setStatus('Belt cleared. Build a new program.');
+    this.sfx.place();
   }
 
   private handleBeltTap(index: number): void {
     if (this.phase === 'running') return;
     this.sfx.unlock();
-    this.sfx.place();
-    const existing = this.belt[index];
-    if (existing !== undefined) {
-      this.belt.splice(index, 1);
-      this.resetExecution(false);
-      this.renderBelt();
-      this.setStatus('Command removed.');
-      return;
-    }
-    if (this.belt.length >= BELT_SLOTS) {
-      this.setStatus('Belt is full. Tap a filled slot to remove it.');
-      return;
-    }
-    this.belt.push(this.selectedCommand);
+    const edit = removeCommandAt(this.belt, index);
+    if (!edit.changed) return; // empty slot does nothing
+    this.belt = [...edit.belt];
     this.resetExecution(false);
     this.renderBelt();
-    this.setStatus(`${this.commandStyle(this.selectedCommand).label} added. Keep going or press RUN.`);
+    this.setStatus('Command removed.');
+    this.sfx.place();
   }
 
   // ── execution ───────────────────────────────────────────────
@@ -709,16 +760,19 @@ export class AssemblyScene extends Phaser.Scene {
     let state: FloorState = this.liveState;
     this.placeActors(state.robot, state.crate, state.holding, false);
     this.sfx.unlock();
+    this.nextMarker.clear();
 
+    let lastResult: StepResult = 'ok';
     for (let i = 0; i < this.belt.length; i += 1) {
       this.stepIndex = i;
       this.highlightBeltSlot(i);
       this.highlightCell(state.robot);
-      this.setStatus(`Running ${i + 1}/${this.belt.length}: ${this.commandStyle(this.belt[i]!).label}`);
+      this.setStatus(`Running ${i + 1}/${this.belt.length}: ${commandMeta(this.belt[i]!).label}`);
       const outcome = executeStep(state, this.belt[i]!, this.level.cols, this.level.rows);
       await this.animate(state, outcome.state, outcome.result, this.belt[i]!);
       state = outcome.state;
       this.liveState = state;
+      lastResult = outcome.result;
       if (isSolved(state, this.level.goal)) {
         this.solved = true;
         break;
@@ -732,10 +786,11 @@ export class AssemblyScene extends Phaser.Scene {
       this.celebrate();
     } else {
       this.phase = 'idle';
-      this.setStatus(isSolved(state, this.level.goal)
-        ? 'The crate reached the goal!'
-        : 'Program finished but the crate is not home yet. Adjust and try again.');
-      this.sfx.blocked();
+      // Preserve specific blocked / no-crate feedback instead of overwriting it.
+      if (lastResult === 'ok') {
+        this.setStatus('Program finished but the bin is not on the dock. Adjust and PLAY again.');
+        this.sfx.blocked();
+      }
     }
 
     if (this.resizePending) this.scene.restart();
@@ -749,10 +804,11 @@ export class AssemblyScene extends Phaser.Scene {
     }
     if (this.stepIndex >= this.belt.length) {
       this.resetExecution(false);
-      this.setStatus('Reached the end. Press RUN or edit the belt.');
+      this.setStatus('Reached the end. Edit the belt or PLAY again.');
       return;
     }
     this.phase = 'running';
+    this.nextMarker.clear();
     let state: FloorState = this.liveState;
     if (this.stepIndex === 0) {
       state = initialState(this.level);
@@ -773,18 +829,21 @@ export class AssemblyScene extends Phaser.Scene {
       this.phase = 'done';
       this.clearHighlight();
       this.celebrate();
-      this.setStatus('The crate reached the target! Press RESET to play again.');
       return;
     }
     this.phase = 'idle';
-    this.setStatus(
-      this.stepIndex >= this.belt.length
-        ? 'End of program. Edit the belt or press RESET.'
-        : `Step ${this.stepIndex}/${this.belt.length} done. Tap STEP again.`,
-    );
+    // animate() supplies useful blocked/no-crate feedback; do not replace it.
+    if (outcome.result === 'ok') {
+      this.setStatus(
+        this.stepIndex >= this.belt.length
+          ? 'End of program. Edit the belt or PLAY again.'
+          : `Step ${this.stepIndex}/${this.belt.length} done. Tap STEP again.`,
+      );
+    }
     if (this.resizePending) this.scene.restart();
   }
 
+  /** Reset to the initial state without touching the belt. Any edit resets too. */
   private resetExecution(feedback: boolean): void {
     this.phase = 'idle';
     this.solved = false;
@@ -792,6 +851,7 @@ export class AssemblyScene extends Phaser.Scene {
     this.liveState = initialState(this.level);
     this.clearHighlight();
     this.placeActors(this.liveState.robot, this.liveState.crate, false, false);
+    this.markNextSlot();
     if (feedback) {
       this.setStatus('Sparky is back at the start. Ready!');
       this.sfx.place();
@@ -816,7 +876,7 @@ export class AssemblyScene extends Phaser.Scene {
     if (result === 'no-crate') {
       this.shake(this.robot);
       this.sfx.blocked();
-      this.setStatus('Nothing here to grab. Move closer to the crate.');
+      this.setStatus('Nothing here to grab. Move next to the bin.');
       await this.wait(duration);
       return;
     }
@@ -826,10 +886,10 @@ export class AssemblyScene extends Phaser.Scene {
       const tc = this.cellLocal(to.robot);
       const tweenRobot = this.tweenTo(this.robot, tc.x, tc.y, duration);
       if (to.holding) {
-        const cc = this.cellLocal(to.crate);
+        const cc = this.crateVisualPosition(to.crate, to.robot);
         await Promise.all([
           tweenRobot,
-          this.tweenTo(this.crate, cc.x, cc.y - CELL * 0.22, duration),
+          this.tweenTo(this.crate, cc.x, cc.y, duration),
         ]);
       } else {
         await tweenRobot;
@@ -841,7 +901,7 @@ export class AssemblyScene extends Phaser.Scene {
       const fromAngle = angleFor(from.robot.direction);
       const toAngle = angleFor(to.robot.direction);
       const delta = ((toAngle - fromAngle + 540) % 360) - 180;
-      await new Promise<void>((resolve) => {
+      const turnRobot = new Promise<void>((resolve) => {
         this.tweens.add({
           targets: this.robot,
           angle: this.robot.angle + delta,
@@ -850,15 +910,20 @@ export class AssemblyScene extends Phaser.Scene {
           onComplete: () => resolve(),
         });
       });
+      if (to.holding) {
+        const cc = this.crateVisualPosition(to.crate, to.robot);
+        await Promise.all([turnRobot, this.tweenTo(this.crate, cc.x, cc.y, duration)]);
+      } else {
+        await turnRobot;
+      }
       return;
     }
     // grab / release
     this.sfx.grab();
-    const cc = this.cellLocal(to.crate);
-    const liftY = to.holding ? cc.y - CELL * 0.22 : cc.y;
+    const cc = this.crateVisualPosition(to.crate, to.robot);
     const scale = to.holding ? 0.78 : 1;
     await Promise.all([
-      this.tweenTo(this.crate, cc.x, liftY, duration * 0.7, { scale }),
+      this.tweenTo(this.crate, cc.x, cc.y, duration * 0.7, { scale }),
       new Promise<void>((resolve) => {
         this.tweens.add({
           targets: this.robot,
@@ -911,7 +976,7 @@ export class AssemblyScene extends Phaser.Scene {
     this.sfx.success();
     const cx = this.layout.boardX + this.layout.boardWidth / 2;
     const cy = this.layout.boardY + this.layout.boardHeight / 2;
-    const colors = [COLORS.brass, COLORS.green, COLORS.blue, COLORS.rose, COLORS.cream];
+    const colors = [COLORS.brass, COLORS.green, COLORS.blue, COLORS.red, 0xfff4d6];
     for (let i = 0; i < 24; i += 1) {
       const piece = this.add.rectangle(cx, cy, 9, 16, colors[i % colors.length]).setDepth(40);
       piece.setAngle(i * 37);
@@ -920,8 +985,8 @@ export class AssemblyScene extends Phaser.Scene {
       } else {
         this.tweens.add({
           targets: piece,
-          x: cx + (Math.cos(i / 24 * Math.PI * 2) * this.layout.boardWidth * 0.4),
-          y: cy + Math.sin(i / 24 * Math.PI * 2) * this.layout.boardHeight * 0.4 + 30,
+          x: cx + Math.cos((i / 24) * Math.PI * 2) * this.layout.boardWidth * 0.4,
+          y: cy + Math.sin((i / 24) * Math.PI * 2) * this.layout.boardHeight * 0.4 + 30,
           angle: piece.angle + 360,
           alpha: 0,
           scale: 0.4,
@@ -934,7 +999,36 @@ export class AssemblyScene extends Phaser.Scene {
     if (!this.reducedMotion) {
       this.tweens.add({ targets: this.robot, scale: 1.15, duration: 180, yoyo: true, repeat: 2 });
     }
-    this.setStatus("Sparky did it! The crate is home. Press RESET to play again.");
+    this.setStatus('Sparky did it! The bin is home. Press PLAY to go again.');
+  }
+
+  // ── fullscreen ─────────────────────────────────────────────
+  private isFullscreen(): boolean {
+    return this.scale.isFullscreen;
+  }
+
+  private toggleFullscreen(): void {
+    if (!this.scale.fullscreen.available) {
+      this.setStatus('Fullscreen is not available in this browser.');
+      this.scale.emit('fullscreenunsupported');
+      return;
+    }
+    try {
+      if (this.scale.isFullscreen) this.scale.stopFullscreen();
+      else this.scale.startFullscreen();
+    } catch {
+      this.setStatus('Could not change fullscreen.');
+    }
+  }
+
+  private handleFullscreenChange(): void {
+    if (this.fullscreenText !== undefined) {
+      this.fullscreenText.setText(this.isFullscreen() ? '🗗' : '⛶');
+    }
+  }
+
+  private handleFullscreenUnsupported(): void {
+    if (this.fullscreenText !== undefined) this.fullscreenText.setText('⛶');
   }
 
   // ── small helpers ───────────────────────────────────────────
@@ -944,6 +1038,11 @@ export class AssemblyScene extends Phaser.Scene {
 
   private setStatus(message: string): void {
     this.statusText?.setText(message);
+  }
+
+  private installScaleEvents(): void {
+    this.scale.off(Phaser.Scale.Events.RESIZE, this.handleResize, this);
+    this.scale.on(Phaser.Scale.Events.RESIZE, this.handleResize, this);
   }
 
   private handleResize(gameSize: Phaser.Structs.Size): void {
@@ -958,31 +1057,48 @@ export class AssemblyScene extends Phaser.Scene {
   private installKeyboard(): void {
     const kb = this.input.keyboard;
     if (kb === null) return;
-    kb.on('keydown-ONE', () => this.choose('move'));
-    kb.on('keydown-TWO', () => this.choose('turn-left'));
-    kb.on('keydown-THREE', () => this.choose('turn-right'));
-    kb.on('keydown-FOUR', () => this.choose('grab'));
-    kb.on('keydown-SPACE', (e: KeyboardEvent) => {
-      e.preventDefault();
-      void this.runProgram();
+    this.bindPalette();
+    this.bind('keydown-SPACE', (event: unknown) => {
+      (event as KeyboardEvent).preventDefault();
+      this.handleAction('play');
     });
-    kb.on('keydown-S', () => void this.stepProgram());
-    kb.on('keydown-R', () => this.resetExecution(true));
-    kb.on('keydown-BACKSPACE', (e: KeyboardEvent) => {
-      e.preventDefault();
-      if (this.phase === 'running') return;
-      if (this.belt.length > 0) {
-        this.belt.pop();
-        this.renderBelt();
-        this.setStatus('Removed last command.');
-      }
+    this.bind('keydown-ENTER', () => this.handleAction('play'));
+    this.bind('keydown-PERIOD', () => this.handleAction('step'));
+    this.bind('keydown-S', () => this.handleAction('step'));
+    this.bind('keydown-BACKSPACE', (event: unknown) => {
+      (event as KeyboardEvent).preventDefault();
+      this.handleAction('undo');
     });
+    this.bind('keydown-DELETE', (event: unknown) => {
+      (event as KeyboardEvent).preventDefault();
+      this.handleAction('undo');
+    });
+    this.bind('keydown-C', () => this.handleAction('clear'));
+    this.bind('keydown-F', () => this.handleAction('fullscreen'));
   }
 
-  private choose(command: Command): void {
-    if (this.phase === 'running') return;
-    this.selectedCommand = command;
-    this.sfx.place();
-    this.renderControls();
+  private bindPalette(): void {
+    this.bind('keydown-UP', () => this.handleAction('move'));
+    this.bind('keydown-W', () => this.handleAction('move'));
+    this.bind('keydown-LEFT', () => this.handleAction('turn-left'));
+    this.bind('keydown-A', () => this.handleAction('turn-left'));
+    this.bind('keydown-RIGHT', () => this.handleAction('turn-right'));
+    this.bind('keydown-D', () => this.handleAction('turn-right'));
+    this.bind('keydown-G', () => this.handleAction('grab'));
   }
+
+  private bind(event: string, cb: (...args: unknown[]) => void): void {
+    kb_safe(this.input.keyboard, event, cb, this);
+    this.keyboardBindings.push({ event, cb });
+  }
+}
+
+function kb_safe(
+  kb: Phaser.Input.Keyboard.KeyboardPlugin | null,
+  event: string,
+  cb: (...args: unknown[]) => void,
+  scope: unknown,
+): void {
+  if (kb === null) return;
+  kb.on(event, cb as never, scope);
 }

@@ -3,13 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
-    <meta name="theme-color" content="#16292e" />
+    <meta name="theme-color" content="#f6ead2" />
     <title>Sparky's Assembly Line</title>
     <style>
       :root {
-        color-scheme: dark;
+        color-scheme: light;
         font-family: "Trebuchet MS", "Avenir Next", sans-serif;
-        background: #16292e;
+        background: #f6ead2;
       }
 
       * { box-sizing: border-box; }
@@ -25,9 +25,8 @@
       body {
         overflow: hidden;
         background:
-          radial-gradient(circle at 50% 22%, rgba(120, 180, 200, 0.10), transparent 40%),
-          repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.014) 0 1px, transparent 1px 9px),
-          #16292e;
+          radial-gradient(circle at 50% 22%, rgba(183, 236, 226, 0.35), transparent 40%),
+          #f6ead2;
         touch-action: none;
       }
 
@@ -55,15 +54,17 @@
         border: 0;
       }
     </style>
-    <script type="module" crossorigin src="/games/sparky-assembly/assets/index-BiGMp_Fh.js"></script>
+    <script type="module" crossorigin src="/games/sparky-assembly/assets/index-BN9aLBZq.js"></script>
   </head>
   <body>
     <main id="game" aria-label="Sparky's Assembly Line game"></main>
     <p class="sr-only">
-      Program the toy robot Sparky: choose a command from the palette, tap a belt slot to place it,
-      then press Run or Step. Move forward, turn left, turn right, and grab or release the crate so it
-      lands on the marked goal. Keyboard shortcuts: 1 to 4 choose a command, Space runs, S steps,
-      R resets, and Backspace clears the last command.
+      Program the toy robot Sparky to carry the gear bin onto the striped dock, then drop it. Command
+      buttons append Forward, Turn Left, Turn Right, or Grab and Drop to the next belt slot. Tap a
+      filled slot to remove it. Use Play, Step, Undo, or Clear to test and edit the program. Keyboard
+      shortcuts: W or Up adds Forward; A or Left adds Turn Left; D or Right adds Turn Right; G adds
+      Grab or Drop; Space or Enter plays; S or Period steps; Backspace or Delete undoes; C clears;
+      and F toggles fullscreen. Sound and fullscreen controls are also available on screen.
     </p>
   </body>
 </html>

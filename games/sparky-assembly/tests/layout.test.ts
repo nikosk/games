@@ -1,100 +1,126 @@
 import { describe, expect, it } from 'vitest';
-import { createLayout, DESIGN_CELL_SIZE } from '../src/game/layout';
-import { COLS, ROWS, BELT_SLOTS } from '../src/game/level';
+import { beltSlotRect, computeControls, createLayout, DESIGN_CELL_SIZE, type ControlRect } from '../src/game/layout';
+import { BELT_SLOTS, COLS, ROWS } from '../src/game/level';
 
-describe('createLayout – landscape (tablet)', () => {
-  it('uses side-by-side layout with a right-side panel', () => {
-    const layout = createLayout(1280, 800);
-    expect(layout.stacked).toBe(false);
-    expect(layout.panelX).toBeGreaterThan(layout.boardX + layout.boardWidth);
-    expect(layout.cellSize).toBeGreaterThan(40);
-    expect(layout.beltSlotSize).toBeGreaterThanOrEqual(1);
+const viewports = [
+  [1280, 800],
+  [1280, 720],
+  [1024, 768],
+  [800, 450],
+  [780, 437],
+  [768, 1024],
+  [390, 844],
+  [320, 568],
+] as const;
+
+function expectInside(rect: ControlRect, x: number, y: number, width: number, height: number): void {
+  expect(rect.x, `${rect.key} left`).toBeGreaterThanOrEqual(x);
+  expect(rect.y, `${rect.key} top`).toBeGreaterThanOrEqual(y);
+  expect(rect.x + rect.width, `${rect.key} right`).toBeLessThanOrEqual(x + width);
+  expect(rect.y + rect.height, `${rect.key} bottom`).toBeLessThanOrEqual(y + height);
+}
+
+function overlaps(a: ControlRect, b: ControlRect): boolean {
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+}
+
+describe('responsive assembly layout', () => {
+  it.each(viewports)('keeps all regions and controls in bounds at %d×%d', (width, height) => {
+    const layout = createLayout(width, height);
     expect(layout.boardScale).toBe(layout.cellSize / DESIGN_CELL_SIZE);
-  });
-
-  it('keeps board, belt, and panel within bounds', () => {
-    const layout = createLayout(1024, 768);
-    expect(layout.boardX).toBeGreaterThanOrEqual(0);
-    expect(layout.boardY).toBeGreaterThanOrEqual(0);
-    expect(layout.boardX + layout.boardWidth).toBeLessThanOrEqual(layout.width);
-    expect(layout.beltY + layout.beltHeight).toBeLessThanOrEqual(layout.height);
-    expect(layout.panelX + layout.panelWidth).toBeLessThanOrEqual(layout.width);
-    expect(layout.panelY + layout.panelHeight).toBeLessThanOrEqual(layout.height);
-  });
-});
-
-describe('createLayout – portrait (phone 390×844)', () => {
-  it('uses stacked layout with a full-width panel below the belt', () => {
-    const layout = createLayout(390, 844);
-    expect(layout.stacked).toBe(true);
-    // Panel is below the belt, spans the width.
-    expect(layout.panelY).toBeGreaterThan(layout.beltY + layout.beltHeight);
-    expect(layout.panelX).toBeGreaterThanOrEqual(0);
-    expect(layout.panelX + layout.panelWidth).toBeLessThanOrEqual(layout.width);
-    // Board is centred and comfortably sized (not tiny).
-    expect(layout.cellSize).toBeGreaterThanOrEqual(50);
     expect(layout.boardWidth).toBe(COLS * layout.cellSize);
     expect(layout.boardHeight).toBe(ROWS * layout.cellSize);
-  });
-
-  it('produces non-negative panel height for controls', () => {
-    const layout = createLayout(390, 844);
-    expect(layout.panelHeight).toBeGreaterThanOrEqual(120);
-  });
-
-  it('keeps every region inside the viewport', () => {
-    const layout = createLayout(390, 844);
     expect(layout.boardX).toBeGreaterThanOrEqual(0);
     expect(layout.boardY).toBeGreaterThanOrEqual(0);
-    expect(layout.boardX + layout.boardWidth).toBeLessThanOrEqual(layout.width);
-    expect(layout.beltY + layout.beltHeight).toBeLessThanOrEqual(layout.height);
-    expect(layout.panelY + layout.panelHeight).toBeLessThanOrEqual(layout.height);
+    expect(layout.boardX + layout.boardWidth).toBeLessThanOrEqual(width);
+    expect(layout.beltY + layout.beltHeight).toBeLessThanOrEqual(height);
+    expect(layout.panelX + layout.panelWidth).toBeLessThanOrEqual(width);
+    expect(layout.panelY + layout.panelHeight).toBeLessThanOrEqual(height);
+
+    const controls = computeControls(layout);
+    const interactive = [
+      ...controls.palette,
+      controls.play,
+      controls.step,
+      controls.undo,
+      controls.clear,
+      controls.sound,
+      controls.fullscreen,
+    ];
+    for (const rect of interactive) {
+      expectInside(rect, layout.panelX, layout.panelY, layout.panelWidth, layout.panelHeight);
+      expect(rect.width, `${rect.key} width`).toBeGreaterThanOrEqual(44);
+      expect(rect.height, `${rect.key} height`).toBeGreaterThanOrEqual(44);
+    }
+    for (let i = 0; i < interactive.length; i += 1) {
+      for (let j = i + 1; j < interactive.length; j += 1) {
+        expect(overlaps(interactive[i]!, interactive[j]!), `${interactive[i]!.key}/${interactive[j]!.key}`).toBe(false);
+      }
+    }
   });
 
-  it('sizes belt slots to fill the width', () => {
-    const layout = createLayout(390, 844);
-    expect(layout.beltSlotSize).toBe(Math.floor((layout.width - 24) / BELT_SLOTS));
-    expect(layout.beltSlotSize).toBeGreaterThanOrEqual(1);
-  });
-});
-
-describe('createLayout – short landscape (1280×657)', () => {
-  it('centers the board + belt + panel group and keeps the belt aligned', () => {
-    const layout = createLayout(1280, 657);
+  it.each([[1280, 800], [1280, 720], [1024, 768]] as const)('uses a roomy landscape board at %d×%d', (width, height) => {
+    const layout = createLayout(width, height);
     expect(layout.stacked).toBe(false);
+    expect(layout.panelX).toBeGreaterThan(layout.boardX + layout.boardWidth);
+    expect(layout.cellSize).toBeGreaterThanOrEqual(width === 1280 && height === 720 ? 90 : 96);
+    expect(layout.beltSlotWidth).toBeGreaterThanOrEqual(64);
+    expect(layout.beltSlotHeight).toBeGreaterThanOrEqual(64);
+  });
 
-    // Belt width must match the actual (height-limited) board width, not the
-    // wider available board width.
+  it('uses a non-overlapping 2×2 palette and touchable compact actions at 780×437', () => {
+    const layout = createLayout(780, 437);
+    const controls = computeControls(layout);
+    expect(layout.stacked).toBe(false);
+    expect(controls.palette[0]!.y).toBe(controls.palette[1]!.y);
+    expect(controls.palette[2]!.y).toBeGreaterThan(controls.palette[0]!.y);
+    expect(controls.palette[0]!.x).toBe(controls.palette[2]!.x);
+    expect(controls.play.width).toBeGreaterThan(controls.step.width);
+
+    const interactive = [
+      ...controls.palette,
+      controls.play,
+      controls.step,
+      controls.undo,
+      controls.clear,
+      controls.sound,
+      controls.fullscreen,
+    ];
+    for (const rect of interactive) {
+      expectInside(rect, layout.panelX, layout.panelY, layout.panelWidth, layout.panelHeight);
+      expect(rect.width).toBeGreaterThanOrEqual(44);
+      expect(rect.height).toBeGreaterThanOrEqual(44);
+    }
+    for (let i = 0; i < interactive.length; i += 1) {
+      for (let j = i + 1; j < interactive.length; j += 1) {
+        expect(overlaps(interactive[i]!, interactive[j]!)).toBe(false);
+      }
+    }
+  });
+
+  it('wraps the belt only on narrow phones and keeps every slot touchable', () => {
+    const narrow = createLayout(320, 568);
+    expect(narrow.beltRows).toBe(2);
+    expect(narrow.beltCols).toBe(4);
+    const regular = createLayout(390, 844);
+    expect(regular.beltRows).toBe(1);
+    expect(regular.beltCols).toBe(BELT_SLOTS);
+    for (const layout of [narrow, regular]) {
+      for (let index = 0; index < BELT_SLOTS; index += 1) {
+        const slot = beltSlotRect(layout, index);
+        expectInside(slot, layout.beltX, layout.beltY, layout.beltWidth, layout.beltHeight);
+        expect(slot.width).toBeGreaterThanOrEqual(44);
+        expect(slot.height).toBeGreaterThanOrEqual(44);
+      }
+    }
+  });
+
+  it('keeps the height-limited landscape belt aligned with the board', () => {
+    const layout = createLayout(1280, 657);
     expect(layout.beltWidth).toBe(layout.boardWidth);
-    expect(layout.beltSlotSize).toBe(Math.floor(layout.boardWidth / BELT_SLOTS));
-
-    // The board + gap + panel group is centered: equal left and right gutters.
-    const groupWidth = layout.boardWidth + (layout.panelX - (layout.boardX + layout.boardWidth)) + layout.panelWidth;
+    expect(layout.beltSlotWidth).toBe(Math.floor(layout.boardWidth / BELT_SLOTS));
     const left = layout.boardX;
     const right = layout.width - (layout.panelX + layout.panelWidth);
     expect(Math.abs(left - right)).toBeLessThanOrEqual(1);
-    expect(groupWidth).toBeLessThanOrEqual(layout.width);
-  });
-
-  it('keeps every region onscreen', () => {
-    const layout = createLayout(1280, 657);
-    expect(layout.boardX).toBeGreaterThanOrEqual(0);
-    expect(layout.beltX).toBeGreaterThanOrEqual(0);
-    expect(layout.panelX).toBeGreaterThanOrEqual(0);
-    expect(layout.boardX + layout.boardWidth).toBeLessThanOrEqual(layout.width);
-    expect(layout.beltX + Math.floor(layout.boardWidth / BELT_SLOTS) * BELT_SLOTS).toBeLessThanOrEqual(layout.width);
-    expect(layout.panelX + layout.panelWidth).toBeLessThanOrEqual(layout.width);
-    expect(layout.beltY + layout.beltHeight).toBeLessThanOrEqual(layout.height);
-    expect(layout.panelY + layout.panelHeight).toBeLessThanOrEqual(layout.height);
-  });
-});
-
-describe('createLayout – very narrow portrait', () => {
-  it('still produces a usable stacked layout', () => {
-    const layout = createLayout(320, 568);
-    expect(layout.stacked).toBe(true);
-    expect(layout.cellSize).toBeGreaterThanOrEqual(1);
-    expect(layout.panelHeight).toBeGreaterThanOrEqual(120);
-    expect(layout.panelY + layout.panelHeight).toBeLessThanOrEqual(568);
   });
 });
