@@ -3,7 +3,7 @@ import sparkyTextureUrl from '../../assets/images/sparky-topdown.webp';
 import gearBinTextureUrl from '../../assets/images/gear-bin.webp';
 import workbenchTextureUrl from '../../assets/images/factory-workbench.webp';
 import receivingDockTextureUrl from '../../assets/images/receiving-dock.webp';
-import { COLS, ROWS, BELT_SLOTS, FIRST_LEVEL, initialState, type SparkyLevel } from '../game/level';
+import { COLS, ROWS, BELT_SLOTS, FIRST_LEVEL, LEVELS, initialState, type SparkyLevel } from '../game/level';
 import {
   createLayout,
   computeControls,
@@ -111,6 +111,10 @@ export class AssemblyScene extends Phaser.Scene {
   private controlTooltip!: Phaser.GameObjects.Container;
   private controlTooltipBg!: Phaser.GameObjects.Graphics;
   private controlTooltipText!: Phaser.GameObjects.Text;
+  private currentLevelIndex = 0;
+  private playIcon!: Phaser.GameObjects.Graphics;
+  private playIconSize = 38;
+  private playIconY = 0;
 
   private keyboardBindings: Array<{ event: string; cb: (...args: unknown[]) => void }> = [];
 
@@ -463,12 +467,23 @@ export class AssemblyScene extends Phaser.Scene {
       g.strokePath();
       g.fillTriangle(cx + s * 0.55, cy, cx + s * 0.24, cy - s * 0.3, cx + s * 0.24, cy + s * 0.3);
     } else if (command === 'turn-left' || command === 'turn-right') {
-      const left = command === 'turn-left';
+      // A clean 90-degree road-style arrow reads better than a circular arrow.
+      const direction = command === 'turn-left' ? -1 : 1;
       g.beginPath();
-      g.arc(cx, cy + s * 0.08, s * 0.48, left ? Math.PI * 0.25 : Math.PI * 0.75, left ? Math.PI * 1.55 : -Math.PI * 0.55, !left);
+      g.moveTo(cx - direction * s * 0.28, cy + s * 0.48);
+      g.lineTo(cx - direction * s * 0.28, cy - s * 0.02);
+      g.lineTo(cx - direction * s * 0.22, cy - s * 0.16);
+      g.lineTo(cx - direction * s * 0.08, cy - s * 0.28);
+      g.lineTo(cx + direction * s * 0.34, cy - s * 0.28);
       g.strokePath();
-      const sign = left ? -1 : 1;
-      g.fillTriangle(cx + sign * s * 0.57, cy - s * 0.08, cx + sign * s * 0.2, cy - s * 0.45, cx + sign * s * 0.2, cy + s * 0.18);
+      g.fillTriangle(
+        cx + direction * s * 0.57,
+        cy - s * 0.28,
+        cx + direction * s * 0.22,
+        cy - s * 0.52,
+        cx + direction * s * 0.22,
+        cy - s * 0.04,
+      );
     } else {
       // Two claw arms closing around a box.
       g.strokeRoundedRect(cx - s * 0.2, cy - s * 0.12, s * 0.4, s * 0.38, s * 0.05);
@@ -490,10 +505,23 @@ export class AssemblyScene extends Phaser.Scene {
       g.fillTriangle(cx - s * 0.35, cy - s * 0.48, cx - s * 0.35, cy + s * 0.48, cx + s * 0.35, cy);
       if (action === 'step') g.fillRect(cx + s * 0.43, cy - s * 0.48, s * 0.14, s * 0.96);
     } else if (action === 'undo') {
+      // A broad hooked back arrow, distinct from the 90-degree turn arrows.
       g.beginPath();
-      g.arc(cx + s * 0.08, cy + s * 0.08, s * 0.42, -Math.PI * 0.55, Math.PI * 1.15, true);
+      g.moveTo(cx + s * 0.46, cy + s * 0.4);
+      g.lineTo(cx + s * 0.46, cy + s * 0.06);
+      g.lineTo(cx + s * 0.39, cy - s * 0.11);
+      g.lineTo(cx + s * 0.24, cy - s * 0.25);
+      g.lineTo(cx + s * 0.04, cy - s * 0.32);
+      g.lineTo(cx - s * 0.3, cy - s * 0.32);
       g.strokePath();
-      g.fillTriangle(cx - s * 0.55, cy - s * 0.08, cx - s * 0.12, cy - s * 0.48, cx - s * 0.08, cy + s * 0.12);
+      g.fillTriangle(
+        cx - s * 0.57,
+        cy - s * 0.32,
+        cx - s * 0.2,
+        cy - s * 0.55,
+        cx - s * 0.2,
+        cy - s * 0.09,
+      );
     } else if (action === 'clear') {
       g.strokeRect(cx - s * 0.34, cy - s * 0.22, s * 0.68, s * 0.68);
       g.beginPath();
@@ -567,11 +595,10 @@ export class AssemblyScene extends Phaser.Scene {
       letterSpacing: 1,
       wordWrap: { width: c.objective.width },
     });
-    this.objectiveText.setText(
-      this.layout.stacked
-        ? 'GOAL: Dock the gear bin, then DROP.'
-        : 'GOAL: get the gear bin onto the dock, then DROP.',
-    );
+    const levelLine = `L${this.currentLevelIndex + 1}/${LEVELS.length} ${this.level.name}`;
+    const goalLine = 'Dock bin, then DROP.';
+    this.objectiveText.setFontSize(this.layout.stacked ? '11px' : '12px');
+    this.objectiveText.setText(`${levelLine}\n${goalLine}`);
     this.controlsLayer.add(this.objectiveText);
 
     this.statusText = this.add.text(c.status.x, c.status.y, 'Tap commands to build a program.', {
@@ -649,6 +676,12 @@ export class AssemblyScene extends Phaser.Scene {
     else this.drawActionGlyph(icon, action, 0, iconY, iconSize, action === 'clear' ? 0xf7f1df : 0x22365a);
     container.add(icon);
 
+    if (action === 'play') {
+      this.playIcon = icon;
+      this.playIconSize = iconSize;
+      this.playIconY = iconY;
+    }
+
     if (hint) {
       const tag = this.add.text(
         compact ? width / 2 - 6 : -width / 2 + 12,
@@ -668,7 +701,15 @@ export class AssemblyScene extends Phaser.Scene {
 
     container.setSize(width, height);
     container.setInteractive({ useHandCursor: true });
-    container.on('pointerover', () => this.showControlTooltip(label, rect));
+    container.on('pointerover', () => {
+      const tip =
+        action === 'play' && this.phase === 'done'
+          ? this.currentLevelIndex >= LEVELS.length - 1
+            ? 'RESTART'
+            : 'NEXT LEVEL'
+          : label;
+      this.showControlTooltip(tip, rect);
+    });
     container.on('pointerdown', () => {
       this.hideControlTooltip();
       container.setScale(0.92);
@@ -795,10 +836,64 @@ export class AssemblyScene extends Phaser.Scene {
     }
   }
 
+  // ── level progression ─────────────────────────────────────
+  private advanceLevel(): void {
+    this.currentLevelIndex = (this.currentLevelIndex + 1) % LEVELS.length;
+    this.level = LEVELS[this.currentLevelIndex]!;
+    this.belt = [];
+    this.phase = 'idle';
+    this.solved = false;
+    this.stepIndex = 0;
+    this.liveState = initialState(this.level);
+    this.renderBoard();
+    this.renderBelt();
+    this.renderControls();
+    this.placeActors(this.liveState.robot, this.liveState.crate, false, true);
+    this.markNextSlot();
+    this.setStatus(`Level ${this.currentLevelIndex + 1}/${LEVELS.length}: ${this.level.name}.`);
+  }
+
+  private redrawPlayIcon(action: 'play' | 'next' | 'restart'): void {
+    if (this.playIcon === undefined) return;
+    this.playIcon.clear();
+    const color = 0x22365a;
+    if (action === 'next') {
+      this.drawNextGlyph(this.playIcon, 0, this.playIconY, this.playIconSize, color);
+    } else if (action === 'restart') {
+      this.drawRestartGlyph(this.playIcon, 0, this.playIconY, this.playIconSize, color);
+    } else {
+      this.drawActionGlyph(this.playIcon, 'play', 0, this.playIconY, this.playIconSize, color);
+    }
+  }
+
+  private drawNextGlyph(g: Phaser.GameObjects.Graphics, cx: number, cy: number, s: number, color: number): void {
+    g.lineStyle(Math.max(2, s * 0.14), color, 1);
+    g.fillStyle(color, 1);
+    for (let i = 0; i < 2; i += 1) {
+      const bx = cx - s * 0.08 + i * s * 0.25;
+      g.fillTriangle(bx, cy - s * 0.4, bx + s * 0.22, cy, bx, cy + s * 0.4);
+    }
+  }
+
+  private drawRestartGlyph(g: Phaser.GameObjects.Graphics, cx: number, cy: number, s: number, color: number): void {
+    g.lineStyle(Math.max(2, s * 0.14), color, 1);
+    g.fillStyle(color, 1);
+    g.beginPath();
+    g.arc(cx, cy + s * 0.04, s * 0.38, -Math.PI * 0.22, Math.PI * 1.42, false);
+    g.strokePath();
+    const hx = cx - s * 0.44;
+    const hy = cy - s * 0.06;
+    g.fillTriangle(hx, hy, hx + s * 0.18, hy - s * 0.18, hx + s * 0.08, hy + s * 0.16);
+  }
+
   // ── interaction ─────────────────────────────────────────────
   private handleAction(action: string): void {
     if (this.phase === 'running' && action !== 'fullscreen') return;
     if (action === 'play') {
+      if (this.phase === 'done') {
+        this.advanceLevel();
+        return;
+      }
       void this.runProgram();
       return;
     }
@@ -980,6 +1075,7 @@ export class AssemblyScene extends Phaser.Scene {
     this.clearHighlight();
     this.placeActors(this.liveState.robot, this.liveState.crate, false, false);
     this.markNextSlot();
+    this.redrawPlayIcon('play');
     if (feedback) {
       this.setStatus('Sparky is back at the start. Ready!');
       this.sfx.place();
@@ -1127,7 +1223,13 @@ export class AssemblyScene extends Phaser.Scene {
     if (!this.reducedMotion) {
       this.tweens.add({ targets: this.robot, scale: 1.15, duration: 180, yoyo: true, repeat: 2 });
     }
-    this.setStatus('Sparky did it! The bin is home. Press PLAY to go again.');
+    const isLast = this.currentLevelIndex >= LEVELS.length - 1;
+    this.redrawPlayIcon(isLast ? 'restart' : 'next');
+    this.setStatus(
+      isLast
+        ? 'Sparky did it! Press PLAY to restart from level 1.'
+        : 'Sparky did it! Press NEXT to continue.',
+    );
   }
 
   // ── fullscreen ─────────────────────────────────────────────
@@ -1205,6 +1307,9 @@ export class AssemblyScene extends Phaser.Scene {
     });
     this.bind('keydown-C', () => this.handleAction('clear'));
     this.bind('keydown-F', () => this.handleAction('fullscreen'));
+    this.bind('keydown-N', () => {
+      if (this.phase === 'done') this.advanceLevel();
+    });
   }
 
   private bindPalette(): void {

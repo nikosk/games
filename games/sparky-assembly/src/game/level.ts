@@ -19,25 +19,57 @@ export interface SparkyLevel {
   readonly beltSlots: number;
 }
 
-/**
- * First puzzle: Sparky stands in the south-west corner facing east. The crate
- * waits two cells to the north, the goal is two cells east of the crate.
- *
- * One clean solution (8 commands, fills the belt):
- *   turn-left, move, move, grab, turn-right, move, move, grab
- *
- * Sparky pivots north, walks to the crate, picks it up, pivots east, carries
- * it onto the goal, and releases. Every command type is needed.
- */
-export const FIRST_LEVEL: SparkyLevel = {
-  name: 'First Shift',
-  cols: COLS,
-  rows: ROWS,
-  start: { x: 0, y: 4, direction: 1 },
-  crate: { x: 0, y: 2 },
-  goal: { x: 2, y: 2 },
-  beltSlots: BELT_SLOTS,
-};
+/** Five sequenced puzzles. Belt capacity remains 8 slots on a 5×5 grid. */
+export const LEVELS: readonly SparkyLevel[] = [
+  {
+    name: 'First Shift',
+    cols: COLS,
+    rows: ROWS,
+    start: { x: 0, y: 4, direction: 1 }, // south-west, facing east
+    crate: { x: 0, y: 2 },
+    goal: { x: 2, y: 2 },
+    beltSlots: BELT_SLOTS,
+  },
+  {
+    name: 'Long Haul',
+    cols: COLS,
+    rows: ROWS,
+    start: { x: 0, y: 4, direction: 0 }, // south-west, facing north
+    crate: { x: 0, y: 3 },
+    goal: { x: 0, y: 0 }, // far end of the column
+    beltSlots: BELT_SLOTS,
+  },
+  {
+    name: 'Corner Delivery',
+    cols: COLS,
+    rows: ROWS,
+    start: { x: 4, y: 4, direction: 0 }, // south-east, facing north
+    crate: { x: 4, y: 3 },
+    goal: { x: 2, y: 2 }, // centre of the board
+    beltSlots: BELT_SLOTS,
+  },
+  {
+    name: 'Turnaround',
+    cols: COLS,
+    rows: ROWS,
+    start: { x: 0, y: 2, direction: 1 }, // mid-left, facing east
+    crate: { x: 2, y: 2 },
+    goal: { x: 0, y: 2 }, // back to the start column
+    beltSlots: BELT_SLOTS,
+  },
+  {
+    name: 'Zig Zag',
+    cols: COLS,
+    rows: ROWS,
+    start: { x: 0, y: 4, direction: 1 }, // south-west, facing east
+    crate: { x: 0, y: 3 },
+    goal: { x: 2, y: 2 }, // centre, reached via an L-shaped route
+    beltSlots: BELT_SLOTS,
+  },
+];
+
+/** Backward-compatible alias for the first level. */
+export const FIRST_LEVEL: SparkyLevel = LEVELS[0]!;
 
 export function initialState(level: SparkyLevel = FIRST_LEVEL) {
   return {

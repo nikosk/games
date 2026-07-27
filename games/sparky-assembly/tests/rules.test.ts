@@ -1,13 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import { executeStep, isSolved, facingCell, type FloorState } from '../src/game/rules';
+import type { Command } from '../src/game/rules';
 import { turnLeft, turnRight, type Direction } from '../src/game/direction';
-import { FIRST_LEVEL, initialState } from '../src/game/level';
+import { FIRST_LEVEL, LEVELS, initialState } from '../src/game/level';
 
 const COLS = FIRST_LEVEL.cols;
 const ROWS = FIRST_LEVEL.rows;
 
 function at(x: number, y: number, direction: 0 | 1 | 2 | 3 = 1): FloorState {
   return { robot: { x, y, direction }, crate: { ...FIRST_LEVEL.crate }, holding: false };
+}
+
+function runProgram(level: typeof LEVELS[number], program: readonly Command[]): FloorState {
+  let state = initialState(level);
+  for (const cmd of program) {
+    const outcome = executeStep(state, cmd, level.cols, level.rows);
+    if (outcome.result === 'blocked') throw new Error(`Blocked at ${cmd}`);
+    state = outcome.state;
+  }
+  return state;
 }
 
 describe('turn helpers', () => {
@@ -80,8 +91,46 @@ describe('grab', () => {
   });
 });
 
-describe('goal detection', () => {
-  it('solves the authored first-puzzle program', () => {
+describe('level programs', () => {
+  const programs: Record<string, readonly Command[]> = {
+    'First Shift': ['turn-left', 'move', 'move', 'grab', 'turn-right', 'move', 'move', 'grab'],
+    'Long Haul': ['move', 'grab', 'move', 'move', 'move', 'grab'],
+    'Corner Delivery': ['move', 'grab', 'move', 'turn-left', 'move', 'move', 'grab'],
+    Turnaround: ['move', 'move', 'grab', 'turn-left', 'turn-left', 'move', 'move', 'grab'],
+    'Zig Zag': ['turn-left', 'move', 'grab', 'move', 'turn-right', 'move', 'move', 'grab'],
+  };
+
+  for (const level of LEVELS) {
+    it(`solves '${level.name}' with the intended program`, () => {
+      const program = programs[level.name];
+      expect(program).toBeDefined();
+      const state = runProgram(level, program!);
+      expect(isSolved(state, level.goal)).toBe(true);
+    });
+
+    it(`'${level.name}' program fits the belt`, () => {
+      const program = programs[level.name];
+      expect(program).toBeDefined();
+      expect(program!.length).toBeLessThanOrEqual(level.beltSlots);
+    });
+  }
+
+  it('every level start, crate, and goal are within bounds', () => {
+    for (const level of LEVELS) {
+      for (const p of [level.start, level.crate, level.goal]) {
+        expect(p.x).toBeGreaterThanOrEqual(0);
+        expect(p.x).toBeLessThan(level.cols);
+        expect(p.y).toBeGreaterThanOrEqual(0);
+        expect(p.y).toBeLessThan(level.rows);
+      }
+    }
+  });
+
+  it('FIRST_LEVEL is the first level in LEVELS', () => {
+    expect(FIRST_LEVEL).toBe(LEVELS[0]);
+  });
+
+  it('solves the original first-puzzle program (backward compat)', () => {
     let state = initialState();
     const program = ['turn-left', 'move', 'move', 'grab', 'turn-right', 'move', 'move', 'grab'] as const;
     for (const cmd of program) {
