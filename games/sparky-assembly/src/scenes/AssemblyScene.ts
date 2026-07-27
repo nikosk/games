@@ -104,8 +104,13 @@ export class AssemblyScene extends Phaser.Scene {
   private objectiveText!: Phaser.GameObjects.Text;
   private statusText!: Phaser.GameObjects.Text;
   private beltSlots: Phaser.GameObjects.Container[] = [];
-  private soundText!: Phaser.GameObjects.Text;
-  private fullscreenText!: Phaser.GameObjects.Text;
+  private soundIcon!: Phaser.GameObjects.Graphics;
+  private fullscreenIcon!: Phaser.GameObjects.Graphics;
+  private soundIconSize = 21;
+  private fullscreenIconSize = 21;
+  private controlTooltip!: Phaser.GameObjects.Container;
+  private controlTooltipBg!: Phaser.GameObjects.Graphics;
+  private controlTooltipText!: Phaser.GameObjects.Text;
 
   private keyboardBindings: Array<{ event: string; cb: (...args: unknown[]) => void }> = [];
 
@@ -444,48 +449,60 @@ export class AssemblyScene extends Phaser.Scene {
     s: number,
   ): void {
     const g = this.add.graphics();
-    g.lineStyle(5, 0xffffff, 1);
+    this.drawCommandGlyph(g, command, cx, cy, s, 0xffffff);
+    parent.add(g);
+  }
+
+  private drawCommandGlyph(g: Phaser.GameObjects.Graphics, command: Command, cx: number, cy: number, s: number, color: number): void {
+    g.lineStyle(Math.max(2, s * 0.16), color, 1);
+    g.fillStyle(color, 1);
     if (command === 'move') {
       g.beginPath();
       g.moveTo(cx - s * 0.5, cy);
-      g.lineTo(cx + s * 0.4, cy);
+      g.lineTo(cx + s * 0.35, cy);
       g.strokePath();
-      g.fillStyle(0xffffff, 1);
-      g.fillTriangle(
-        cx + s * 0.55, cy,
-        cx + s * 0.28, cy - s * 0.32,
-        cx + s * 0.28, cy + s * 0.32,
-      );
-    } else if (command === 'turn-left') {
+      g.fillTriangle(cx + s * 0.55, cy, cx + s * 0.24, cy - s * 0.3, cx + s * 0.24, cy + s * 0.3);
+    } else if (command === 'turn-left' || command === 'turn-right') {
+      const left = command === 'turn-left';
       g.beginPath();
-      g.arc(cx, cy, s * 0.5, Math.PI * 0.3, Math.PI * 1.6, false);
+      g.arc(cx, cy + s * 0.08, s * 0.48, left ? Math.PI * 0.25 : Math.PI * 0.75, left ? Math.PI * 1.55 : -Math.PI * 0.55, !left);
       g.strokePath();
-      g.fillStyle(0xffffff, 1);
-      g.fillTriangle(
-        cx - s * 0.55, cy - s * 0.1,
-        cx - s * 0.2, cy - s * 0.5,
-        cx - s * 0.2, cy + s * 0.25,
-      );
-    } else if (command === 'turn-right') {
-      g.beginPath();
-      g.arc(cx, cy, s * 0.5, Math.PI * 1.4, Math.PI * 0.7, true);
-      g.strokePath();
-      g.fillStyle(0xffffff, 1);
-      g.fillTriangle(
-        cx + s * 0.55, cy - s * 0.1,
-        cx + s * 0.2, cy - s * 0.5,
-        cx + s * 0.2, cy + s * 0.25,
-      );
+      const sign = left ? -1 : 1;
+      g.fillTriangle(cx + sign * s * 0.57, cy - s * 0.08, cx + sign * s * 0.2, cy - s * 0.45, cx + sign * s * 0.2, cy + s * 0.18);
     } else {
-      // grab / drop hand
-      g.fillStyle(0xffffff, 1);
-      g.fillRoundedRect(cx - s * 0.35, cy - s * 0.15, s * 0.7, s * 0.45, 6);
-      for (let i = 0; i < 4; i += 1) {
-        const fx = cx - s * 0.28 + i * s * 0.19;
-        g.fillRect(fx, cy - s * 0.45, s * 0.09, s * 0.32);
-      }
+      // Two claw arms closing around a box.
+      g.strokeRoundedRect(cx - s * 0.2, cy - s * 0.12, s * 0.4, s * 0.38, s * 0.05);
+      g.beginPath();
+      g.moveTo(cx - s * 0.48, cy - s * 0.38);
+      g.lineTo(cx - s * 0.48, cy + s * 0.06);
+      g.lineTo(cx - s * 0.29, cy + s * 0.22);
+      g.moveTo(cx + s * 0.48, cy - s * 0.38);
+      g.lineTo(cx + s * 0.48, cy + s * 0.06);
+      g.lineTo(cx + s * 0.29, cy + s * 0.22);
+      g.strokePath();
     }
-    parent.add(g);
+  }
+
+  private drawActionGlyph(g: Phaser.GameObjects.Graphics, action: string, cx: number, cy: number, s: number, color: number): void {
+    g.lineStyle(Math.max(2, s * 0.14), color, 1);
+    g.fillStyle(color, 1);
+    if (action === 'play' || action === 'step') {
+      g.fillTriangle(cx - s * 0.35, cy - s * 0.48, cx - s * 0.35, cy + s * 0.48, cx + s * 0.35, cy);
+      if (action === 'step') g.fillRect(cx + s * 0.43, cy - s * 0.48, s * 0.14, s * 0.96);
+    } else if (action === 'undo') {
+      g.beginPath();
+      g.arc(cx + s * 0.08, cy + s * 0.08, s * 0.42, -Math.PI * 0.55, Math.PI * 1.15, true);
+      g.strokePath();
+      g.fillTriangle(cx - s * 0.55, cy - s * 0.08, cx - s * 0.12, cy - s * 0.48, cx - s * 0.08, cy + s * 0.12);
+    } else if (action === 'clear') {
+      g.strokeRect(cx - s * 0.34, cy - s * 0.22, s * 0.68, s * 0.68);
+      g.beginPath();
+      g.moveTo(cx - s * 0.46, cy - s * 0.38);
+      g.lineTo(cx + s * 0.46, cy - s * 0.38);
+      g.moveTo(cx - s * 0.16, cy - s * 0.52);
+      g.lineTo(cx + s * 0.16, cy - s * 0.52);
+      g.strokePath();
+    }
   }
 
   private beltSlotCenter(index: number): { x: number; y: number } {
@@ -573,14 +590,28 @@ export class AssemblyScene extends Phaser.Scene {
       this.controlsLayer.add(btn);
     }
 
-    this.controlsLayer.add(this.createButton(c.play, 'play', '▶ PLAY', COLORS.green, COLORS.greenAccent, 'Space', false));
+    this.controlsLayer.add(this.createButton(c.play, 'play', 'PLAY', COLORS.green, COLORS.greenAccent, 'Space', false));
     this.controlsLayer.add(this.createButton(c.step, 'step', 'STEP', COLORS.blue, 0x3f7fb5, 'S', false));
     this.controlsLayer.add(this.createButton(c.undo, 'undo', 'UNDO', COLORS.blue, 0x3f7fb5, '⌫', false));
     this.controlsLayer.add(this.createButton(c.clear, 'clear', 'CLEAR', COLORS.beltSlot, 0x5a6a9b, 'C', false));
 
     // Sound + fullscreen footer controls.
-    this.controlsLayer.add(this.createIconButton(c.sound, this.soundOn ? '🔊' : '🔇', 'sound'));
-    this.controlsLayer.add(this.createIconButton(c.fullscreen, this.isFullscreen() ? '🗗' : '⛶', 'fullscreen'));
+    this.controlsLayer.add(this.createIconButton(c.sound, 'sound'));
+    this.controlsLayer.add(this.createIconButton(c.fullscreen, 'fullscreen'));
+
+    // Add the shared hover tooltip last so it always sits above every button.
+    this.controlTooltipBg = this.add.graphics();
+    this.controlTooltipText = this.add.text(0, 0, '', {
+      fontFamily: '"Trebuchet MS", sans-serif',
+      fontSize: '13px',
+      color: '#fff8df',
+      fontStyle: 'bold',
+      letterSpacing: 0.5,
+    }).setOrigin(0.5);
+    this.controlTooltip = this.add
+      .container(0, 0, [this.controlTooltipBg, this.controlTooltipText])
+      .setVisible(false);
+    this.controlsLayer.add(this.controlTooltip);
   }
 
   private createButton(
@@ -605,70 +636,163 @@ export class AssemblyScene extends Phaser.Scene {
     bg.fillRoundedRect(-width / 2 + 3, -height / 2 + 3, width - 6, 10, 6);
     container.add(bg);
 
-    const longPaletteLabel = isPalette && label.length > 8;
-    const fontSize = Math.round(Math.min(height * 0.36, width * (longPaletteLabel ? 0.125 : 0.17)));
-    const text = this.add.text(isPalette ? 5 : 0, isPalette ? -3 : 0, label, {
-      fontFamily: '"Trebuchet MS", sans-serif',
-      fontSize: `${fontSize}px`,
-      fontStyle: 'bold',
-      color: action === 'clear' ? '#f7f1df' : '#22365a',
-      align: 'center',
-    }).setOrigin(0.5);
-    container.add(text);
+    const compact = width < 150;
+    const iconSize = Math.min(height * 0.52, width * 0.4, 38);
+    const iconY = -Math.min(1, height * 0.02);
+    const iconBacking = this.add.graphics();
+    iconBacking.fillStyle(0xffffff, action === 'clear' ? 0.1 : 0.18);
+    iconBacking.fillCircle(0, iconY, iconSize * 0.7);
+    container.add(iconBacking);
+
+    const icon = this.add.graphics();
+    if (isPalette) this.drawCommandGlyph(icon, action as Command, 0, iconY, iconSize, 0x22365a);
+    else this.drawActionGlyph(icon, action, 0, iconY, iconSize, action === 'clear' ? 0xf7f1df : 0x22365a);
+    container.add(icon);
 
     if (hint) {
-      const tag = this.add.text(-width / 2 + 12, height / 2 - 12, hint, {
-        fontFamily: '"Trebuchet MS", sans-serif',
-        fontSize: '10px',
-        color: '#22365a',
-        fontStyle: 'bold',
-        backgroundColor: 'rgba(255,255,255,0.55)',
-        padding: { x: 4, y: 1 },
-      }).setOrigin(0.5, 0.5);
+      const tag = this.add.text(
+        compact ? width / 2 - 6 : -width / 2 + 12,
+        compact ? -height / 2 + 6 : height / 2 - 12,
+        hint,
+        {
+          fontFamily: '"Trebuchet MS", sans-serif',
+          fontSize: compact ? '8px' : '10px',
+          color: '#22365a',
+          fontStyle: 'bold',
+          backgroundColor: 'rgba(255,255,255,0.62)',
+          padding: compact ? { x: 2, y: 0 } : { x: 4, y: 1 },
+        },
+      ).setOrigin(compact ? 1 : 0.5, compact ? 0 : 0.5);
       container.add(tag);
     }
 
     container.setSize(width, height);
     container.setInteractive({ useHandCursor: true });
-    container.on('pointerdown', () => container.setScale(0.95));
+    container.on('pointerover', () => this.showControlTooltip(label, rect));
+    container.on('pointerdown', () => {
+      this.hideControlTooltip();
+      container.setScale(0.92);
+    });
     container.on('pointerup', () => {
       container.setScale(1);
       this.sfx.unlock();
       this.handleAction(action);
     });
-    container.on('pointerout', () => container.setScale(1));
-    container.on('pointercancel', () => container.setScale(1));
+    container.on('pointerout', () => {
+      this.hideControlTooltip();
+      container.setScale(1);
+    });
+    container.on('pointercancel', () => {
+      this.hideControlTooltip();
+      container.setScale(1);
+    });
     return container;
   }
 
-  private createIconButton(rect: ControlRect, label: string, action: string): Phaser.GameObjects.Container {
+  private createIconButton(rect: ControlRect, action: 'sound' | 'fullscreen'): Phaser.GameObjects.Container {
     const { x, y, width, height } = rect;
     const r = Math.min(width, height) / 2;
-    const container = this.add.container(x + r, y + r);
+    const container = this.add.container(x + width / 2, y + height / 2);
     const bg = this.add.graphics();
     bg.fillStyle(0xe6cf9a, 1);
     bg.fillCircle(0, 0, r);
     bg.lineStyle(2, COLORS.panelEdge, 1);
     bg.strokeCircle(0, 0, r);
     container.add(bg);
-    const text = this.add.text(0, 0, label, {
-      fontFamily: '"Trebuchet MS", sans-serif',
-      fontSize: `${Math.round(r * 0.9)}px`,
-    }).setOrigin(0.5);
-    container.add(text);
+    const icon = this.add.graphics();
+    container.add(icon);
+    const iconSize = r * 1.08;
+    this.drawUtilityGlyph(icon, action, iconSize);
     container.setSize(width, height);
     container.setInteractive({ useHandCursor: true });
-    container.on('pointerdown', () => container.setScale(0.95));
+    container.on('pointerover', () => this.showControlTooltip(action === 'sound' ? 'SOUND' : 'FULLSCREEN', rect));
+    container.on('pointerdown', () => {
+      this.hideControlTooltip();
+      container.setScale(0.92);
+    });
     container.on('pointerup', () => {
       container.setScale(1);
       this.sfx.unlock();
       this.handleAction(action);
     });
-    container.on('pointerout', () => container.setScale(1));
-    container.on('pointercancel', () => container.setScale(1));
-    if (action === 'sound') this.soundText = text;
-    if (action === 'fullscreen') this.fullscreenText = text;
+    container.on('pointerout', () => {
+      this.hideControlTooltip();
+      container.setScale(1);
+    });
+    container.on('pointercancel', () => {
+      this.hideControlTooltip();
+      container.setScale(1);
+    });
+    if (action === 'sound') {
+      this.soundIcon = icon;
+      this.soundIconSize = iconSize;
+    } else {
+      this.fullscreenIcon = icon;
+      this.fullscreenIconSize = iconSize;
+    }
     return container;
+  }
+
+  private showControlTooltip(label: string, rect: ControlRect): void {
+    if (this.controlTooltip === undefined) return;
+    this.controlTooltipText.setText(label);
+    const width = Math.ceil(this.controlTooltipText.width) + 20;
+    const height = Math.ceil(this.controlTooltipText.height) + 12;
+    this.controlTooltipBg.clear();
+    this.controlTooltipBg.fillStyle(0x22365a, 0.96);
+    this.controlTooltipBg.fillRoundedRect(-width / 2, -height / 2, width, height, 7);
+    this.controlTooltipBg.lineStyle(2, 0xffd36b, 0.9);
+    this.controlTooltipBg.strokeRoundedRect(-width / 2, -height / 2, width, height, 7);
+
+    const x = Phaser.Math.Clamp(rect.x + rect.width / 2, width / 2 + 6, this.layout.width - width / 2 - 6);
+    let y = rect.y - height / 2 - 7;
+    if (y - height / 2 < 6) y = rect.y + rect.height + height / 2 + 7;
+    this.controlTooltip.setPosition(x, y).setVisible(true);
+  }
+
+  private hideControlTooltip(): void {
+    if (this.controlTooltip !== undefined) this.controlTooltip.setVisible(false);
+  }
+
+  private drawUtilityGlyph(g: Phaser.GameObjects.Graphics, action: 'sound' | 'fullscreen', s: number): void {
+    g.clear();
+    const color = 0x22365a;
+    g.lineStyle(Math.max(2, s * 0.1), color, 1);
+    g.fillStyle(color, 1);
+    if (action === 'sound') {
+      g.fillRect(-s * 0.5, -s * 0.18, s * 0.25, s * 0.36);
+      g.fillTriangle(-s * 0.28, -s * 0.18, s * 0.05, -s * 0.42, s * 0.05, s * 0.42);
+      if (this.soundOn) {
+        for (const radius of [0.28, 0.5]) {
+          g.beginPath();
+          g.arc(s * 0.02, 0, s * radius, -Math.PI * 0.28, Math.PI * 0.28, false);
+          g.strokePath();
+        }
+      } else {
+        g.lineStyle(Math.max(3, s * 0.13), 0xa13c3c, 1);
+        g.beginPath();
+        g.moveTo(-s * 0.48, -s * 0.48);
+        g.lineTo(s * 0.48, s * 0.48);
+        g.strokePath();
+      }
+      return;
+    }
+    const inward = this.isFullscreen();
+    const outer = s * 0.48;
+    const inner = s * 0.12;
+    for (const xSign of [-1, 1]) {
+      for (const ySign of [-1, 1]) {
+        const cornerX = xSign * outer;
+        const cornerY = ySign * outer;
+        const endX = inward ? xSign * inner : xSign * (outer - s * 0.28);
+        const endY = inward ? ySign * inner : ySign * (outer - s * 0.28);
+        g.beginPath();
+        g.moveTo(cornerX, endY);
+        g.lineTo(cornerX, cornerY);
+        g.lineTo(endX, cornerY);
+        g.strokePath();
+      }
+    }
   }
 
   // ── interaction ─────────────────────────────────────────────
@@ -692,7 +816,7 @@ export class AssemblyScene extends Phaser.Scene {
     }
     if (action === 'sound') {
       this.soundOn = this.sfx.toggle();
-      if (this.soundText !== undefined) this.soundText.setText(this.soundOn ? '🔊' : '🔇');
+      if (this.soundIcon !== undefined) this.drawUtilityGlyph(this.soundIcon, 'sound', this.soundIconSize);
       return;
     }
     if (action === 'fullscreen') {
@@ -1026,13 +1150,15 @@ export class AssemblyScene extends Phaser.Scene {
   }
 
   private handleFullscreenChange(): void {
-    if (this.fullscreenText !== undefined) {
-      this.fullscreenText.setText(this.isFullscreen() ? '🗗' : '⛶');
+    if (this.fullscreenIcon !== undefined) {
+      this.drawUtilityGlyph(this.fullscreenIcon, 'fullscreen', this.fullscreenIconSize);
     }
   }
 
   private handleFullscreenUnsupported(): void {
-    if (this.fullscreenText !== undefined) this.fullscreenText.setText('⛶');
+    if (this.fullscreenIcon !== undefined) {
+      this.drawUtilityGlyph(this.fullscreenIcon, 'fullscreen', this.fullscreenIconSize);
+    }
   }
 
   // ── small helpers ───────────────────────────────────────────
