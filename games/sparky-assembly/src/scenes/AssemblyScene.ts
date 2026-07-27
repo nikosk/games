@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import sparkyTextureUrl from '../../assets/images/sparky-topdown.webp';
 import gearBinTextureUrl from '../../assets/images/gear-bin.webp';
 import workbenchTextureUrl from '../../assets/images/factory-workbench.webp';
+import receivingDockTextureUrl from '../../assets/images/receiving-dock.webp';
 import { COLS, ROWS, BELT_SLOTS, FIRST_LEVEL, initialState, type SparkyLevel } from '../game/level';
 import {
   createLayout,
@@ -29,6 +30,12 @@ const CELL = DESIGN_CELL_SIZE;
 const SPARKY_TEXTURE = 'sparky-topdown';
 const GEAR_BIN_TEXTURE = 'gear-bin';
 const WORKBENCH_TEXTURE = 'factory-workbench';
+const RECEIVING_DOCK_TEXTURE = 'receiving-dock';
+
+// The approved source art's visible nose points south, so rotate it to match
+// the logical direction (0 = north, 1 = east) everywhere it is oriented.
+const SPARKY_ART_ANGLE_OFFSET = 180;
+const sparkyAngleFor = (direction: Direction): number => angleFor(direction) + SPARKY_ART_ANGLE_OFFSET;
 
 /** Sunny snap-together factory palette. */
 const COLORS = {
@@ -38,10 +45,13 @@ const COLORS = {
   panel: 0xfff7e6,
   panelEdge: 0xe6c97a,
   panelFastener: 0xffd166,
-  floorA: 0xb7ece2,
-  floorB: 0xa8e3d6,
-  floorEdge: 0x6fc4b5,
-  floorGutter: 0xf6ead2,
+  floorA: 0x718394,
+  floorB: 0x687a8b,
+  floorEdge: 0x263746,
+  floorGutter: 0x172633,
+  floorBand: 0x91a3b2,
+  floorHighlight: 0xc2d0da,
+  floorRivet: 0x344b5e,
   belt: 0x2a3a6b,
   beltEdge: 0xf5c542,
   beltSlot: 0x3a4a7b,
@@ -61,7 +71,6 @@ const COLORS = {
   crate: 0xe8717a,
   crateDark: 0xb5516a,
   goal: 0xf5c542,
-  goalStripe: 0x22365a,
   highlight: 0xfff4d6,
 } as const;
 
@@ -108,6 +117,7 @@ export class AssemblyScene extends Phaser.Scene {
     this.load.image(SPARKY_TEXTURE, sparkyTextureUrl);
     this.load.image(GEAR_BIN_TEXTURE, gearBinTextureUrl);
     this.load.image(WORKBENCH_TEXTURE, workbenchTextureUrl);
+    this.load.image(RECEIVING_DOCK_TEXTURE, receivingDockTextureUrl);
   }
 
   create(): void {
@@ -212,54 +222,48 @@ export class AssemblyScene extends Phaser.Scene {
 
   private drawFloorTile(x: number, y: number): void {
     const g = this.add.graphics();
-    // Aqua snap-toy plate sitting on a cream gutter seam.
+    const left = x * CELL;
+    const top = y * CELL;
+    // Cool steel plate with a deep seam and a crisp upper bevel.
     g.fillStyle(COLORS.floorGutter, 1);
-    g.fillRoundedRect(x * CELL + 2, y * CELL + 2, CELL - 4, CELL - 4, 8);
+    g.fillRect(left + 1, top + 1, CELL - 2, CELL - 2);
     const base = (x + y) % 2 === 0 ? COLORS.floorA : COLORS.floorB;
-    g.fillStyle(base, 0.96);
-    g.fillRoundedRect(x * CELL + 4, y * CELL + 4, CELL - 8, CELL - 8, 7);
-    g.lineStyle(2, COLORS.floorEdge, 0.55);
-    g.strokeRoundedRect(x * CELL + 5, y * CELL + 5, CELL - 10, CELL - 10, 6);
-    // soft upper-left light
-    g.fillStyle(0xffffff, 0.18);
-    g.fillRoundedRect(x * CELL + 9, y * CELL + 8, CELL - 18, 8, 4);
-    // corner rivets
-    g.fillStyle(COLORS.floorEdge, 0.8);
-    for (const [dx, dy] of [[12, 12], [CELL - 12, 12], [12, CELL - 12], [CELL - 12, CELL - 12]] as const) {
-      g.fillCircle(x * CELL + dx, y * CELL + dy, 1.6);
+    g.fillStyle(base, 1);
+    g.fillRoundedRect(left + 5, top + 5, CELL - 10, CELL - 10, 3);
+    g.lineStyle(2, COLORS.floorEdge, 1);
+    g.strokeRoundedRect(left + 5, top + 5, CELL - 10, CELL - 10, 3);
+    g.fillStyle(COLORS.floorHighlight, 0.65);
+    g.fillRect(left + 8, top + 7, CELL - 16, 3);
+    g.fillStyle(COLORS.floorEdge, 0.45);
+    g.fillRect(left + 8, top + CELL - 10, CELL - 16, 3);
+    // Alternating brushed-metal bands keep the plates readable at game scale.
+    g.fillStyle(COLORS.floorBand, 0.22);
+    for (let bandY = 19; bandY < CELL - 14; bandY += 10) {
+      g.fillRect(left + 11, top + bandY, CELL - 22, 2);
+    }
+    // Four large, highlighted corner rivets.
+    for (const [dx, dy] of [[13, 13], [CELL - 13, 13], [13, CELL - 13], [CELL - 13, CELL - 13]] as const) {
+      g.fillStyle(COLORS.floorEdge, 0.9);
+      g.fillCircle(left + dx, top + dy, 4);
+      g.fillStyle(COLORS.floorRivet, 1);
+      g.fillCircle(left + dx, top + dy, 2.8);
+      g.fillStyle(COLORS.floorHighlight, 0.9);
+      g.fillCircle(left + dx - 0.8, top + dy - 0.8, 1);
     }
     this.boardLayer.add(g);
   }
 
   private drawGoal(): void {
-    const g = this.add.graphics();
     const cx = this.level.goal.x * CELL + CELL / 2;
     const cy = this.level.goal.y * CELL + CELL / 2;
-    const size = CELL - 16;
-    // Yellow / charcoal striped loading dock.
-    g.fillStyle(COLORS.goal, 0.2);
-    g.fillRoundedRect(cx - size / 2, cy - size / 2, size, size, 8);
-    g.lineStyle(4, COLORS.goal, 0.95);
-    g.strokeRoundedRect(cx - size / 2, cy - size / 2, size, size, 8);
-    // Hazard stripe band across the middle.
-    g.fillStyle(COLORS.goal, 0.95);
-    g.fillRect(cx - size / 2 + 4, cy - 6, size - 8, 12);
-    g.fillStyle(COLORS.goalStripe, 0.95);
-    for (let sx = -size / 2 + 4; sx < size / 2 - 4; sx += 8) {
-      g.fillTriangle(
-        cx + sx, cy - 6,
-        cx + sx + 6, cy - 6,
-        cx + sx + 12, cy + 6,
-      );
-      g.fillTriangle(
-        cx + sx + 6, cy + 6,
-        cx + sx + 12, cy + 6,
-        cx + sx + 6, cy - 6,
-      );
-    }
-    // Simple gear outline around the dock.
-    g.lineStyle(2, COLORS.brass, 0.6);
-    this.boardLayer.add(g);
+    const dock = this.add.image(cx, cy, RECEIVING_DOCK_TEXTURE).setDisplaySize(CELL - 10, CELL - 10);
+    this.boardLayer.add(dock);
+
+    // A restrained highlight reinforces the exact logical target cell.
+    const highlight = this.add.graphics();
+    highlight.lineStyle(2, COLORS.goal, 0.5);
+    highlight.strokeRoundedRect(cx - CELL / 2 + 7, cy - CELL / 2 + 7, CELL - 14, CELL - 14, 5);
+    this.boardLayer.add(highlight);
   }
 
   // ── actors ──────────────────────────────────────────────────
@@ -299,7 +303,7 @@ export class AssemblyScene extends Phaser.Scene {
     if (build || this.crate === undefined) this.buildCrate();
     const rc = this.cellLocal(robot);
     this.robot.setPosition(rc.x, rc.y);
-    this.robot.setAngle(angleFor(robot.direction));
+    this.robot.setAngle(sparkyAngleFor(robot.direction));
     const cc = this.crateVisualPosition(crate, robot);
     this.crate.setPosition(cc.x, cc.y);
     this.crate.setScale(holding ? 0.78 : 1);
@@ -898,8 +902,8 @@ export class AssemblyScene extends Phaser.Scene {
     }
     if (command === 'turn-left' || command === 'turn-right') {
       this.sfx.turn();
-      const fromAngle = angleFor(from.robot.direction);
-      const toAngle = angleFor(to.robot.direction);
+      const fromAngle = sparkyAngleFor(from.robot.direction);
+      const toAngle = sparkyAngleFor(to.robot.direction);
       const delta = ((toAngle - fromAngle + 540) % 360) - 180;
       const turnRobot = new Promise<void>((resolve) => {
         this.tweens.add({
