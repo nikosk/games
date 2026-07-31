@@ -16,7 +16,7 @@ Game ideas:
 - [Railway Workshop](06-game-railway-workshop.md)
 - [Wild Pairs](07-game-wild-pairs.md)
 - [Canopy Caper](08-game-canopy-caper.md)
-- [Cheese Heist](09-game-cheese-heist.md)
+- [The Enchanted Toyshop](09-game-enchanted-toyshop.md)
 - [Valley of Echoes](10-game-valley-echoes.md)
 - [Sparky's Assembly Line](11-game-sparky-assembly.md)
 - [Bit's Grand Adventure](12-game-bit-adventure.md)

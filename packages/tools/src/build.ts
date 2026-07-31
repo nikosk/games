@@ -87,6 +87,12 @@ async function buildWorkspaceGames(): Promise<void> {
   }
 }
 
+async function buildClassicCheeseHeist(): Promise<void> {
+  const gameDirectory = join(root, 'classic', 'cheese-heist');
+  await run('npm', ['run', 'build'], gameDirectory);
+  await copy('classic/cheese-heist/dist', 'classic/cheese-heist');
+}
+
 async function buildCritterTactics(): Promise<void> {
   const gameDirectory = join(root, 'thegame');
   await rm(join(gameDirectory, 'node_modules'), { recursive: true, force: true });
@@ -111,6 +117,7 @@ async function build(): Promise<void> {
     }
 
     await buildWorkspaceGames();
+    await buildClassicCheeseHeist();
     await buildCritterTactics();
 
     await rm(output, { recursive: true, force: true });

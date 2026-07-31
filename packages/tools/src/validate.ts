@@ -19,6 +19,7 @@ const fixedExpectedEntries = [
   'classic/animal-memory.html',
   'classic/monkey-banana.html',
   'classic/robot-factory.html',
+  'classic/cheese-heist/index.html',
   'crocodile-game/index.html',
   'little-chef-kitchen/index.html',
   'thegame/index.html',

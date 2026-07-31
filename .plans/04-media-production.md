@@ -103,7 +103,7 @@ These are creative starting points, not fixed specifications:
 | Railway Workshop | warm handmade model railway |
 | Wild Pairs | watercolour wildlife field journal |
 | Canopy Caper | lush painted jungle layers |
-| Cheese Heist | playful miniature kitchen caper |
+| The Enchanted Toyshop | cozy moonlit toyshop magic |
 | Valley of Echoes | painterly living wilderness |
 | Sparky's Assembly Line | bright mechanical toy factory |
 | Bit's Grand Adventure | clear, cheerful pixel-code world |

@@ -1,81 +1,72 @@
-import type { KitchenRoom } from './room';
+export const PUZZLES = ['teddies', 'melody', 'picture', 'kaleidoscope'] as const;
 
-export type HeistPhase = 'playing' | 'caught' | 'won';
+export type PuzzleId = (typeof PUZZLES)[number];
 
-export interface HeistState {
-  readonly phase: HeistPhase;
-  readonly mouseHidden: boolean;
-  /** The cheese has been taken off the counter. */
-  readonly cheeseStolen: boolean;
-  /** The mouse is carrying the cheese. */
-  readonly hasCheese: boolean;
-  readonly spoonKicked: boolean;
-  readonly spoonClatterX: number;
+export interface ToyshopState {
+  readonly solved: Readonly<Record<PuzzleId, boolean>>;
 }
 
-export function createHeistState(): HeistState {
+export const MELODY = [0, 2, 1] as const;
+export const LENS_TARGET = [2, 0, 1] as const;
+
+export interface MelodyProgress {
+  readonly notes: readonly number[];
+  readonly mistake: boolean;
+  readonly complete: boolean;
+}
+
+export function createToyshopState(): ToyshopState {
   return {
-    phase: 'playing',
-    mouseHidden: false,
-    cheeseStolen: false,
-    hasCheese: false,
-    spoonKicked: false,
-    spoonClatterX: 0,
+    solved: {
+      teddies: false,
+      melody: false,
+      picture: false,
+      kaleidoscope: false,
+    },
   };
 }
 
-/** Set the mug's safe state from proximity instead of requiring a button. */
-export function setHidden(state: HeistState, hidden: boolean): HeistState {
-  if (state.phase !== 'playing' || state.mouseHidden === hidden) return state;
-  return { ...state, mouseHidden: hidden };
-}
-
-/** Pick up the cheese as soon as the mouse lands beside it. */
-export function collectCheese(state: HeistState): HeistState {
-  if (state.phase !== 'playing' || state.hasCheese || state.cheeseStolen) return state;
-  return { ...state, cheeseStolen: true, hasCheese: true };
-}
-
-/** Kick the spoon; the clatter point is fixed by the room. */
-export function kickSpoon(state: HeistState, room: KitchenRoom): HeistState {
-  if (state.phase !== 'playing' || state.spoonKicked) return state;
-  return { ...state, spoonKicked: true, spoonClatterX: room.spoonClatterX };
-}
-
-/** The spoon has been put back after the investigation. */
-export function returnSpoon(state: HeistState): HeistState {
-  if (!state.spoonKicked) return state;
-  return { ...state, spoonKicked: false, spoonClatterX: 0 };
-}
-
-export function markCaught(state: HeistState): HeistState {
-  if (state.phase === 'caught') return state;
+export function solvePuzzle(state: ToyshopState, puzzle: PuzzleId): ToyshopState {
+  if (state.solved[puzzle]) return state;
   return {
-    ...state,
-    phase: 'caught',
-    mouseHidden: false,
+    solved: {
+      ...state.solved,
+      [puzzle]: true,
+    },
   };
 }
 
-/** The funny, non-punishing reset: everything is ready for another try. */
-export function recover(state: HeistState): HeistState {
+export function solvedCount(state: ToyshopState): number {
+  return PUZZLES.filter((puzzle) => state.solved[puzzle]).length;
+}
+
+export function doorIsOpen(state: ToyshopState): boolean {
+  return solvedCount(state) === PUZZLES.length;
+}
+
+export function itemMatchesTarget(item: number, target: number): boolean {
+  return item === target;
+}
+
+export function playMelodyNote(notes: readonly number[], note: number): MelodyProgress {
+  const expected = MELODY[notes.length];
+  if (expected === undefined || note !== expected) {
+    return { notes: [], mistake: true, complete: false };
+  }
+
+  const next = [...notes, note];
   return {
-    ...state,
-    phase: 'playing',
-    mouseHidden: false,
-    cheeseStolen: false,
-    hasCheese: false,
-    spoonKicked: false,
-    spoonClatterX: 0,
+    notes: next,
+    mistake: false,
+    complete: next.length === MELODY.length,
   };
 }
 
-/** Escape through the vent; only possible while carrying the cheese. */
-export function escape(state: HeistState): HeistState {
-  if (state.phase !== 'playing' || !state.hasCheese) return state;
-  return { ...state, phase: 'won' };
+export function cycleLens(value: number, symbolCount = 3): number {
+  return (value + 1) % symbolCount;
 }
 
-export function heistWon(state: HeistState): boolean {
-  return state.phase === 'won';
+export function lensesMatch(values: readonly number[]): boolean {
+  return values.length === LENS_TARGET.length
+    && values.every((value, index) => value === LENS_TARGET[index]);
 }

@@ -100,7 +100,7 @@ These are available ideas, not a binding schedule:
 | Train Tracks | [Railway Workshop](06-game-railway-workshop.md) | In portfolio; tablet playtest passed |
 | Animal Memory | [Wild Pairs](07-game-wild-pairs.md) | In portfolio; tablet playtest passed |
 | Monkey Banana | [Canopy Caper](08-game-canopy-caper.md) | In portfolio; touch direction and jumping need work |
-| Mouse Adventure | [Cheese Heist](09-game-cheese-heist.md) | Idea |
+| Cheese Heist | [The Enchanted Toyshop](09-game-enchanted-toyshop.md) | First playable version |
 | Valley Explorer | [Valley of Echoes](10-game-valley-echoes.md) | Idea |
 | Robot Factory | [Sparky's Assembly Line](11-game-sparky-assembly.md) | Idea |
 | Code Adventure | [Bit's Grand Adventure](12-game-bit-adventure.md) | Idea |
@@ -109,7 +109,7 @@ These are available ideas, not a binding schedule:
 | Little Chef's Kitchen | [Little Chef's Grand Kitchen](15-game-little-chef.md) | Idea |
 | Critter Tactics | [Critter Tactics](16-game-critter-tactics.md) | Existing Vite game builds correctly; rewrite is optional |
 
-Choose the next game freely. Cheese Heist is the next unbuilt brief in the table, but there is no required order.
+Choose the next game freely; there is no required order.
 
 The numbered game briefs in this directory are idea banks and creative references. Their feature counts and detailed scopes are wishes, not promises. Change or shrink them whenever that makes a game more fun or more likely to ship.
 
@@ -139,5 +139,5 @@ Before publishing, run the relevant checks, open the built game, play its main p
 1. Fix Canopy Caper's touch controls so the player can hold a direction and jump reliably at the same time.
 2. Replay the full climb on the target tablet and tune the control size, placement, jump timing, and vine release until movement feels comfortable.
 3. Run the production build, open Canopy Caper, and play its main path before publishing the revision.
-4. Pick whichever game idea sounds most fun next. Use Cheese Heist only as the default when no other idea is more exciting.
+4. Playtest The Enchanted Toyshop with a child and simplify anything that needs explanation.
 5. Add a lightweight game starter or extract shared code only when starting that next game proves it will save time.

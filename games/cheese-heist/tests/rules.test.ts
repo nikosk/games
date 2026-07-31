@@ -1,89 +1,54 @@
 import { describe, expect, it } from 'vitest';
 import {
-  collectCheese,
-  createHeistState,
-  escape,
-  kickSpoon,
-  markCaught,
-  recover,
-  returnSpoon,
-  setHidden,
-  type HeistState,
+  createToyshopState,
+  cycleLens,
+  doorIsOpen,
+  itemMatchesTarget,
+  lensesMatch,
+  MELODY,
+  playMelodyNote,
+  PUZZLES,
+  solvePuzzle,
+  solvedCount,
 } from '../src/game/rules';
-import { KITCHEN } from '../src/game/room';
 
-function fresh(): HeistState {
-  return createHeistState();
-}
+describe('toyshop progress', () => {
+  it('opens the door only after all four puzzles are solved', () => {
+    let state = createToyshopState();
+    expect(doorIsOpen(state)).toBe(false);
 
-describe('createHeistState', () => {
-  it('starts visible, empty-handed, and ready to play', () => {
-    const state = fresh();
-    expect(state.phase).toBe('playing');
-    expect(state.mouseHidden).toBe(false);
-    expect(state.hasCheese).toBe(false);
-    expect(state.cheeseStolen).toBe(false);
-    expect(state.spoonKicked).toBe(false);
+    for (const puzzle of PUZZLES) state = solvePuzzle(state, puzzle);
+
+    expect(solvedCount(state)).toBe(4);
+    expect(doorIsOpen(state)).toBe(true);
+  });
+
+  it('does not award the same star twice', () => {
+    const state = solvePuzzle(createToyshopState(), 'teddies');
+    expect(solvePuzzle(state, 'teddies')).toBe(state);
+    expect(solvedCount(state)).toBe(1);
   });
 });
 
-describe('automatic interactions', () => {
-  it('enters and leaves the mug without mutating the old state', () => {
-    const state = fresh();
-    const hidden = setHidden(state, true);
-    expect(hidden.mouseHidden).toBe(true);
-    expect(state.mouseHidden).toBe(false);
-    expect(setHidden(hidden, false).mouseHidden).toBe(false);
+describe('visual puzzle rules', () => {
+  it('matches an item only with its own silhouette', () => {
+    expect(itemMatchesTarget(2, 2)).toBe(true);
+    expect(itemMatchesTarget(2, 1)).toBe(false);
   });
 
-  it('collects the cheese once', () => {
-    const state = fresh();
-    const carrying = collectCheese(state);
-    expect(carrying.hasCheese).toBe(true);
-    expect(carrying.cheeseStolen).toBe(true);
-    expect(collectCheese(carrying)).toBe(carrying);
+  it('accepts the visual melody in order and resets gently on a mistake', () => {
+    let notes: readonly number[] = [];
+    for (const note of MELODY) {
+      const progress = playMelodyNote(notes, note);
+      notes = progress.notes;
+    }
+    expect(notes).toEqual(MELODY);
+    expect(playMelodyNote([], 1)).toEqual({ notes: [], mistake: true, complete: false });
   });
 
-  it('kicks the spoon once and returns it to ready', () => {
-    const kicked = kickSpoon(fresh(), KITCHEN);
-    expect(kicked.spoonKicked).toBe(true);
-    expect(kicked.spoonClatterX).toBe(KITCHEN.spoonClatterX);
-    expect(kickSpoon(kicked, KITCHEN)).toBe(kicked);
-    const returned = returnSpoon(kicked);
-    expect(returned.spoonKicked).toBe(false);
-    expect(returned.spoonClatterX).toBe(0);
-  });
-});
-
-describe('caught and recovery', () => {
-  it('marks the player caught without changing the rest of the room', () => {
-    let state = setHidden(fresh(), true);
-    state = collectCheese(state);
-    state = kickSpoon(state, KITCHEN);
-    const caught = markCaught(state);
-    expect(caught.phase).toBe('caught');
-    expect(caught.mouseHidden).toBe(false);
-    expect(caught.hasCheese).toBe(true);
-    expect(caught.spoonKicked).toBe(true);
-  });
-
-  it('recovers with a fresh attempt', () => {
-    let state = kickSpoon(fresh(), KITCHEN);
-    state = collectCheese(state);
-    state = markCaught(state);
-    const back = recover(state);
-    expect(back.phase).toBe('playing');
-    expect(back.hasCheese).toBe(false);
-    expect(back.cheeseStolen).toBe(false);
-    expect(back.spoonKicked).toBe(false);
-    expect(back.mouseHidden).toBe(false);
-  });
-});
-
-describe('escape', () => {
-  it('only escapes while carrying the cheese', () => {
-    expect(escape(fresh()).phase).toBe('playing');
-    const won = escape(collectCheese(fresh()));
-    expect(won.phase).toBe('won');
+  it('cycles kaleidoscope symbols and recognizes the target picture', () => {
+    expect(cycleLens(2)).toBe(0);
+    expect(lensesMatch([2, 0, 1])).toBe(true);
+    expect(lensesMatch([2, 1, 0])).toBe(false);
   });
 });
