@@ -110,6 +110,7 @@
         .game-card:nth-child(9)::before { background: linear-gradient(90deg, #8E75B2, #D8A7E8); }
         .game-card:nth-child(10)::before { background: linear-gradient(90deg, #FF8C42, #FFD166); }
         .game-card:nth-child(11)::before { background: linear-gradient(90deg, #5C6BC0, #26A69A); }
+        .game-card:nth-child(12)::before { background: linear-gradient(90deg, #FFD93D, #FF9A3D); }
 
         .game-card:hover {
             transform: translateY(-15px) scale(1.02);
@@ -189,6 +190,11 @@
             box-shadow: 0 8px 0 #3F51B5;
         }
 
+        .game-card:nth-child(12) .game-icon {
+            background: linear-gradient(135deg, #FFF9C4, #FFD54F);
+            box-shadow: 0 8px 0 #FF8F00;
+        }
+
         .game-icon::after {
             content: '▶';
             position: absolute;
@@ -229,6 +235,7 @@
         .game-card:nth-child(9) .game-title { color: #6A4C93; }
         .game-card:nth-child(10) .game-title { color: #E65100; }
         .game-card:nth-child(11) .game-title { color: #3F51B5; }
+        .game-card:nth-child(12) .game-title { color: #F57F17; }
 
         .game-desc {
             font-size: 1.1rem;
@@ -360,6 +367,13 @@
             <div class="game-icon">⚔️</div>
             <h2 class="game-title">Critter Tactics</h2>
             <p class="game-desc">Command a team of clever critters in colorful tactical battles!</p>
+            <span class="age-badge">Ages 4+</span>
+        </a>
+
+        <a href="cheese-heist/" class="game-card">
+            <div class="game-icon">🧀</div>
+            <h2 class="game-title">Cheese Heist</h2>
+            <p class="game-desc">Sneak past the cat, steal the special cheese, and escape through the vent!</p>
             <span class="age-badge">Ages 4+</span>
         </a>
     </div>

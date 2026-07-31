@@ -3,13 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
-    <meta name="theme-color" content="#2d5a27" />
-    <title>Canopy Caper</title>
+    <meta name="theme-color" content="#2b2a4a" />
+    <title>Cheese Heist</title>
     <style>
       :root {
         color-scheme: dark;
         font-family: "Trebuchet MS", "Avenir Next", sans-serif;
-        background: #2d5a27;
+        background: #2b2a4a;
       }
 
       * { box-sizing: border-box; }
@@ -24,7 +24,7 @@
 
       body {
         overflow: hidden;
-        background: #2d5a27;
+        background: #2b2a4a;
         touch-action: none;
       }
 
@@ -36,7 +36,7 @@
       }
 
       canvas:focus-visible {
-        outline: 4px solid #f5d274;
+        outline: 4px solid #ffd166;
         outline-offset: -4px;
       }
 
@@ -52,16 +52,18 @@
         border: 0;
       }
     </style>
-    <script type="module" crossorigin src="/games/canopy-caper/assets/index-Cxjv7i8r.js"></script>
   </head>
   <body>
-    <main id="game" aria-label="Canopy Caper jungle climb game"></main>
+    <main id="game" aria-label="Cheese Heist stealth game"></main>
     <p class="sr-only">
-      Climb through the jungle as a monkey. Run, jump, and swing on a vine to
-      cross gaps between branches. Collect banana fruit and reach the goal
-      perch at the top. Keyboard controls: Arrow keys or A/D to run, Up or
-      Space to jump, Escape to pause. Touch controls: hold left or right side
-      to move, tap the jump button to jump.
+      Sneak through a moonlit kitchen as a tiny mouse. Watch the cat's patrol
+      and sight line, hide in the mug, kick the spoon as a distraction, steal
+      the special cheese from the counter, and escape through the vent on the
+      left wall. Keyboard controls: A/D or Arrow keys to move, Space or Up to
+      jump, E to hide, steal, or escape, F to kick the spoon, G for fullscreen,
+      Escape to pause. Touch controls: on-screen move, jump, use, and kick
+      buttons.
     </p>
+    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

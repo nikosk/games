@@ -40,6 +40,10 @@ Start with fewer actions and add another only when the room proves it useful.
 - one cheese and one escape vent
 - a complete stealth-to-escape loop
 
+## Current version
+
+A complete first heist lives in `games/cheese-heist/`: one warm moonlit kitchen room, an expressive mouse, a patrolling cat with a readable sight cone, a bread loaf and a mug as cover, a hiding spot, a kickable spoon distraction, a guarded cheese on the counter, and a vent escape. The cat alerts and chases when it spots you, loses you when you hide or break line of sight, and getting caught is a quick funny reset with nothing lost. Keyboard (A/D, arrows, Space, E, F, G, Esc) and multi-pointer touch controls, pause/restart, fullscreen, and procedural art and sound. Not yet playtested on the target tablet.
+
 ## If it stays fun
 
 - cats, traps, and different guard behaviors
