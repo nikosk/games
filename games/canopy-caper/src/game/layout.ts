@@ -51,39 +51,33 @@ function clamp(value: number, minimum: number, maximum: number): number {
  * The Phaser Scale mode is RESIZE with camera zoom 1, so canvas, world,
  * and screen units coincide. Every screen-fixed HUD element and touch
  * zone is therefore positioned directly in canvas CSS-pixel coordinates.
- * Touch zones divide the lower 40% of the screen into left/right movement
- * halves and a jump button anchored in the bottom-right corner.
+ * The two circular movement buttons sit side by side at bottom-left, while
+ * the jump button is anchored at bottom-right.
  */
 export function createLayout(width: number, height: number): CanopyLayout {
   const buttonSize = clamp(Math.min(width, height) * 0.14, MIN_BUTTON_CSS, 96);
   const buttonRadius = buttonSize / 2;
   const buttonMargin = 16;
-
-  // Touch zones occupy the bottom 40% of the viewport.
-  // Left 45% and right 45% for movement, with the jump button anchored
-  // in the bottom-right corner.
-  const touchTop = height * 0.6;
-  const touchHeight = height - touchTop;
-  const zoneWidth = width * 0.45;
+  const movementButtonGap = 12;
+  const buttonY = height - buttonSize - buttonMargin;
 
   const touchLeftZone: Rect = {
-    x: 0,
-    y: touchTop,
-    width: zoneWidth,
-    height: touchHeight,
+    x: buttonMargin,
+    y: buttonY,
+    width: buttonSize,
+    height: buttonSize,
   };
 
   const touchRightZone: Rect = {
-    x: width - zoneWidth,
-    y: touchTop,
-    width: zoneWidth,
-    height: touchHeight,
+    x: buttonMargin + buttonSize + movementButtonGap,
+    y: buttonY,
+    width: buttonSize,
+    height: buttonSize,
   };
 
-  // Jump button circle, bottom-right
   const touchJumpZone: Rect = {
     x: width - buttonSize - buttonMargin,
-    y: height - buttonSize - buttonMargin,
+    y: buttonY,
     width: buttonSize,
     height: buttonSize,
   };

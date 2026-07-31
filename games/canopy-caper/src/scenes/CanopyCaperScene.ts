@@ -62,11 +62,7 @@ const C_PARTICLE_GREEN = 0x6ba342;
 
 type Phase = 'start' | 'playing' | 'paused' | 'complete';
 type Pose = 'idle' | 'run1' | 'run2' | 'jump' | 'vine' | 'celebrate';
-
-interface PointerInfo {
-  readonly id: number;
-  zone: 'left' | 'right' | 'jump';
-}
+type MovementDirection = 'left' | 'right';
 
 /**
  * Single scene for Canopy Caper: a vertical jungle climb with running,
@@ -108,10 +104,13 @@ export class CanopyCaperScene extends Phaser.Scene {
   // input flags
   private moveLeft = false;
   private moveRight = false;
+  private keyboardMoveLeft = false;
+  private keyboardMoveRight = false;
   private keyboardJumpHeld = false;
   private touchJumpHeld = false;
   private touchJumpPressed = false;
-  private pointers = new Map<number, PointerInfo>();
+  private movementPointers = new Map<number, MovementDirection>();
+  private touchJumpPointers = new Set<number>();
 
   // HUD
   private fruitText!: Phaser.GameObjects.Text;
@@ -120,7 +119,11 @@ export class CanopyCaperScene extends Phaser.Scene {
   private pauseLabel!: Phaser.GameObjects.Text;
 
   // Touch controls
+  private leftButton!: Phaser.GameObjects.Container;
+  private rightButton!: Phaser.GameObjects.Container;
   private jumpButton!: Phaser.GameObjects.Container;
+  private leftButtonTint!: Phaser.GameObjects.Graphics;
+  private rightButtonTint!: Phaser.GameObjects.Graphics;
   private jumpButtonTint!: Phaser.GameObjects.Graphics;
 
   // Overlays
@@ -148,9 +151,14 @@ export class CanopyCaperScene extends Phaser.Scene {
     this.onVine = false;
     this.moveLeft = false;
     this.moveRight = false;
+    this.keyboardMoveLeft = false;
+    this.keyboardMoveRight = false;
+    this.keyboardJumpHeld = false;
     this.jumpHeld = false;
     this.touchJumpHeld = false;
-    this.pointers.clear();
+    this.touchJumpPressed = false;
+    this.movementPointers.clear();
+    this.touchJumpPointers.clear();
 
     this.cameras.main.setBackgroundColor(C_BG);
     this.physics.world.setBounds(0, 0, this.level.worldWidth, this.level.worldHeight);
@@ -580,6 +588,17 @@ export class CanopyCaperScene extends Phaser.Scene {
   // Touch zone visuals
   // ---------------------------------------------------------------------------
 
+  private drawMovementButton(graphics: Phaser.GameObjects.Graphics, pressed: boolean): void {
+    const r = this.layout.buttonSize / 2;
+    graphics.clear();
+    graphics.fillStyle(0x334a25, 0.7);
+    graphics.fillCircle(0, 0, r);
+    graphics.fillStyle(pressed ? 0x6f9f44 : C_BUTTON_BG, 0.88);
+    graphics.fillCircle(0, 0, r - 4);
+    graphics.lineStyle(3, C_BUTTON_BORDER, 1);
+    graphics.strokeCircle(0, 0, r - 2);
+  }
+
   private drawJumpButton(pressed: boolean): void {
     const r = this.layout.buttonSize / 2;
     this.jumpButtonTint.clear();
@@ -591,36 +610,74 @@ export class CanopyCaperScene extends Phaser.Scene {
     this.jumpButtonTint.strokeCircle(0, 0, r - 2);
   }
 
+  private createMovementButton(direction: MovementDirection): {
+    button: Phaser.GameObjects.Container;
+    tint: Phaser.GameObjects.Graphics;
+  } {
+    const r = this.layout.buttonSize / 2;
+    const button = this.add.container(0, 0).setScrollFactor(0);
+    const tint = this.add.graphics().setScrollFactor(0);
+    this.drawMovementButton(tint, false);
+    button.add(tint);
+    const label = this.add.text(0, -1, direction === 'left' ? '\u25C0' : '\u25B6', {
+      fontFamily: 'sans-serif',
+      fontSize: `${Math.round(r * 0.7)}px`,
+      color: '#fff',
+    }).setOrigin(0.5).setScrollFactor(0);
+    button.add(label);
+    button.setSize(this.layout.buttonSize, this.layout.buttonSize);
+    button.setInteractive({
+      hitArea: new Phaser.Geom.Circle(r, r, r),
+      hitAreaCallback: Phaser.Geom.Circle.Contains,
+      useHandCursor: false,
+    });
+    button.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      this.pressMovementButton(pointer, direction);
+    });
+    const release = (pointer: Phaser.Input.Pointer) => {
+      this.releaseMovementButton(pointer, direction);
+    };
+    button.on('pointerup', release);
+    button.on('pointerout', release);
+    button.on('pointercancel', release);
+    button.setDepth(201);
+    return { button, tint };
+  }
+
   private setUpTouchZones(): void {
+    const left = this.createMovementButton('left');
+    this.leftButton = left.button;
+    this.leftButtonTint = left.tint;
+    const right = this.createMovementButton('right');
+    this.rightButton = right.button;
+    this.rightButtonTint = right.tint;
+
     const r = this.layout.buttonSize / 2;
     this.jumpButton = this.add.container(0, 0).setScrollFactor(0);
-    this.jumpButtonTint = this.add.graphics();
+    this.jumpButtonTint = this.add.graphics().setScrollFactor(0);
     this.drawJumpButton(false);
     this.jumpButton.add(this.jumpButtonTint);
     const jumpLabel = this.add.text(0, -1, '\u25B2', {
       fontFamily: 'sans-serif',
       fontSize: `${Math.round(r * 0.7)}px`,
       color: '#fff',
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setScrollFactor(0);
     this.jumpButton.add(jumpLabel);
-    const press = () => {
+    const press = (pointer: Phaser.Input.Pointer) => {
       if (this.phase === 'start') { this.beginGame(); return; }
       if (this.phase !== 'playing') return;
+      this.touchJumpPointers.add(pointer.id);
       this.touchJumpHeld = true;
       this.touchJumpPressed = true;
       this.jumpBufferTime = this.time.now + JUMP_BUFFER;
       this.drawJumpButton(true);
     };
-    const release = () => {
-      if (this.touchJumpHeld) {
-        this.touchJumpHeld = false;
-        this.maybeCutJump();
-      }
-      this.drawJumpButton(false);
+    const release = (pointer: Phaser.Input.Pointer) => {
+      this.releaseJumpPointer(pointer.id);
     };
     this.jumpButton.setSize(this.layout.buttonSize, this.layout.buttonSize);
     this.jumpButton.setInteractive({
-      hitArea: new Phaser.Geom.Circle(0, 0, r),
+      hitArea: new Phaser.Geom.Circle(r, r, r),
       hitAreaCallback: Phaser.Geom.Circle.Contains,
       useHandCursor: false,
     });
@@ -628,25 +685,50 @@ export class CanopyCaperScene extends Phaser.Scene {
     this.jumpButton.on('pointerup', release);
     this.jumpButton.on('pointerout', release);
     this.jumpButton.on('pointercancel', release);
-    this.setJumpButtonPosition();
     this.jumpButton.setDepth(201);
+    this.setTouchButtonPositions();
   }
 
-  private setJumpButtonPosition(): void {
+  private setTouchButtonPositions(): void {
     // Layout positions in canvas CSS pixels (Scale.RESIZE keeps world =
-    // display units at zoom 1); the jump button is screen-fixed, so we
-    // place it directly at the rendered canvas corner.
+    // display units at zoom 1); the buttons are screen-fixed.
     const r = this.layout.buttonSize / 2;
+    this.leftButton.setPosition(this.layout.touchLeftZone.x + r, this.layout.touchLeftZone.y + r);
+    this.rightButton.setPosition(this.layout.touchRightZone.x + r, this.layout.touchRightZone.y + r);
     this.jumpButton.setPosition(this.layout.touchJumpZone.x + r, this.layout.touchJumpZone.y + r);
   }
 
-  private pointerInJumpButtonZone(pointer: Phaser.Input.Pointer): boolean {
-    // Screen-fixed HUD: compare pointer SCREEN coordinates, not world
-    // coordinates that shift with camera scroll.
-    const r = this.layout.buttonSize / 2 + 4;
-    const dx = pointer.x - this.jumpButton.x;
-    const dy = pointer.y - this.jumpButton.y;
-    return dx * dx + dy * dy < r * r;
+  private pressMovementButton(pointer: Phaser.Input.Pointer, direction: MovementDirection): void {
+    if (this.phase === 'start') { this.beginGame(); return; }
+    if (this.phase !== 'playing') return;
+    this.movementPointers.set(pointer.id, direction);
+    this.applyMovementInput();
+  }
+
+  private releaseMovementButton(pointer: Phaser.Input.Pointer, direction: MovementDirection): void {
+    if (this.movementPointers.get(pointer.id) !== direction) return;
+    this.movementPointers.delete(pointer.id);
+    this.applyMovementInput();
+  }
+
+  private applyMovementInput(): void {
+    const heldDirections = [...this.movementPointers.values()];
+    this.moveLeft = this.keyboardMoveLeft || heldDirections.includes('left');
+    this.moveRight = this.keyboardMoveRight || heldDirections.includes('right');
+    this.drawMovementButton(this.leftButtonTint, heldDirections.includes('left'));
+    this.drawMovementButton(this.rightButtonTint, heldDirections.includes('right'));
+  }
+
+  private releaseJumpPointer(pointerId: number): void {
+    if (!this.touchJumpPointers.delete(pointerId)) return;
+    this.touchJumpHeld = this.touchJumpPointers.size > 0;
+    if (!this.touchJumpHeld) this.maybeCutJump();
+    this.drawJumpButton(this.touchJumpHeld);
+  }
+
+  private releaseTrackedPointer(pointer: Phaser.Input.Pointer): void {
+    if (this.movementPointers.delete(pointer.id)) this.applyMovementInput();
+    this.releaseJumpPointer(pointer.id);
   }
 
   // ---------------------------------------------------------------------------
@@ -678,16 +760,18 @@ export class CanopyCaperScene extends Phaser.Scene {
     keyboard.on('keydown-F', () => this.toggleFullscreen());
   }
 
-  private dispatchStart(dir: 'left' | 'right'): void {
+  private dispatchStart(dir: MovementDirection): void {
     if (this.phase === 'start') { this.beginGame(); return; }
     if (this.phase !== 'playing') return;
-    if (dir === 'left') this.moveLeft = true;
-    else this.moveRight = true;
+    if (dir === 'left') this.keyboardMoveLeft = true;
+    else this.keyboardMoveRight = true;
+    this.applyMovementInput();
   }
 
-  private dispatchEnd(dir: 'left' | 'right'): void {
-    if (dir === 'left') this.moveLeft = false;
-    else this.moveRight = false;
+  private dispatchEnd(dir: MovementDirection): void {
+    if (dir === 'left') this.keyboardMoveLeft = false;
+    else this.keyboardMoveRight = false;
+    this.applyMovementInput();
   }
 
   private beginJumpKey(): void {
@@ -708,45 +792,18 @@ export class CanopyCaperScene extends Phaser.Scene {
   // ---------------------------------------------------------------------------
 
   private setUpPointer(): void {
-    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      if (this.phase === 'start') { this.beginGame(); return; }
-      if (this.phase !== 'playing') return;
-      if (this.pointerInJumpButtonZone(pointer)) return;
-      const zone = this.classifyTouchZone(pointer);
-      this.pointers.set(pointer.id, { id: pointer.id, zone });
-      this.applyTouchPointer();
-    });
-    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
-      if (!this.pointers.has(pointer.id)) return;
-      const zone = this.classifyTouchZone(pointer);
-      const info = this.pointers.get(pointer.id);
-      if (info && info.zone !== zone) {
-        info.zone = zone;
-        this.applyTouchPointer();
-      }
+    // Keep the start screen's "tap anywhere" behavior. Playing touch input
+    // is handled by the three visible buttons above.
+    this.input.on('pointerdown', () => {
+      if (this.phase === 'start') this.beginGame();
     });
     const release = (pointer: Phaser.Input.Pointer) => {
-      if (!this.pointers.has(pointer.id)) return;
-      this.pointers.delete(pointer.id);
-      this.applyTouchPointer();
+      this.releaseTrackedPointer(pointer);
     };
     this.input.on('pointerup', release);
+    this.input.on('pointerupoutside', release);
     this.input.on('pointerout', release);
     this.input.on('pointercancel', release);
-  }
-
-  private classifyTouchZone(pointer: Phaser.Input.Pointer): 'left' | 'right' {
-    // Simple screen-half classification; jump handled by direct button.
-    return pointer.x < this.scale.width / 2 ? 'left' : 'right';
-  }
-
-  private applyTouchPointer(): void {
-    this.moveLeft = false;
-    this.moveRight = false;
-    for (const info of this.pointers.values()) {
-      if (info.zone === 'left') this.moveLeft = true;
-      else if (info.zone === 'right') this.moveRight = true;
-    }
   }
 
   // ---------------------------------------------------------------------------
@@ -771,6 +828,8 @@ export class CanopyCaperScene extends Phaser.Scene {
     this.vineAngularVelocity = 0;
     this.moveLeft = false;
     this.moveRight = false;
+    this.keyboardMoveLeft = false;
+    this.keyboardMoveRight = false;
     this.jumpHeld = false;
     this.jumpBufferTime = 0;
     this.coyoteEnd = 0;
@@ -780,7 +839,10 @@ export class CanopyCaperScene extends Phaser.Scene {
     this.keyboardJumpHeld = false;
     this.respawnUntil = 0;
     this.isRespawning = false;
-    this.pointers.clear();
+    this.movementPointers.clear();
+    this.touchJumpPointers.clear();
+    this.applyMovementInput();
+    this.drawJumpButton(false);
     // Stop the infinite celebration tween (if present) and reset the
     // monkey's scale/alpha so "Play Again" starts visually fresh.
     if (this.completeTween) {
@@ -810,7 +872,7 @@ export class CanopyCaperScene extends Phaser.Scene {
 
   update(time: number, delta: number): void {
     if (this.phase !== 'playing') return;
-    this.setJumpButtonPosition();
+    this.setTouchButtonPositions();
     this.updateVineVisual();
     this.updateMonkeyPose();
     this.handleMovement();
@@ -1182,9 +1244,15 @@ export class CanopyCaperScene extends Phaser.Scene {
     if (this.phase === 'playing') {
       this.phase = 'paused';
       this.physics.world.pause();
-      this.moveLeft = false;
-      this.moveRight = false;
-      this.pointers.clear();
+      this.keyboardMoveLeft = false;
+      this.keyboardMoveRight = false;
+      this.movementPointers.clear();
+      this.touchJumpPointers.clear();
+      this.touchJumpHeld = false;
+      this.touchJumpPressed = false;
+      this.jumpHeld = false;
+      this.applyMovementInput();
+      this.drawJumpButton(false);
       this.showPauseOverlay();
     } else if (this.phase === 'paused') {
       this.phase = 'playing';
@@ -1583,13 +1651,19 @@ export class CanopyCaperScene extends Phaser.Scene {
   }
 
   private refreshTouchControls(): void {
-    // Destroying and recreating the jump button rebuilds its hit area and
-    // visual at the new buttonSize. Reset touchJumpHeld so the recreated
-    // button starts in the released state (the previous button's pointerup
-    // never fires after destroy).
+    // Rebuild all hit areas at the new button size. Active touch pointers
+    // belong to the old objects, so release only those touch-held inputs.
+    const wasTouchJumpHeld = this.touchJumpHeld;
+    this.movementPointers.clear();
+    this.touchJumpPointers.clear();
     this.touchJumpHeld = false;
+    this.touchJumpPressed = false;
+    if (wasTouchJumpHeld) this.maybeCutJump();
+    this.leftButton.destroy();
+    this.rightButton.destroy();
     this.jumpButton.destroy();
     this.setUpTouchZones();
+    this.applyMovementInput();
   }
 
   private refreshOverlay(): void {

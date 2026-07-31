@@ -40,10 +40,14 @@ describe('createLayout', () => {
   // which masked the canvas-coordinate blocker. With RESIZE + zoom 1,
   // buttonSize already IS in CSS pixels.
   it.each(viewports)
-    ('keeps the jump button at least 64 CSS px at $label',
+    ('keeps all touch buttons circular-sized and at least 64 CSS px at $label',
      ({ width, height }) => {
        const l = createLayout(width, height);
        expect(l.buttonSize).toBeGreaterThanOrEqual(MIN_TOUCH_CSS);
+       for (const zone of [l.touchLeftZone, l.touchRightZone, l.touchJumpZone]) {
+         expect(zone.width).toBe(l.buttonSize);
+         expect(zone.height).toBe(l.buttonSize);
+       }
      });
 
   it.each(viewports)
@@ -90,10 +94,15 @@ describe('createLayout', () => {
      });
 
   it.each(viewports)
-    ('does not overlap movement zones at $label',
+    ('keeps separate bottom touch buttons with no overlap at $label',
      ({ width, height }) => {
        const l = createLayout(width, height);
+       expect(l.touchLeftZone.y).toBe(l.touchRightZone.y);
+       expect(l.touchRightZone.y).toBe(l.touchJumpZone.y);
+       expect(l.touchRightZone.x).toBeGreaterThan(l.touchLeftZone.x + l.touchLeftZone.width);
        expect(overlaps(l.touchLeftZone, l.touchRightZone)).toBe(false);
+       expect(overlaps(l.touchLeftZone, l.touchJumpZone)).toBe(false);
+       expect(overlaps(l.touchRightZone, l.touchJumpZone)).toBe(false);
      });
 
   it('keeps the pause button fully inside 1024x768 and 1280x720 specifically', () => {
