@@ -5,19 +5,13 @@ export type HeistPhase = 'playing' | 'caught' | 'won';
 export interface HeistState {
   readonly phase: HeistPhase;
   readonly mouseHidden: boolean;
-  /** The cheese has been taken off the pedestal. */
+  /** The cheese has been taken off the counter. */
   readonly cheeseStolen: boolean;
   /** The mouse is carrying the cheese. */
   readonly hasCheese: boolean;
-  readonly stealing: boolean;
-  /** 0..1 progress of the steal interaction. */
-  readonly stealProgress: number;
   readonly spoonKicked: boolean;
   readonly spoonClatterX: number;
 }
-
-/** Milliseconds the mouse must hold E near the cheese to steal it. */
-export const STEAL_TIME_MS = 800;
 
 export function createHeistState(): HeistState {
   return {
@@ -25,42 +19,21 @@ export function createHeistState(): HeistState {
     mouseHidden: false,
     cheeseStolen: false,
     hasCheese: false,
-    stealing: false,
-    stealProgress: 0,
     spoonKicked: false,
     spoonClatterX: 0,
   };
 }
 
-/** Enter or leave the mug. Entering cancels an in-progress steal. */
-export function toggleHide(state: HeistState): HeistState {
-  if (state.phase !== 'playing') return state;
-  if (state.mouseHidden) return { ...state, mouseHidden: false };
-  return { ...state, mouseHidden: true, stealing: false, stealProgress: 0 };
+/** Set the mug's safe state from proximity instead of requiring a button. */
+export function setHidden(state: HeistState, hidden: boolean): HeistState {
+  if (state.phase !== 'playing' || state.mouseHidden === hidden) return state;
+  return { ...state, mouseHidden: hidden };
 }
 
-export function beginSteal(state: HeistState): HeistState {
+/** Pick up the cheese as soon as the mouse lands beside it. */
+export function collectCheese(state: HeistState): HeistState {
   if (state.phase !== 'playing' || state.hasCheese || state.cheeseStolen) return state;
-  return { ...state, stealing: true, stealProgress: 0 };
-}
-
-export function cancelSteal(state: HeistState): HeistState {
-  if (!state.stealing) return state;
-  return { ...state, stealing: false, stealProgress: 0 };
-}
-
-/** Advance the steal interaction; completes it once progress reaches 1. */
-export function updateSteal(state: HeistState, dtMs: number): HeistState {
-  if (!state.stealing || state.hasCheese) return state;
-  const progress = state.stealProgress + dtMs / STEAL_TIME_MS;
-  if (progress < 1) return { ...state, stealProgress: progress };
-  return {
-    ...state,
-    stealing: false,
-    stealProgress: 1,
-    cheeseStolen: true,
-    hasCheese: true,
-  };
+  return { ...state, cheeseStolen: true, hasCheese: true };
 }
 
 /** Kick the spoon; the clatter point is fixed by the room. */
@@ -81,15 +54,10 @@ export function markCaught(state: HeistState): HeistState {
     ...state,
     phase: 'caught',
     mouseHidden: false,
-    stealing: false,
-    stealProgress: 0,
   };
 }
 
-/**
- * The funny, non-punishing reset: back to playing, the cheese is returned
- * to its pedestal, and the spoon is ready again.
- */
+/** The funny, non-punishing reset: everything is ready for another try. */
 export function recover(state: HeistState): HeistState {
   return {
     ...state,
@@ -97,8 +65,6 @@ export function recover(state: HeistState): HeistState {
     mouseHidden: false,
     cheeseStolen: false,
     hasCheese: false,
-    stealing: false,
-    stealProgress: 0,
     spoonKicked: false,
     spoonClatterX: 0,
   };

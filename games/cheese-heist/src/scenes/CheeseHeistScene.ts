@@ -9,16 +9,14 @@ import {
   type GuardEvents,
 } from '../game/guard';
 import {
-  beginSteal,
-  cancelSteal,
+  collectCheese,
   createHeistState,
   escape,
   kickSpoon,
   markCaught,
   recover,
   returnSpoon,
-  toggleHide,
-  updateSteal,
+  setHidden,
   type HeistState,
 } from '../game/rules';
 import { createLayout, type CheeseLayout } from '../game/layout';
@@ -107,7 +105,6 @@ export class CheeseHeistScene extends Phaser.Scene {
   private mugEars!: Phaser.GameObjects.Sprite;
   private alertBubble!: Phaser.GameObjects.Text;
   private questionBubble!: Phaser.GameObjects.Text;
-  private stealRing!: Phaser.GameObjects.Graphics;
   private spoonTween: Phaser.Tweens.Tween | null = null;
 
   // input
@@ -119,13 +116,8 @@ export class CheeseHeistScene extends Phaser.Scene {
   private keyboardJumpHeld = false;
   private jumpBufferTime = 0;
   private coyoteEnd = 0;
-  private contextHeld = false;
-  private contextPressed = false;
-  private kickPressed = false;
   private movementPointers = new Map<number, MovementDirection>();
   private jumpPointers = new Set<number>();
-  private contextPointers = new Set<number>();
-  private kickPointers = new Set<number>();
 
   // HUD / touch
   private statusText!: Phaser.GameObjects.Text;
@@ -646,9 +638,6 @@ export class CheeseHeistScene extends Phaser.Scene {
     this.ventGlow.setDepth(6);
     this.ventGlow.setVisible(false);
 
-    this.stealRing = this.add.graphics();
-    this.stealRing.setDepth(26);
-
     this.cone = this.add.graphics();
     this.cone.setDepth(5);
   }
@@ -794,29 +783,7 @@ export class CheeseHeistScene extends Phaser.Scene {
       (p) => this.pressJump(p),
       (p) => this.releaseJump(p),
     ));
-    this.touchButtons.push(this.makeTouchButton(
-      t.context, 'USE',
-      (p) => {
-        this.contextPointers.add(p.id);
-        this.contextHeld = true;
-        this.contextPressed = true;
-      },
-      (p) => {
-        if (this.contextPointers.delete(p.id)) {
-          this.contextHeld = this.contextPointers.size > 0;
-        }
-      },
-    ));
-    this.touchButtons.push(this.makeTouchButton(
-      t.action, 'KICK',
-      (p) => {
-        this.kickPointers.add(p.id);
-        this.kickPressed = true;
-      },
-      (p) => {
-        this.kickPointers.delete(p.id);
-      },
-    ));
+
   }
 
   private destroyTouchButtons(): void {
@@ -848,30 +815,10 @@ export class CheeseHeistScene extends Phaser.Scene {
     keyboard.on('keyup-W', () => { this.endJumpKey(); });
     keyboard.on('keydown-SPACE', (e: KeyboardEvent) => { e.preventDefault(); this.beginJumpKey(); });
     keyboard.on('keyup-SPACE', () => { this.endJumpKey(); });
-    keyboard.on('keydown-ENTER', () => { this.dispatchStartAction(); });
-    keyboard.on('keydown-E', () => {
-      if (this.phase === 'start') { this.beginGame(); return; }
-      if (this.phase !== 'playing') return;
-      this.contextHeld = true;
-      this.contextPressed = true;
-    });
-    keyboard.on('keyup-E', () => {
-      if (this.contextPointers.size === 0) this.contextHeld = false;
-    });
-    keyboard.on('keydown-F', () => {
-      if (this.phase === 'start') { this.beginGame(); return; }
-      if (this.phase !== 'playing') return;
-      this.kickPressed = true;
-    });
-    keyboard.on('keydown-G', () => this.toggleFullscreen());
     keyboard.on('keydown-ESC', () => { this.togglePause(); });
     keyboard.on('keydown-R', () => {
       if (this.phase === 'paused' || this.phase === 'won') this.restartGame();
     });
-  }
-
-  private dispatchStartAction(): void {
-    if (this.phase === 'start') this.beginGame();
   }
 
   private dispatchMove(dir: MovementDirection): void {
@@ -936,10 +883,6 @@ export class CheeseHeistScene extends Phaser.Scene {
     this.releaseMove(pointer, 'left');
     this.releaseMove(pointer, 'right');
     this.releaseJump(pointer);
-    if (this.contextPointers.delete(pointer.id)) {
-      this.contextHeld = this.contextPointers.size > 0;
-    }
-    this.kickPointers.delete(pointer.id);
   }
 
   private setUpPointer(): void {
@@ -964,13 +907,8 @@ export class CheeseHeistScene extends Phaser.Scene {
     this.keyboardJumpHeld = false;
     this.jumpBufferTime = 0;
     this.coyoteEnd = 0;
-    this.contextHeld = false;
-    this.contextPressed = false;
-    this.kickPressed = false;
     this.movementPointers.clear();
     this.jumpPointers.clear();
-    this.contextPointers.clear();
-    this.kickPointers.clear();
     this.applyMovementInput();
   }
 
@@ -1023,7 +961,6 @@ export class CheeseHeistScene extends Phaser.Scene {
     if (this.phase === 'playing') {
       this.phase = 'paused';
       this.physics.world.pause();
-      this.state = cancelSteal(this.state);
       this.resetInput();
       this.showPauseOverlay();
     } else {
@@ -1074,35 +1011,40 @@ export class CheeseHeistScene extends Phaser.Scene {
       <= this.room.interactRange + this.room.spoonRadius;
   }
 
-  private tryContext(): void {
-    if (this.state.mouseHidden) {
-      this.state = toggleHide(this.state);
-      this.playHide(false);
-      return;
+  /** Resolve all room interactions from proximity so movement stays simple. */
+  private updateAutomaticInteractions(): void {
+    const body = this.mouse.body as Phaser.Physics.Arcade.Body;
+    const onGround = body.touching.down || body.blocked.down === true;
+    const inMug = onGround && this.nearMug();
+
+    if (this.state.mouseHidden !== inMug) {
+      this.state = setHidden(this.state, inMug);
+      this.playHide(inMug);
     }
-    if (this.nearVent()) {
-      if (this.state.hasCheese) {
-        this.state = escape(this.state);
-        this.triggerWin();
-      } else {
-        this.toast('Need the cheese!');
-      }
-      return;
+
+    // Bumping the spoon is the one obvious distraction. No extra action key.
+    if (
+      !this.state.mouseHidden
+      && !this.state.spoonKicked
+      && Math.abs(body.velocity.x) > 24
+      && this.nearSpoon()
+    ) {
+      this.kickSpoonAutomatically();
     }
-    if (this.nearCheese() && !this.state.hasCheese) {
-      this.state = beginSteal(this.state);
-      return;
+
+    // Landing beside the cheese picks it up immediately.
+    if (!this.state.mouseHidden && !this.state.hasCheese && this.nearCheese()) {
+      this.collectCheeseAutomatically();
     }
-    if (this.nearMug()) {
-      this.state = toggleHide(this.state);
-      this.playHide(true);
-      this.state = cancelSteal(this.state);
+
+    // The vent is an automatic exit once the cheese is aboard.
+    if (this.state.hasCheese && this.nearVent()) {
+      this.state = escape(this.state);
+      this.triggerWin();
     }
   }
 
-  private tryKick(): void {
-    if (this.state.mouseHidden || this.state.spoonKicked) return;
-    if (!this.nearSpoon()) return;
+  private kickSpoonAutomatically(): void {
     this.state = kickSpoon(this.state, this.room);
     sendToInvestigate(this.guardState, this.state.spoonClatterX);
     this.spoonSprite.setAngle(0);
@@ -1140,7 +1082,8 @@ export class CheeseHeistScene extends Phaser.Scene {
     });
   }
 
-  private stealComplete(): void {
+  private collectCheeseAutomatically(): void {
+    this.state = collectCheese(this.state);
     this.playSteal();
     this.playAlarm();
     this.cheeseSprite.setVisible(false);
@@ -1228,40 +1171,11 @@ export class CheeseHeistScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     if (this.phase !== 'playing') return;
 
-    // buffered presses
-    if (this.kickPressed) {
-      this.kickPressed = false;
-      this.tryKick();
-    }
-    if (this.contextPressed) {
-      this.contextPressed = false;
-      this.tryContext();
-    }
-
-    // steal hold
-    if (this.state.stealing) {
-      if (this.contextHeld && this.nearCheese() && !this.state.mouseHidden) {
-        this.state = updateSteal(this.state, delta);
-        if (this.state.hasCheese) this.stealComplete();
-      } else {
-        this.state = cancelSteal(this.state);
-      }
-    } else if (
-      this.contextHeld
-      && this.nearCheese()
-      && !this.state.mouseHidden
-      && !this.state.hasCheese
-    ) {
-      this.state = beginSteal(this.state);
-    }
-
-    const body = this.mouse.body as Phaser.Physics.Arcade.Body;
-    if (this.state.mouseHidden) {
-      body.setVelocity(0, 0);
-    } else {
-      this.handleMovement();
-      this.handleJump(delta);
-    }
+    // Three controls are enough: move, jump, and let the room react.
+    // Mug, spoon, cheese, and vent interactions are all proximity-based.
+    this.handleMovement();
+    this.handleJump(delta);
+    this.updateAutomaticInteractions();
 
     const events = stepGuard(
       this.guardState,
@@ -1274,7 +1188,6 @@ export class CheeseHeistScene extends Phaser.Scene {
     this.updateGuardVisual();
     this.updateMouseVisual();
     this.drawCone();
-    this.drawStealRing();
     this.updateBubbles();
     this.updateVentGlow();
     this.updateHudText();
@@ -1378,22 +1291,6 @@ export class CheeseHeistScene extends Phaser.Scene {
     g.strokePath();
   }
 
-  private drawStealRing(): void {
-    this.stealRing.clear();
-    if (!this.state.stealing) return;
-    const r = 26;
-    this.stealRing.lineStyle(4, C_GOLD, 0.95);
-    this.stealRing.beginPath();
-    this.stealRing.arc(
-      this.mouse.x,
-      this.mouse.y,
-      r,
-      -Math.PI / 2,
-      -Math.PI / 2 + Phaser.Math.DegToRad(360 * this.state.stealProgress),
-    );
-    this.stealRing.strokePath();
-  }
-
   private updateBubbles(): void {
     const g = this.guardState;
     const top = g.y - 62;
@@ -1425,15 +1322,15 @@ export class CheeseHeistScene extends Phaser.Scene {
 
     let hint = '';
     if (this.state.mouseHidden) {
-      hint = 'Hidden. E — leave the mug';
+      hint = 'Safe in the mug — move out when ready';
     } else if (!this.state.hasCheese && !this.state.spoonKicked && this.nearSpoon()) {
-      hint = 'F — kick the spoon!';
+      hint = 'Bump the spoon to distract the cat';
     } else if (this.nearMug()) {
-      hint = 'E — hide in the mug';
+      hint = 'The mug hides you automatically';
     } else if (this.nearCheese() && !this.state.hasCheese) {
-      hint = 'Hold E — steal the cheese';
+      hint = 'Land beside the cheese to grab it';
     } else if (this.nearVent()) {
-      hint = this.state.hasCheese ? 'E — escape!' : 'E — locked without cheese';
+      hint = this.state.hasCheese ? 'The vent is open — keep moving!' : 'Find the cheese first';
     }
     if (this.hintText.text !== hint) this.hintText.setText(hint);
   }
@@ -1490,8 +1387,7 @@ export class CheeseHeistScene extends Phaser.Scene {
     const controlsSize = Math.min(19, Math.max(13, Math.round(this.scale.width / 44)));
     const controls = [
       'Move  A / D or Arrows      Jump  Space',
-      'E  hide in mug · steal · escape vent',
-      'F  kick the spoon     G  fullscreen',
+      'Bump the spoon · the mug hides you · grab the cheese · reach the vent',
       'Esc  pause',
     ].join('\n');
     const controlsText = this.add.text(0, 30, controls, {

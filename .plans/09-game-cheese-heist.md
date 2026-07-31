@@ -24,11 +24,9 @@ Being spotted should create a funny chase and a quick recovery, not a punishing 
 |---|---|---|
 | Move | Left/right controls | A/D or arrows |
 | Jump | Jump button | Space or Up |
-| Hide or interact | Context button | E |
-| Make distraction | Action button | F |
 | Pause | Pause button | Escape |
 
-Start with fewer actions and add another only when the room proves it useful.
+The mug, spoon, cheese, and vent react automatically when the mouse reaches them. Keep the controls small unless playtesting proves another action is genuinely needed.
 
 ## Smallest fun version
 
@@ -42,7 +40,7 @@ Start with fewer actions and add another only when the room proves it useful.
 
 ## Current version
 
-A complete first heist lives in `games/cheese-heist/`: one warm moonlit kitchen room, an expressive mouse, a patrolling cat with a readable sight cone, a bread loaf and a mug as cover, a hiding spot, a kickable spoon distraction, a guarded cheese on the counter, and a vent escape. The cat alerts and chases when it spots you, loses you when you hide or break line of sight, and getting caught is a quick funny reset with nothing lost. Keyboard (A/D, arrows, Space, E, F, G, Esc) and multi-pointer touch controls, pause/restart, fullscreen, and procedural art and sound. Not yet playtested on the target tablet.
+A simpler first heist lives in `games/cheese-heist/`: one warm moonlit kitchen room, an expressive mouse, a patrolling cat with a readable sight cone, a mug hiding spot, an automatic spoon distraction, a guarded cheese on the counter, and a vent escape. The player only moves and jumps; the room reacts automatically when the mouse reaches each prop. Getting caught is a quick funny reset with nothing lost. Keyboard (A/D, arrows, Space, Esc) and three-button touch controls, pause/restart, fullscreen, and procedural art and sound. Not yet playtested on the target tablet.
 
 ## If it stays fun
 

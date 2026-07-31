@@ -25,7 +25,7 @@ export const game = new Phaser.Game({
     },
   },
   input: {
-    activePointers: 4,
+    activePointers: 2,
   },
   audio: {
     disableWebAudio: false,

@@ -97,7 +97,7 @@ export const KITCHEN: KitchenRoom = {
   spoonRadius: 30,
   mugX: 940,
   mugY: 780,
-  mugRadius: 34,
+  mugRadius: 64,
   cheeseX: 1300,
   cheeseY: 620,
   cheeseRadius: 30,

@@ -33,7 +33,7 @@ describe('createLayout', () => {
      ({ width, height }) => {
        const l = createLayout(width, height);
        expect(l.buttonSize).toBeGreaterThanOrEqual(MIN_TOUCH_SIZE);
-       const zones = [l.touch.left, l.touch.right, l.touch.jump, l.touch.context, l.touch.action];
+       const zones = [l.touch.left, l.touch.right, l.touch.jump];
        for (const zone of zones) {
          expect(zone.width).toBe(l.buttonSize);
          expect(zone.height).toBe(l.buttonSize);
@@ -48,16 +48,12 @@ describe('createLayout', () => {
     ('keeps all bottom touch buttons separate at $label',
      ({ width, height }) => {
        const l = createLayout(width, height);
-       const bottom = [l.touch.left, l.touch.right, l.touch.jump, l.touch.context];
+       const bottom = [l.touch.left, l.touch.right, l.touch.jump];
        for (let i = 0; i < bottom.length; i++) {
          for (let j = i + 1; j < bottom.length; j++) {
            expect(overlaps(bottom[i]!, bottom[j]!)).toBe(false);
          }
        }
-       // the action (kick) button sits above the context button
-       expect(l.touch.action.x).toBe(l.touch.context.x);
-       expect(l.touch.action.y + l.touch.action.height).toBeLessThanOrEqual(l.touch.context.y + 0.01);
-       expect(overlaps(l.touch.action, l.touch.jump)).toBe(false);
      });
 
   it.each(viewports)
