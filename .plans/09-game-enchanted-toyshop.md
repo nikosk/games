@@ -23,7 +23,7 @@ The first playable version replaces Cheese Heist at `games/cheese-heist/` while 
 - drag picture tiles onto matching shadows
 - turn kaleidoscope lenses to match the pictures above
 
-Each puzzle awards a star. All four stars open the door and reveal a replay button. The original Cheese Heist is preserved at `classic/cheese-heist/`.
+Each puzzle awards a star. All four stars open the door, which reveals a forward arrow into Level 2, The Counting Menagerie: a second toy room where children drag numeral tiles onto groups of animals, answer picture addition from three choices (1+1, 1+2, 2+2), and fill the missing carriage on a number train. Each of the three counting stations awards a star, and three stars finish the level and show the replay button, which restarts from Level 1. The original Cheese Heist is preserved at `classic/cheese-heist/`.
 
 ## Next playtest
 

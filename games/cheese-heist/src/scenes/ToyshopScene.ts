@@ -769,19 +769,18 @@ export class ToyshopScene extends Phaser.Scene {
     this.tweens.add({ targets: crown, scale: 1, angle: 360, duration: 700, ease: 'Back.out' });
     this.tweens.add({ targets: crown, y: 295, duration: 850, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
 
-    const replay = this.add.container(640, 485).setDepth(52).setSize(116, 116).setInteractive({ useHandCursor: true });
+    const forward = this.add.container(640, 490).setDepth(52).setSize(160, 160).setInteractive({ useHandCursor: true });
     const g = this.add.graphics();
     g.fillStyle(CREAM, 0.95);
-    g.fillCircle(0, 0, 54);
-    g.lineStyle(9, TEAL, 1);
-    g.beginPath();
-    g.arc(0, 0, 27, -0.7, 4.75);
-    g.strokePath();
+    g.fillCircle(0, 0, 72);
+    g.lineStyle(10, TEAL, 1);
+    g.strokeCircle(0, 0, 72);
     g.fillStyle(TEAL, 1);
-    g.fillTriangle(-7, -34, 18, -40, 10, -15);
-    replay.add(g);
-    replay.setScale(0);
-    this.tweens.add({ targets: replay, scale: 1, delay: 500, duration: 450, ease: 'Back.out' });
-    replay.on('pointerdown', () => this.scene.restart());
+    g.fillTriangle(-18, -42, 48, 0, -18, 42);
+    forward.add(g);
+    forward.setScale(0);
+    this.tweens.add({ targets: forward, scale: 1, delay: 500, duration: 450, ease: 'Back.out' });
+    this.tweens.add({ targets: forward, scale: 1.08, duration: 650, yoyo: true, repeat: -1, delay: 1200, ease: 'Sine.inOut' });
+    forward.on('pointerdown', () => this.scene.start('CountingRoom'));
   }
 }

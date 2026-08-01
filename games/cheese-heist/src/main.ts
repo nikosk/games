@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { ToyshopScene } from './scenes/ToyshopScene';
+import { CountingRoomScene } from './scenes/CountingRoomScene';
 
 export const game = new Phaser.Game({
   type: Phaser.AUTO,
@@ -7,7 +8,7 @@ export const game = new Phaser.Game({
   width: 1280,
   height: 720,
   backgroundColor: '#241b38',
-  scene: [ToyshopScene],
+  scene: [ToyshopScene, CountingRoomScene],
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
@@ -24,7 +25,7 @@ export const game = new Phaser.Game({
 
 const canvas = game.canvas;
 canvas.tabIndex = 0;
-canvas.setAttribute('aria-label', 'The Enchanted Toyshop — solve four visual puzzles to open the magical door');
+canvas.setAttribute('aria-label', 'The Enchanted Toyshop — solve picture puzzles, then counting puzzles, to open the magic door');
 canvas.setAttribute('role', 'application');
 
 window.addEventListener('beforeunload', () => game.destroy(true), { once: true });
