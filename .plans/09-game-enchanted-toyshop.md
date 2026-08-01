@@ -8,7 +8,7 @@
 
 **Controls:** Large tap and drag targets. No reading and no voice-over.
 
-**Visual mood:** Warm wood, plum twilight, soft toy colours, cream-and-gold magic, friendly handmade shapes.
+**Visual mood:** Bold preschool-cartoon shapes, thick navy outlines, plum twilight, bright toy colours, and cream-and-gold magic.
 
 ## Audience
 

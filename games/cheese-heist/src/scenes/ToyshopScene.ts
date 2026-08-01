@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import puzzlePanelUrl from '../../assets/images/puzzle-panel.webp';
+import toyshopRoomUrl from '../../assets/images/toyshop-room.webp';
 import {
   LENS_TARGET,
   MELODY,
@@ -18,15 +20,12 @@ const W = 1280;
 const H = 720;
 const INK = 0x35253f;
 const NIGHT = 0x241b38;
-const WALL = 0x55456d;
-const WALL_LIGHT = 0x6d587f;
 const CREAM = 0xffedce;
 const GOLD = 0xf7c85f;
 const ROSE = 0xe98798;
 const TEAL = 0x65c6a5;
 const BLUE = 0x78b8d6;
 const WOOD = 0x986443;
-const PANEL = 0x4a385f;
 
 const STATION_POSITIONS: Readonly<Record<PuzzleId, { x: number; y: number }>> = {
   teddies: { x: 185, y: 330 },
@@ -61,6 +60,11 @@ export class ToyshopScene extends Phaser.Scene {
     super('Toyshop');
   }
 
+  preload(): void {
+    this.load.image('toyshop-room', toyshopRoomUrl);
+    this.load.image('puzzle-panel', puzzlePanelUrl);
+  }
+
   create(): void {
     this.state = createToyshopState();
     this.stations.clear();
@@ -80,37 +84,13 @@ export class ToyshopScene extends Phaser.Scene {
   }
 
   private drawRoom(): void {
-    const background = this.add.graphics();
-    background.fillStyle(WALL, 1);
-    background.fillRect(0, 0, W, H);
-    background.fillStyle(WALL_LIGHT, 0.48);
-    background.fillRoundedRect(38, 36, W - 76, 535, 38);
+    this.add.image(W / 2, H / 2, 'toyshop-room').setDisplaySize(W, H);
 
-    for (let x = 85; x < W; x += 150) {
-      background.lineStyle(2, CREAM, 0.07);
-      background.lineBetween(x, 60, x + 35, 560);
-    }
-
-    background.fillStyle(0x70482f, 1);
-    background.fillRect(0, 565, W, 155);
-    for (let y = 582; y < H; y += 35) {
-      background.lineStyle(3, 0x4d3028, 0.25);
-      background.lineBetween(0, y, W, y);
-    }
-
-    background.fillStyle(0x784d69, 1);
-    background.fillEllipse(640, 650, 610, 112);
-    background.lineStyle(6, GOLD, 0.45);
-    background.strokeEllipse(640, 650, 610, 112);
-    background.lineStyle(3, CREAM, 0.16);
-    background.strokeEllipse(640, 650, 500, 82);
-
-    this.drawWindow();
     this.drawDoor();
-    this.createStation('teddies', this.drawTeddyShelf());
-    this.createStation('melody', this.drawMusicBox());
-    this.createStation('picture', this.drawDollhouse());
-    this.createStation('kaleidoscope', this.drawKaleidoscope());
+    this.createStation('teddies', this.add.container());
+    this.createStation('melody', this.add.container());
+    this.createStation('picture', this.add.container());
+    this.createStation('kaleidoscope', this.add.container());
 
     for (let index = 0; index < 28; index += 1) {
       const dust = this.add.circle(
@@ -130,22 +110,6 @@ export class ToyshopScene extends Phaser.Scene {
         delay: Phaser.Math.Between(0, 1800),
       });
     }
-  }
-
-  private drawWindow(): void {
-    const g = this.add.graphics();
-    g.fillStyle(INK, 0.75);
-    g.fillRoundedRect(48, 62, 170, 130, 60);
-    g.fillStyle(0x243552, 1);
-    g.fillRoundedRect(58, 72, 150, 110, 50);
-    g.fillStyle(0xffeaa3, 1);
-    g.fillCircle(120, 118, 34);
-    g.fillStyle(0x243552, 1);
-    g.fillCircle(136, 107, 33);
-    g.lineStyle(6, WOOD, 1);
-    g.strokeRoundedRect(48, 62, 170, 130, 60);
-    g.lineBetween(133, 70, 133, 184);
-    g.lineBetween(55, 130, 211, 130);
   }
 
   private drawDoor(): void {
@@ -199,102 +163,6 @@ export class ToyshopScene extends Phaser.Scene {
       repeat: -1,
       delay: Phaser.Math.Between(0, 500),
     });
-  }
-
-  private drawTeddyShelf(): Phaser.GameObjects.Container {
-    const c = this.add.container();
-    const g = this.add.graphics();
-    g.fillStyle(WOOD, 1);
-    g.fillRoundedRect(-82, -100, 164, 205, 18);
-    g.fillStyle(0x4a3040, 1);
-    g.fillRoundedRect(-68, -86, 136, 166, 12);
-    g.fillStyle(WOOD, 1);
-    g.fillRect(-75, -4, 150, 12);
-    g.fillRect(-92, 94, 184, 18);
-    c.add(g);
-    this.addMiniBear(c, -37, -38, ROSE);
-    this.addMiniBear(c, 38, -38, TEAL);
-    this.addMiniBear(c, 0, 51, BLUE);
-    return c;
-  }
-
-  private addMiniBear(c: Phaser.GameObjects.Container, x: number, y: number, color: number): void {
-    const g = this.add.graphics();
-    g.setPosition(x, y);
-    g.fillStyle(color, 1);
-    g.fillCircle(-15, -20, 12);
-    g.fillCircle(15, -20, 12);
-    g.fillCircle(0, 0, 28);
-    g.fillEllipse(0, 35, 48, 52);
-    g.fillStyle(CREAM, 1);
-    g.fillEllipse(0, 5, 24, 18);
-    g.fillStyle(INK, 1);
-    g.fillCircle(-8, -4, 3);
-    g.fillCircle(8, -4, 3);
-    g.fillCircle(0, 5, 4);
-    c.add(g);
-  }
-
-  private drawMusicBox(): Phaser.GameObjects.Container {
-    const c = this.add.container();
-    const g = this.add.graphics();
-    g.fillStyle(WOOD, 1);
-    g.fillRoundedRect(-84, -15, 168, 92, 18);
-    g.fillStyle(ROSE, 1);
-    g.fillRoundedRect(-72, -5, 144, 67, 12);
-    g.lineStyle(5, GOLD, 0.8);
-    g.strokeRoundedRect(-72, -5, 144, 67, 12);
-    g.fillStyle(GOLD, 1);
-    g.fillCircle(0, 28, 11);
-    g.fillStyle(TEAL, 1);
-    g.fillEllipse(0, -49, 34, 62);
-    g.fillStyle(CREAM, 1);
-    g.fillCircle(0, -87, 15);
-    g.fillStyle(GOLD, 1);
-    g.fillPoints(starPoints(0, -49, 21, 9), true);
-    c.add(g);
-    return c;
-  }
-
-  private drawDollhouse(): Phaser.GameObjects.Container {
-    const c = this.add.container();
-    const g = this.add.graphics();
-    g.fillStyle(ROSE, 1);
-    g.fillTriangle(-92, -48, 0, -118, 92, -48);
-    g.fillStyle(CREAM, 1);
-    g.fillRoundedRect(-80, -48, 160, 154, 8);
-    g.lineStyle(8, WOOD, 1);
-    g.strokeRoundedRect(-80, -48, 160, 154, 8);
-    g.lineBetween(0, -45, 0, 104);
-    g.lineBetween(-77, 28, 77, 28);
-    g.fillStyle(BLUE, 1);
-    g.fillRoundedRect(-56, -26, 34, 38, 8);
-    g.fillStyle(TEAL, 1);
-    g.fillRoundedRect(22, -26, 34, 38, 8);
-    g.fillStyle(0x8d658b, 1);
-    g.fillRoundedRect(-18, 52, 36, 54, 15);
-    c.add(g);
-    return c;
-  }
-
-  private drawKaleidoscope(): Phaser.GameObjects.Container {
-    const c = this.add.container();
-    const g = this.add.graphics();
-    g.fillStyle(BLUE, 1);
-    g.fillRoundedRect(-86, -30, 172, 58, 28);
-    g.fillStyle(GOLD, 1);
-    g.fillCircle(-78, -1, 43);
-    g.fillStyle(TEAL, 1);
-    g.fillCircle(-78, -1, 25);
-    g.fillStyle(ROSE, 1);
-    g.fillRoundedRect(58, -39, 52, 76, 18);
-    g.lineStyle(7, WOOD, 1);
-    g.lineBetween(-20, 30, -55, 95);
-    g.lineBetween(28, 30, 57, 95);
-    g.fillStyle(CREAM, 1);
-    g.fillPoints(starPoints(10, -2, 17, 7), true);
-    c.add(g);
-    return c;
   }
 
   private createGuide(): void {
@@ -368,13 +236,7 @@ export class ToyshopScene extends Phaser.Scene {
     this.overlay = overlay;
 
     const shade = this.add.rectangle(0, 0, W, H, NIGHT, 0.82).setInteractive();
-    const panel = this.add.graphics();
-    panel.fillStyle(PANEL, 1);
-    panel.fillRoundedRect(-500, -300, 1000, 600, 42);
-    panel.lineStyle(8, GOLD, 0.55);
-    panel.strokeRoundedRect(-500, -300, 1000, 600, 42);
-    panel.lineStyle(3, CREAM, 0.12);
-    panel.strokeRoundedRect(-478, -278, 956, 556, 32);
+    const panel = this.add.image(0, 0, 'puzzle-panel').setDisplaySize(1000, 600);
     overlay.add([shade, panel]);
 
     const close = this.makeCloseButton(445, -245);
