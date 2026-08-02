@@ -6,14 +6,14 @@
 `robot-factory.html`, which now redirects to the new game; the original is kept at
 `classic/robot-factory.html`.
 
-Ten authored levels on a 5×5 floor teach the core commands (move / turn-left / turn-right /
-grab-drop) on an 8-slot belt, then introduce raised wall obstacles, three matching cargo types
-(gears, batteries, circuits), and two-delivery shifts on a 10-slot belt. Each part must be dropped
-on the dock with the same colour and glyph; the wrong dock is refused without losing the part.
-After level 10, an endless stream of deterministic, solver-checked **Random Shifts** begins — every
-level is verified reachable and solvable within its belt capacity before it appears. Run, Step,
-Undo, Clear, sound, and fullscreen are on screen and via keyboard. The robot, workbench backdrop, and
-the three cargo props (gear bin, battery pack, circuit crate) are generated raster art; the steel
+Every playable puzzle is now a deterministic, solver-checked **Random Shift** on a 5×5 floor.
+Shifts vary the robot start, walls, cargo types, docks, orientation, and whether one or two parts
+must be delivered. Single deliveries use an 8-slot belt and double deliveries use 10 slots. Each
+part must be dropped on the dock with the same colour and glyph; the wrong dock is refused without
+losing the part. Every shift is verified reachable and solvable within its belt capacity before it
+appears. A longer celebration now plays after each solution and automatically opens the next random
+puzzle. Run, Step, Undo, Clear, sound, and fullscreen are on screen and via keyboard. The robot,
+workbench backdrop, and the three cargo props (gear bin, battery pack, circuit crate) are generated raster art; the steel
 floor, walls, docks, plates, and effects are Phaser graphics; sound is procedural Web Audio.
 Workspace typecheck, tests, and build pass. Still
 needs: tablet playtest and tuning.
@@ -73,7 +73,7 @@ Bright mechanical toy factory, physical modules with lights and satisfying snap,
 
 - deterministic command execution
 - matching deliveries and locked completed cargo
-- authored and generated floor validity
+- generated floor validity and variety
 - shortest-program solving within each belt
 - seeded Random Shift determinism
 

@@ -87,7 +87,10 @@ export class Sfx {
   }
 
   success(): void {
-    const notes = [523.25, 659.25, 783.99, 1046.5];
-    notes.forEach((freq, index) => this.tone(freq, 0.2, 'sine', 0.18, undefined, index * 0.11));
+    const notes = [523.25, 659.25, 783.99, 1046.5, 783.99, 987.77, 1174.66, 1318.51];
+    notes.forEach((freq, index) => this.tone(freq, 0.26, 'sine', 0.17, undefined, index * 0.13));
+    for (const freq of [523.25, 659.25, 783.99]) {
+      this.tone(freq, 0.75, 'sine', 0.11, undefined, 1.18);
+    }
   }
 }

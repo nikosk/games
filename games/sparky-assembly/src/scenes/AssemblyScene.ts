@@ -5,7 +5,7 @@ import batteryPackTextureUrl from '../../assets/images/battery-pack.webp';
 import circuitCrateTextureUrl from '../../assets/images/circuit-crate.webp';
 import workbenchTextureUrl from '../../assets/images/factory-workbench.webp';
 import receivingDockTextureUrl from '../../assets/images/receiving-dock.webp';
-import { COLS, ROWS, FIRST_LEVEL, LEVELS, initialState, type SparkyLevel } from '../game/level';
+import { COLS, ROWS, initialState, type SparkyLevel } from '../game/level';
 import {
   createLayout,
   computeControls,
@@ -53,8 +53,10 @@ const CARGO_CROPS: Readonly<Record<CargoType, { x: number; y: number; width: num
   circuit: { x: 40, y: 53, width: 303, height: 290 },
 };
 
-/** First base seed searched when Random Shifts start after level 10. */
+/** First deterministic puzzle seed. Every playable shift is generated. */
 const RANDOM_FIRST_SEED = 1000;
+const CELEBRATION_MS = 3200;
+const REDUCED_CELEBRATION_MS = 1600;
 
 // The approved source art's visible nose points south, so rotate it to match
 // the logical direction (0 = north, 1 = east) everywhere it is oriented.
@@ -104,7 +106,7 @@ const TURN_MS = 320;
 type Phase = 'idle' | 'running' | 'done';
 
 export class AssemblyScene extends Phaser.Scene {
-  private level: SparkyLevel = FIRST_LEVEL;
+  private level: SparkyLevel;
   private layout!: AssemblyLayout;
   private controls!: ControlLayout;
   private readonly sfx = new Sfx();
@@ -137,10 +139,7 @@ export class AssemblyScene extends Phaser.Scene {
   private controlTooltip!: Phaser.GameObjects.Container;
   private controlTooltipBg!: Phaser.GameObjects.Graphics;
   private controlTooltipText!: Phaser.GameObjects.Text;
-  private currentLevelIndex = 0;
-  private inRandomMode = false;
-  private randomLevelSeed: number | null = null;
-  private randomBaseSeed = RANDOM_FIRST_SEED;
+  private randomLevelSeed: number;
   /** Status message to apply after the next scene restart (level transition). */
   private pendingStatus: string | null = null;
   private playIcon!: Phaser.GameObjects.Graphics;
@@ -151,6 +150,10 @@ export class AssemblyScene extends Phaser.Scene {
 
   constructor() {
     super('AssemblyScene');
+    const first = findRandomLevel(RANDOM_FIRST_SEED);
+    if (first === null) throw new Error('Could not generate the first Sparky shift.');
+    this.level = first.level;
+    this.randomLevelSeed = first.seed;
   }
 
   preload(): void {
@@ -760,9 +763,7 @@ export class AssemblyScene extends Phaser.Scene {
       letterSpacing: 1,
       wordWrap: { width: c.objective.width },
     });
-    const levelLine = this.inRandomMode
-      ? `Random Shift ${this.randomLevelSeed ?? ''}`
-      : `Level ${this.currentLevelIndex + 1}/${LEVELS.length} ${this.level.name}`;
+    const levelLine = `Random Shift ${this.randomLevelSeed}`;
     const goalLine = this.level.deliveries.length > 1 ? 'Match both parts.' : 'Match the part.';
     this.objectiveText.setFontSize(this.layout.stacked ? '11px' : '12px');
     this.objectiveText.setText(`${levelLine}\n${goalLine}`);
@@ -899,14 +900,7 @@ export class AssemblyScene extends Phaser.Scene {
     container.setSize(width, height);
     container.setInteractive({ useHandCursor: true });
     container.on('pointerover', () => {
-      const tip =
-        action === 'play' && this.phase === 'done'
-          ? this.inRandomMode
-            ? 'NEXT SHIFT'
-            : this.currentLevelIndex >= LEVELS.length - 1
-              ? 'NEXT: RANDOM'
-              : 'NEXT LEVEL'
-          : label;
+      const tip = action === 'play' && this.phase === 'done' ? 'CELEBRATING!' : label;
       this.showControlTooltip(tip, rect);
     });
     container.on('pointerdown', () => {
@@ -1059,41 +1053,21 @@ export class AssemblyScene extends Phaser.Scene {
   }
 
   private advanceLevel(): void {
-    if (this.inRandomMode) {
-      this.enterRandomShift(
-        this.randomLevelSeed !== null ? this.randomLevelSeed + 1 : this.randomBaseSeed,
-      );
-      return;
-    }
-    if (this.currentLevelIndex + 1 >= LEVELS.length) {
-      this.inRandomMode = true;
-      this.enterRandomShift(RANDOM_FIRST_SEED);
-      return;
-    }
-    this.currentLevelIndex += 1;
-    this.level = LEVELS[this.currentLevelIndex]!;
-    this.restartForLevel(`Level ${this.currentLevelIndex + 1}/${LEVELS.length}: ${this.level.name}.`);
+    this.enterRandomShift(this.randomLevelSeed + 1);
   }
 
   /** Deterministic Random Shift: first solver-verified seed at or after `baseSeed`. */
   private enterRandomShift(baseSeed: number): void {
     let found = findRandomLevel(baseSeed);
     let nextBase = baseSeed;
-    for (let guard = 0; guard < 20 && found === null; guard += 1) {
+    for (let guard = 0; guard < 200 && found === null; guard += 1) {
       nextBase += 50;
       found = findRandomLevel(nextBase);
     }
-    if (found === null) {
-      this.inRandomMode = false;
-      this.currentLevelIndex = 0;
-      this.level = FIRST_LEVEL;
-      this.restartForLevel('Random shift unavailable — back to level 1.');
-      return;
-    }
-    this.randomBaseSeed = nextBase;
+    if (found === null) throw new Error('Could not generate another Sparky shift.');
     this.randomLevelSeed = found.seed;
     this.level = found.level;
-    this.restartForLevel(`Random Shift ${found.seed}: deliver the parts to their matching docks.`);
+    this.restartForLevel(`New Random Shift ${found.seed}!`);
   }
 
   /** Rebuild the scene so board, panel, and belt geometry match the current level. */
@@ -1102,35 +1076,18 @@ export class AssemblyScene extends Phaser.Scene {
     this.scene.restart();
   }
 
-  private redrawPlayIcon(action: 'play' | 'next'): void {
+  private redrawPlayIcon(): void {
     if (this.playIcon === undefined) return;
     this.playIcon.clear();
-    const color = 0x22365a;
-    if (action === 'next') {
-      this.drawNextGlyph(this.playIcon, 0, this.playIconY, this.playIconSize, color);
-    } else {
-      this.drawActionGlyph(this.playIcon, 'play', 0, this.playIconY, this.playIconSize, color);
-    }
-  }
-
-  private drawNextGlyph(g: Phaser.GameObjects.Graphics, cx: number, cy: number, s: number, color: number): void {
-    g.lineStyle(Math.max(2, s * 0.14), color, 1);
-    g.fillStyle(color, 1);
-    for (let i = 0; i < 2; i += 1) {
-      const bx = cx - s * 0.08 + i * s * 0.25;
-      g.fillTriangle(bx, cy - s * 0.4, bx + s * 0.22, cy, bx, cy + s * 0.4);
-    }
+    this.drawActionGlyph(this.playIcon, 'play', 0, this.playIconY, this.playIconSize, 0x22365a);
   }
 
 
   // ── interaction ─────────────────────────────────────────────
   private handleAction(action: string): void {
+    if (this.phase === 'done') return;
     if (this.phase === 'running' && action !== 'fullscreen') return;
     if (action === 'play') {
-      if (this.phase === 'done') {
-        this.advanceLevel();
-        return;
-      }
       void this.runProgram();
       return;
     }
@@ -1160,7 +1117,7 @@ export class AssemblyScene extends Phaser.Scene {
   }
 
   private appendCommand(command: Command): void {
-    if (this.phase === 'running') return;
+    if (this.phase !== 'idle') return;
     if (this.belt.length >= this.level.beltSlots) {
       this.setStatus('Belt is full. Tap a filled slot to remove it.');
       return;
@@ -1175,7 +1132,7 @@ export class AssemblyScene extends Phaser.Scene {
   }
 
   private undoCommand(): void {
-    if (this.phase === 'running') return;
+    if (this.phase !== 'idle') return;
     const edit = removeLastCommand(this.belt);
     if (!edit.changed) return;
     this.belt = [...edit.belt];
@@ -1186,7 +1143,7 @@ export class AssemblyScene extends Phaser.Scene {
   }
 
   private clearProgram(): void {
-    if (this.phase === 'running') return;
+    if (this.phase !== 'idle') return;
     this.belt = [...clearBelt()];
     this.resetExecution(false);
     this.renderBelt();
@@ -1195,7 +1152,7 @@ export class AssemblyScene extends Phaser.Scene {
   }
 
   private handleBeltTap(index: number): void {
-    if (this.phase === 'running') return;
+    if (this.phase !== 'idle') return;
     this.sfx.unlock();
     const edit = removeCommandAt(this.belt, index);
     if (!edit.changed) return; // empty slot does nothing
@@ -1259,7 +1216,7 @@ export class AssemblyScene extends Phaser.Scene {
       this.markNextSlot();
     }
 
-    if (this.resizePending) this.scene.restart();
+    if (this.resizePending && this.phase !== 'done') this.scene.restart();
   }
 
   private async stepProgram(): Promise<void> {
@@ -1322,7 +1279,7 @@ export class AssemblyScene extends Phaser.Scene {
     this.placeRobot(this.liveState.robot);
     this.placeCargo(this.liveState);
     this.markNextSlot();
-    this.redrawPlayIcon('play');
+    this.redrawPlayIcon();
     if (feedback) {
       this.setStatus('Sparky is back at the start. Ready!');
       this.sfx.place();
@@ -1553,39 +1510,156 @@ export class AssemblyScene extends Phaser.Scene {
   }
 
   private celebrate(): void {
-    this.sfx.success();
+    const duration = this.reducedMotion ? REDUCED_CELEBRATION_MS : CELEBRATION_MS;
     const cx = this.layout.boardX + this.layout.boardWidth / 2;
     const cy = this.layout.boardY + this.layout.boardHeight / 2;
-    const colors = [COLORS.brass, COLORS.green, COLORS.blue, COLORS.red, 0xfff4d6];
+    const badgeSize = Math.min(this.layout.boardWidth, this.layout.boardHeight) * 0.15;
+
+    this.sfx.success();
+    this.setStatus('Shift complete! The next puzzle is on its way…');
+    this.nextMarker.clear();
+    this.cameras.main.flash(this.reducedMotion ? 120 : 320, 255, 244, 190, false);
+
+    const glow = this.add.graphics().setDepth(39);
+    glow.fillStyle(COLORS.brass, 0.16);
+    glow.fillRoundedRect(
+      this.layout.boardX - 8,
+      this.layout.boardY - 8,
+      this.layout.boardWidth + 16,
+      this.layout.boardHeight + 16,
+      24,
+    );
+    glow.lineStyle(8, COLORS.brass, 0.9);
+    glow.strokeRoundedRect(
+      this.layout.boardX - 5,
+      this.layout.boardY - 5,
+      this.layout.boardWidth + 10,
+      this.layout.boardHeight + 10,
+      22,
+    );
+
+    const rays = this.add.graphics().setPosition(cx, cy).setDepth(43);
+    const rayColors = [COLORS.brass, COLORS.green, COLORS.blue, COLORS.red];
     for (let i = 0; i < 24; i += 1) {
-      const piece = this.add.rectangle(cx, cy, 9, 16, colors[i % colors.length]).setDepth(40);
-      piece.setAngle(i * 37);
-      if (this.reducedMotion) {
-        this.time.delayedCall(450, () => piece.destroy());
-      } else {
-        this.tweens.add({
-          targets: piece,
-          x: cx + Math.cos((i / 24) * Math.PI * 2) * this.layout.boardWidth * 0.4,
-          y: cy + Math.sin((i / 24) * Math.PI * 2) * this.layout.boardHeight * 0.4 + 30,
-          angle: piece.angle + 360,
-          alpha: 0,
-          scale: 0.4,
-          duration: 900,
-          ease: 'Quad.easeOut',
-          onComplete: () => piece.destroy(),
-        });
-      }
+      const angle = (i / 24) * Math.PI * 2;
+      const inner = badgeSize * 1.15;
+      const outer = badgeSize * (i % 2 === 0 ? 2.25 : 1.8);
+      rays.lineStyle(i % 2 === 0 ? 6 : 4, rayColors[i % rayColors.length]!, 0.82);
+      rays.beginPath();
+      rays.moveTo(Math.cos(angle) * inner, Math.sin(angle) * inner);
+      rays.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
+      rays.strokePath();
+      rays.fillStyle(rayColors[i % rayColors.length]!, 0.9);
+      rays.fillCircle(Math.cos(angle) * outer, Math.sin(angle) * outer, i % 2 === 0 ? 6 : 4);
     }
+
+    const badge = this.add.container(cx, cy).setDepth(46).setScale(this.reducedMotion ? 1 : 0.15);
+    const badgeArt = this.add.graphics();
+    badgeArt.fillStyle(0xffffff, 0.96);
+    badgeArt.fillCircle(0, 0, badgeSize);
+    badgeArt.lineStyle(Math.max(7, badgeSize * 0.15), COLORS.brass, 1);
+    badgeArt.strokeCircle(0, 0, badgeSize * 0.88);
+    const check = this.add.text(0, 0, '✓', {
+      fontFamily: '"Trebuchet MS", sans-serif',
+      fontSize: `${Math.round(badgeSize * 1.25)}px`,
+      color: '#4f9e4f',
+      fontStyle: 'bold',
+    }).setOrigin(0.5, 0.56);
+    badge.add([badgeArt, check]);
+
+    const cargo = [...this.cargoItems.values()];
     if (!this.reducedMotion) {
-      this.tweens.add({ targets: this.robot, scale: 1.15, duration: 180, yoyo: true, repeat: 2 });
+      this.tweens.add({
+        targets: glow,
+        alpha: { from: 0.35, to: 1 },
+        duration: 360,
+        yoyo: true,
+        repeat: 3,
+      });
+      this.tweens.add({
+        targets: rays,
+        angle: 180,
+        scale: { from: 0.65, to: 1.08 },
+        duration: 1700,
+        yoyo: true,
+        ease: 'Sine.easeInOut',
+      });
+      this.tweens.add({
+        targets: badge,
+        scale: 1,
+        angle: 360,
+        duration: 700,
+        ease: 'Back.easeOut',
+      });
+      this.tweens.add({
+        targets: this.robot,
+        scale: 1.28,
+        angle: this.robot.angle + 720,
+        y: this.robot.y - CELL * 0.18,
+        duration: 850,
+        yoyo: true,
+        repeat: 1,
+        ease: 'Sine.easeInOut',
+      });
+      this.tweens.add({
+        targets: cargo,
+        scale: 1.16,
+        duration: 260,
+        yoyo: true,
+        repeat: 4,
+        ease: 'Sine.easeInOut',
+      });
     }
-    this.redrawPlayIcon('next');
-    const nextMessage = this.inRandomMode
-      ? 'Sparky did it! Press NEXT for a new Random Shift.'
-      : this.currentLevelIndex >= LEVELS.length - 1
-        ? 'Sparky did it! Press NEXT to start Random Shifts.'
-        : 'Sparky did it! Press NEXT to continue.';
-    this.setStatus(nextMessage);
+
+    const waveCount = this.reducedMotion ? 1 : 4;
+    for (let wave = 0; wave < waveCount; wave += 1) {
+      this.time.delayedCall(wave * 560, () => {
+        const side = wave % 2 === 0 ? -1 : 1;
+        this.spawnCelebrationBurst(
+          cx + side * this.layout.boardWidth * 0.22,
+          cy - this.layout.boardHeight * (0.12 - wave * 0.035),
+          this.reducedMotion ? 18 : 30,
+          this.reducedMotion ? 650 : 1250,
+        );
+      });
+    }
+
+    this.time.delayedCall(Math.max(500, duration - 520), () => {
+      if (this.reducedMotion) return;
+      this.tweens.add({ targets: [glow, rays, badge], alpha: 0, duration: 420 });
+    });
+    this.time.delayedCall(duration, () => {
+      if (this.phase === 'done') this.advanceLevel();
+    });
+  }
+
+  private spawnCelebrationBurst(cx: number, cy: number, count: number, duration: number): void {
+    const colors = [COLORS.brass, COLORS.green, COLORS.blue, COLORS.red, 0xffffff, 0xff8bd1];
+    const reach = Math.min(this.layout.boardWidth, this.layout.boardHeight) * 0.56;
+    for (let i = 0; i < count; i += 1) {
+      const angle = (i / count) * Math.PI * 2 + (i % 3) * 0.09;
+      const distance = reach * (0.58 + (i % 5) * 0.1);
+      const piece = i % 4 === 0
+        ? this.add.circle(cx, cy, 6 + (i % 3), colors[i % colors.length]).setDepth(44)
+        : this.add.rectangle(cx, cy, 8 + (i % 3) * 2, 15, colors[i % colors.length]).setDepth(44);
+      piece.setAngle(i * 41);
+      if (this.reducedMotion) {
+        piece.setPosition(cx + Math.cos(angle) * distance * 0.65, cy + Math.sin(angle) * distance * 0.65);
+        this.time.delayedCall(duration, () => piece.destroy());
+        continue;
+      }
+      this.tweens.add({
+        targets: piece,
+        x: cx + Math.cos(angle) * distance,
+        y: cy + Math.sin(angle) * distance + reach * 0.22,
+        angle: piece.angle + 540,
+        alpha: 0,
+        scale: 0.35,
+        duration: duration + (i % 4) * 90,
+        ease: 'Cubic.easeOut',
+        onComplete: () => piece.destroy(),
+      });
+    }
   }
 
   // ── fullscreen ─────────────────────────────────────────────
@@ -1635,7 +1709,7 @@ export class AssemblyScene extends Phaser.Scene {
 
   private handleResize(gameSize: Phaser.Structs.Size): void {
     if (gameSize.width === this.layout.width && gameSize.height === this.layout.height) return;
-    if (this.phase === 'running') {
+    if (this.phase !== 'idle') {
       this.resizePending = true;
       return;
     }
@@ -1663,9 +1737,6 @@ export class AssemblyScene extends Phaser.Scene {
     });
     this.bind('keydown-C', () => this.handleAction('clear'));
     this.bind('keydown-F', () => this.handleAction('fullscreen'));
-    this.bind('keydown-N', () => {
-      if (this.phase === 'done') this.advanceLevel();
-    });
   }
 
   private bindPalette(): void {

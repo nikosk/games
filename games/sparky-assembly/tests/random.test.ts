@@ -35,6 +35,8 @@ describe('generateRandomLevel', () => {
 
   it('produces valid, solver-verified levels for seeds 0..199 (stress sweep)', { timeout: 60000 }, () => {
     const firstPass = new Map<number, SparkyLevel | null>();
+    const deliveryCounts = new Set<number>();
+    const cargoTypes = new Set<string>();
     let accepted = 0;
 
     for (let seed = 0; seed < 200; seed += 1) {
@@ -48,6 +50,8 @@ describe('generateRandomLevel', () => {
       expect(level.seed).toBe(seed);
       expect(level.deliveries.length).toBeGreaterThanOrEqual(1);
       expect(level.deliveries.length).toBeLessThanOrEqual(2);
+      deliveryCounts.add(level.deliveries.length);
+      for (const delivery of level.deliveries) cargoTypes.add(delivery.type);
       expect(level.beltSlots).toBe(level.deliveries.length === 1 ? 8 : 10);
       expect(level.walls.length).toBeGreaterThanOrEqual(1);
       expect(level.walls.length).toBeLessThanOrEqual(2);
@@ -93,8 +97,10 @@ describe('generateRandomLevel', () => {
       expect(isSolved(state, level), `seed ${seed}`).toBe(true);
     }
 
-    // Regression floor: the generator must accept a healthy share of seeds.
+    // Regression floors: generated play must stay plentiful and varied.
     expect(accepted).toBeGreaterThanOrEqual(40);
+    expect(deliveryCounts).toEqual(new Set([1, 2]));
+    expect(cargoTypes).toEqual(new Set(['gear', 'battery', 'circuit']));
 
     // Determinism: regenerating the same seeds yields identical levels.
     for (let seed = 0; seed < 50; seed += 1) {

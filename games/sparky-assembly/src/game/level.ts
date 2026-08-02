@@ -21,10 +21,9 @@ export interface SparkyLevel {
 }
 
 /**
- * Ten sequenced puzzles on a 5×5 floor. Levels 1–5 keep their original
- * configurations. Levels 6–10 introduce walls, the battery and circuit cargo
- * types, and two-delivery shifts. Belt capacity is 8 for single-delivery
- * levels and 10 for double-delivery levels.
+ * Reference fixtures retained for focused rule and solver tests. The runtime
+ * scene does not sequence these: every playable puzzle is generated and
+ * solver-checked in `random.ts`.
  */
 export const LEVELS: readonly SparkyLevel[] = [
   {
@@ -125,7 +124,7 @@ export const LEVELS: readonly SparkyLevel[] = [
   },
 ];
 
-/** Backward-compatible alias for the first level. */
+/** Backward-compatible reference fixture used by focused rule tests. */
 export const FIRST_LEVEL: SparkyLevel = LEVELS[0]!;
 
 export function initialState(level: SparkyLevel = FIRST_LEVEL): FloorState {

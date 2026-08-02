@@ -30,9 +30,10 @@ export function mulberry32(seed: number): () => number {
  * levels use 10 slots and two different cargo types.
  */
 export function generateRandomLevel(seed: number): SparkyLevel | null {
+  const double = mulberry32(seed ^ 0x51f15e5d)() < DOUBLE_PROBABILITY;
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
     const rng = mulberry32(Math.imul(seed ^ 0x9e3779b9, attempt + 1) >>> 0);
-    const level = attemptLevel(rng, seed);
+    const level = attemptLevel(rng, seed, double);
     if (level === null) continue;
     const solution = solveLevel(level, level.beltSlots);
     if (solution === null) continue;
@@ -62,8 +63,9 @@ const EDGE_CELLS: readonly Cell[] = [
   { x: 4, y: 1 }, { x: 4, y: 2 }, { x: 4, y: 3 },
 ];
 
-function attemptLevel(rng: () => number, seed: number): SparkyLevel | null {
-  const double = rng() < DOUBLE_PROBABILITY;
+function attemptLevel(rng: () => number, seed: number, double: boolean): SparkyLevel | null {
+  if (double) return attemptDoubleLevel(rng, seed);
+
   const walls = drawWalls(rng);
   const wallKeys = new Set(walls.map((w) => `${w.x},${w.y}`));
   const starts = EDGE_CELLS.filter((c) => !wallKeys.has(`${c.x},${c.y}`));
@@ -73,7 +75,7 @@ function attemptLevel(rng: () => number, seed: number): SparkyLevel | null {
     (c) => !wallKeys.has(`${c.x},${c.y}`) && !(c.x === start.x && c.y === start.y),
   );
   shuffle(free, rng);
-  const deliveries = double ? twoDeliveries(rng, free) : [oneDelivery(rng, free)];
+  const deliveries = [oneDelivery(rng, free)];
   return {
     name: `Random Shift ${seed}`,
     cols: COLS,
@@ -81,7 +83,52 @@ function attemptLevel(rng: () => number, seed: number): SparkyLevel | null {
     start: { x: start.x, y: start.y, direction },
     walls,
     deliveries,
-    beltSlots: double ? 10 : BELT_SLOTS,
+    beltSlots: BELT_SLOTS,
+    seed,
+  };
+}
+
+/**
+ * Build a compact two-delivery route from a random corner. The orientation,
+ * route length, cargo types, and off-route walls vary by seed, while the
+ * solver still checks the finished puzzle against the real rules.
+ */
+function attemptDoubleLevel(rng: () => number, seed: number): SparkyLevel {
+  const start: Cell = {
+    x: rng() < 0.5 ? 0 : COLS - 1,
+    y: rng() < 0.5 ? 0 : ROWS - 1,
+  };
+  const horizontalFirst = rng() < 0.5;
+  const u: Cell = horizontalFirst
+    ? { x: start.x === 0 ? 1 : -1, y: 0 }
+    : { x: 0, y: start.y === 0 ? 1 : -1 };
+  const v: Cell = horizontalFirst
+    ? { x: 0, y: start.y === 0 ? 1 : -1 }
+    : { x: start.x === 0 ? 1 : -1, y: 0 };
+  const secondLeg = rng() < 0.5 ? 1 : 2;
+  const pickupA = addCell(start, u, 1);
+  const dockA = addCell(start, u, 2);
+  const pickupB = addCell(dockA, v, secondLeg);
+  const dockB = addCell(pickupB, v, 1);
+  const typeA = CARGO_TYPES[Math.floor(rng() * CARGO_TYPES.length)]!;
+  const otherTypes = CARGO_TYPES.filter((type) => type !== typeA);
+  const typeB = otherTypes[Math.floor(rng() * otherTypes.length)]!;
+  const reserved = new Set([start, pickupA, dockA, pickupB, dockB].map(cellKey));
+  const wallCandidates = allCells().filter((cell) => !reserved.has(cellKey(cell)));
+  shuffle(wallCandidates, rng);
+  const walls = wallCandidates.slice(0, 1 + Math.floor(rng() * 2));
+
+  return {
+    name: `Random Shift ${seed}`,
+    cols: COLS,
+    rows: ROWS,
+    start: { ...start, direction: directionForVector(u) },
+    walls,
+    deliveries: [
+      { id: `${typeA}-1`, type: typeA, pickup: pickupA, dock: dockA },
+      { id: `${typeB}-2`, type: typeB, pickup: pickupB, dock: dockB },
+    ],
+    beltSlots: 10,
     seed,
   };
 }
@@ -93,19 +140,24 @@ function drawWalls(rng: () => number): Cell[] {
   return cells.slice(0, count);
 }
 
+function addCell(origin: Cell, vector: Cell, distance: number): Cell {
+  return { x: origin.x + vector.x * distance, y: origin.y + vector.y * distance };
+}
+
+function cellKey(cell: Cell): string {
+  return `${cell.x},${cell.y}`;
+}
+
+function directionForVector(vector: Cell): Direction {
+  if (vector.y < 0) return 0;
+  if (vector.x > 0) return 1;
+  if (vector.y > 0) return 2;
+  return 3;
+}
+
 function oneDelivery(rng: () => number, free: Cell[]): Delivery {
   const type = CARGO_TYPES[Math.floor(rng() * CARGO_TYPES.length)]!;
   return { id: `${type}-1`, type, pickup: free[1]!, dock: free[0]! };
-}
-
-function twoDeliveries(rng: () => number, free: Cell[]): Delivery[] {
-  const typeA = CARGO_TYPES[Math.floor(rng() * CARGO_TYPES.length)]!;
-  const others = CARGO_TYPES.filter((t) => t !== typeA);
-  const typeB = others[Math.floor(rng() * others.length)]!;
-  return [
-    { id: `${typeA}-1`, type: typeA, pickup: free[2]!, dock: free[0]! },
-    { id: `${typeB}-2`, type: typeB, pickup: free[3]!, dock: free[1]! },
-  ];
 }
 
 function allCells(): Cell[] {
