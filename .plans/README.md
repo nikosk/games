@@ -85,7 +85,7 @@ The small technical foundation is working: the npm workspace, strict TypeScript 
 
 Three Phaser rewrites are included in the generated portfolio:
 
-- **Railway Workshop:** five handcrafted track puzzles with touch controls, sound, level selection, and responsive layout. Playtested on the target tablet and working well.
+- **Railway Workshop:** endless procedurally generated track puzzles (deterministic per session) with touch controls, sound, route navigation, and responsive layout. Playtested on the target tablet and working well.
 - **Wild Pairs:** four board sizes with procedural animal art, touch and keyboard controls, sound, and a completion celebration. Playtested on the target tablet and working well.
 - **Canopy Caper:** one authored jungle climb with running, jumping, a vine swing, fruit, checkpoints, touch controls, and procedural sound. Tablet playtesting found that combining direction and jump is difficult.
 

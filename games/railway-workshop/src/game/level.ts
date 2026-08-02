@@ -28,6 +28,10 @@ function piece(kind: TrackKind, rotation: Rotation): SolutionPiece {
   return { kind, rotation };
 }
 
+/**
+ * The five original handcrafted puzzles, kept as reference fixtures for the
+ * tests. Runtime play uses procedurally generated routes from `generator.ts`.
+ */
 export const LEVELS: readonly WorkshopLevel[] = [
   {
     name: 'Pinecone Path',
@@ -121,11 +125,6 @@ export const LEVELS: readonly WorkshopLevel[] = [
 ];
 
 const FIRST_LEVEL = LEVELS[0]!;
-
-export function getLevel(index: number): WorkshopLevel {
-  const safeIndex = Math.min(LEVELS.length - 1, Math.max(0, Math.trunc(index)));
-  return LEVELS[safeIndex] ?? FIRST_LEVEL;
-}
 
 export function createBoard(level: WorkshopLevel = FIRST_LEVEL): BoardCell[][] {
   const board = Array.from({ length: ROWS }, () => Array<BoardCell>(COLS).fill(null));

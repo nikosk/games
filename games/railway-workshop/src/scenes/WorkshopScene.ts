@@ -12,13 +12,12 @@ import rocksUrl from '../../assets/images/rocks.webp?url';
 import stationUrl from '../../assets/images/station.webp?url';
 import {
   COLS,
-  LEVELS,
   ROWS,
   cellKey,
   createBoard,
-  getLevel,
   type WorkshopLevel,
 } from '../game/level';
+import { generateSessionLevel } from '../game/generator';
 import { createWorkshopLayout, DESIGN_CELL_SIZE, type WorkshopLayout } from '../game/layout';
 import {
   cloneBoard,
@@ -58,8 +57,8 @@ interface Snapshot {
 type Tool = TrackKind | 'erase';
 
 export class WorkshopScene extends Phaser.Scene {
-  private levelIndex = 0;
-  private level: WorkshopLevel = getLevel(0);
+  private routeIndex = 0;
+  private level: WorkshopLevel = generateSessionLevel(0);
   private board: BoardCell[][] = createBoard(this.level);
   private inventory: Record<TrackKind, number> = { ...this.level.inventory };
   private history: Snapshot[] = [];
@@ -342,7 +341,7 @@ export class WorkshopScene extends Phaser.Scene {
 
   private renderControls(): void {
     this.controlsLayer.removeAll(true);
-    this.levelNameText?.setText(`PUZZLE ${this.levelIndex + 1} / ${LEVELS.length}  •  ${this.level.name.toUpperCase()}`);
+    this.levelNameText?.setText(`ROUTE ${this.routeIndex + 1}  •  ${this.level.name.toUpperCase()}`);
 
     this.createToolButton('straight', 16, 115, 119, 'STRAIGHT', this.inventory.straight);
     this.createToolButton('curve', 145, 115, 119, 'CURVE', this.inventory.curve);
@@ -358,8 +357,8 @@ export class WorkshopScene extends Phaser.Scene {
     });
     this.controlsLayer.add(undo);
 
-    this.runButton = this.createButton(16, 277, 248, 70, this.completed ? (this.levelIndex === LEVELS.length - 1 ? 'START OVER' : 'NEXT PUZZLE') : 'RUN TRAIN', () => {
-      if (this.completed) this.selectLevel(this.levelIndex === LEVELS.length - 1 ? 0 : this.levelIndex + 1);
+    this.runButton = this.createButton(16, 277, 248, 70, this.completed ? 'NEXT ROUTE' : 'RUN TRAIN', () => {
+      if (this.completed) this.selectRoute(this.routeIndex + 1);
       else void this.runTrain();
     }, {
       fill: 0xc85445,
@@ -388,21 +387,20 @@ export class WorkshopScene extends Phaser.Scene {
     });
     this.controlsLayer.add(fullscreen);
 
-    const previous = this.createButton(12, 410, 68, 56, '‹', () => this.selectLevel(this.levelIndex - 1), {
+    const previous = this.createButton(12, 410, 68, 56, '‹', () => this.selectRoute(this.routeIndex - 1), {
       fill: 0x36594d,
       text: '#fff4d6',
       border: 0xe5b74f,
       fontSize: 25,
-      disabled: this.levelIndex === 0,
+      disabled: this.routeIndex === 0,
     });
-    const next = this.createButton(200, 410, 68, 56, '›', () => this.selectLevel(this.levelIndex + 1), {
+    const next = this.createButton(200, 410, 68, 56, '›', () => this.selectRoute(this.routeIndex + 1), {
       fill: 0x36594d,
       text: '#fff4d6',
       border: 0xe5b74f,
       fontSize: 25,
-      disabled: this.levelIndex === LEVELS.length - 1,
     });
-    const levelCount = this.add.text(140, 438, `${this.levelIndex + 1} / ${LEVELS.length}`, {
+    const levelCount = this.add.text(140, 438, `${this.routeIndex + 1}`, {
       fontFamily: '"Trebuchet MS", sans-serif',
       fontSize: '16px',
       color: '#fff4d6',
@@ -531,7 +529,8 @@ export class WorkshopScene extends Phaser.Scene {
 
     const piece = this.board[point.y]?.[point.x] ?? null;
     if (piece?.fixed === true) {
-      this.setStatus(point.x === this.level.start.x ? 'The engine shed track is fixed.' : 'Pinecone Station is ready for you!');
+      const isStart = point.x === this.level.start.x && point.y === this.level.start.y;
+      this.setStatus(isStart ? 'The engine shed track is fixed.' : 'Home Station is ready for you!');
       return;
     }
 
@@ -605,18 +604,18 @@ export class WorkshopScene extends Phaser.Scene {
     this.afterBoardChange();
   }
 
-  private selectLevel(index: number): void {
+  private selectRoute(index: number): void {
     if (this.isRunning) return;
-    const safeIndex = Math.min(LEVELS.length - 1, Math.max(0, Math.trunc(index)));
-    this.levelIndex = safeIndex;
-    this.level = getLevel(safeIndex);
+    const safeIndex = Math.max(0, Math.trunc(index));
+    this.routeIndex = safeIndex;
+    this.level = generateSessionLevel(safeIndex);
     this.completed = false;
     this.history = [];
     this.board = createBoard(this.level);
     this.inventory = { ...this.level.inventory };
     this.selectedTool = 'straight';
     this.afterBoardChange();
-    this.setStatus(`Puzzle ${safeIndex + 1}: ${this.level.name}. Build the route.`);
+    this.setStatus(`Route ${safeIndex + 1}: ${this.level.name}. Build the route.`);
   }
 
   private afterBoardChange(): void {
@@ -649,7 +648,7 @@ export class WorkshopScene extends Phaser.Scene {
     this.setTrainAt(this.level.start, this.level.direction);
     const route = traceRoute(this.board, this.level.start, this.level.goal, this.level.direction);
 
-    this.setStatus(route.success ? 'All aboard for Pinecone Station!' : 'Let’s test this line…');
+    this.setStatus(route.success ? 'All aboard for Home Station!' : 'Let’s test this line…');
     this.play('whistle', 0.55);
     await this.wait(this.reducedMotion ? 80 : 420);
 
@@ -665,7 +664,7 @@ export class WorkshopScene extends Phaser.Scene {
 
     if (route.success) {
       this.train.setAngle(this.angleFor(route.path.at(-1)?.direction ?? 1));
-      this.setStatus('Perfect run! Pinecone Station is open!');
+      this.setStatus('Perfect run! Home Station is open!');
       this.play('success', 0.65);
       this.celebrate();
       await this.wait(this.reducedMotion ? 120 : 900);

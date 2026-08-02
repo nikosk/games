@@ -62,12 +62,12 @@ Warm handmade model railway: painted scenery, chunky wooden track, brass and woo
 - track connections after rotation
 - valid route finding
 - train path through junctions
-- authored board validity
-- save data if progression is added
+- generated route validity: determinism, solvability through `traceRoute`, and inventory/scenery/bounds invariants across many seeds
+- authored fixture board validity
 
 ## Current version
 
-Five handcrafted puzzles now live in `games/railway-workshop/`, progressing from Pinecone Path's short first route through Garden Zigzag, Meadow Loop, Rocky Ridge, and the tighter Sunset Express. They share straight and curved pieces, rotation, removal, undo, route highlighting, a moving train, original sound effects, level selection, and next/replay actions. Its responsive canvas fills the viewport, the map dominates landscape screens, and the compact controls sit in a right-side panel with a fullscreen toggle. The original is preserved at `classic/train-tracks.html`.
+Endless procedurally generated routes now live in `games/railway-workshop/`. Every playable puzzle comes from a pure deterministic seeded generator (no `Math.random`): a session picks one runtime seed that stays stable across scene restarts and resizes, and each route is derived from that seed plus its route number, so going back to an earlier route reproduces the same puzzle and going forward always has the next one ready. Routes are generated as simple paths on the 6x5 board and are valid under the real `traceRoute` rules; the inventory always matches the solution exactly, scenery never blocks the start, goal, or route cells, and every route keeps the horizontal approach into the fixed station. The five original handcrafted puzzles remain in `level.ts` only as reference fixtures for the tests. The game keeps straight and curved pieces, rotation, removal, undo, route highlighting, a moving train, original sound effects, previous/next route navigation, and a next-route action after a successful run. Its responsive canvas fills the viewport, the map dominates landscape screens, and the compact controls sit in a right-side panel with a fullscreen toggle. The original is preserved at `classic/train-tracks.html`.
 
 It has been playtested on the target tablet. The puzzle, touch controls, layout, and feedback are working well.
 
