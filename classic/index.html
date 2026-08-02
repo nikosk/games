@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="The original family games, kept playable on the classic games shelf.">
+  <title>Classic Game Shelf</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Bree+Serif&family=Fredoka:wght@500;600;700&display=swap');
+
+    :root {
+      --ink: #3c2d35;
+      --muted: #725f62;
+      --paper: #fff8e8;
+      --paper-dark: #f1dfbd;
+      --wood: #85543c;
+      --wood-dark: #5f382d;
+      --red: #c95148;
+      --gold: #edbd57;
+      --green: #648f74;
+      --shadow: 0 9px 0 rgba(83, 50, 38, 0.18), 0 16px 28px rgba(74, 43, 34, 0.14);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      color: var(--ink);
+      font-family: 'Fredoka', system-ui, sans-serif;
+      background-color: #ecd6ae;
+      background-image:
+        radial-gradient(circle at 20% 10%, rgba(255, 255, 255, 0.44) 0 2px, transparent 3px),
+        radial-gradient(circle at 80% 35%, rgba(111, 69, 49, 0.12) 0 1px, transparent 2px),
+        repeating-linear-gradient(90deg, rgba(119, 78, 49, 0.035) 0 1px, transparent 1px 7px);
+      background-size: 43px 43px, 29px 29px, auto;
+    }
+
+    .top-bar {
+      background: var(--wood-dark);
+      border-bottom: 8px solid var(--wood);
+      color: var(--paper);
+      padding: 14px clamp(18px, 4vw, 52px);
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: inherit;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .back-link:hover {
+      color: #ffe39b;
+    }
+
+    .back-link:focus-visible,
+    .game-card:focus-visible {
+      outline: 4px solid var(--gold);
+      outline-offset: 4px;
+    }
+
+    header {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: clamp(38px, 7vw, 76px) 20px 32px;
+      text-align: center;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      padding: 7px 15px;
+      border: 2px solid var(--wood);
+      border-radius: 999px;
+      background: rgba(255, 248, 232, 0.72);
+      color: var(--wood-dark);
+      font-size: 0.88rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 16px 0 8px;
+      color: var(--red);
+      font-family: 'Bree Serif', Georgia, serif;
+      font-size: clamp(2.8rem, 8vw, 5.6rem);
+      font-weight: 400;
+      line-height: 0.95;
+      text-shadow: 3px 3px 0 var(--paper), 6px 6px 0 rgba(95, 56, 45, 0.16);
+    }
+
+    .subtitle {
+      max-width: 610px;
+      margin: 18px auto 0;
+      color: var(--muted);
+      font-size: clamp(1rem, 2.5vw, 1.25rem);
+      line-height: 1.5;
+    }
+
+    .games-shelf {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto 70px;
+      padding: clamp(20px, 4vw, 38px);
+      border: 7px solid var(--wood-dark);
+      border-radius: 18px;
+      background:
+        linear-gradient(rgba(255, 248, 232, 0.93), rgba(255, 248, 232, 0.93)),
+        repeating-linear-gradient(0deg, transparent 0 240px, var(--wood) 240px 252px);
+      box-shadow: 0 18px 0 rgba(95, 56, 45, 0.2), 0 28px 55px rgba(70, 41, 31, 0.18);
+    }
+
+    .games-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 24px;
+    }
+
+    .game-card {
+      position: relative;
+      min-height: 210px;
+      padding: 24px 18px 20px;
+      border: 2px solid #d9c49d;
+      border-radius: 10px 10px 15px 15px;
+      background: var(--paper);
+      box-shadow: var(--shadow);
+      color: inherit;
+      text-align: center;
+      text-decoration: none;
+      transform: rotate(var(--tilt, -0.4deg));
+      transition: transform 180ms ease, box-shadow 180ms ease;
+    }
+
+    .game-card:nth-child(3n + 2) { --tilt: 0.55deg; }
+    .game-card:nth-child(3n) { --tilt: -0.15deg; }
+
+    .game-card::before {
+      content: '';
+      position: absolute;
+      top: -7px;
+      left: 50%;
+      width: 52px;
+      height: 18px;
+      background: rgba(237, 189, 87, 0.72);
+      transform: translateX(-50%) rotate(-2deg);
+      box-shadow: 0 1px 2px rgba(60, 45, 53, 0.14);
+    }
+
+    .game-card:hover {
+      z-index: 1;
+      transform: translateY(-7px) rotate(0deg);
+      box-shadow: 0 13px 0 rgba(83, 50, 38, 0.16), 0 24px 36px rgba(74, 43, 34, 0.2);
+    }
+
+    .game-icon {
+      display: grid;
+      width: 82px;
+      height: 82px;
+      margin: 0 auto 16px;
+      place-items: center;
+      border: 3px dashed rgba(95, 56, 45, 0.35);
+      border-radius: 50%;
+      background: var(--paper-dark);
+      font-size: 2.85rem;
+    }
+
+    .game-card:nth-child(even) .game-icon {
+      background: #dce9da;
+    }
+
+    .game-card:nth-child(3n) .game-icon {
+      background: #f1d6d0;
+    }
+
+    .game-title {
+      margin: 0 0 8px;
+      font-family: 'Bree Serif', Georgia, serif;
+      font-size: 1.42rem;
+      font-weight: 400;
+      line-height: 1.1;
+    }
+
+    .game-desc {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.96rem;
+      line-height: 1.35;
+    }
+
+    footer {
+      padding: 0 20px 42px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    @media (max-width: 540px) {
+      .games-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .games-shelf {
+        width: min(100% - 18px, 1120px);
+        padding: 18px 12px;
+        border-width: 5px;
+      }
+
+      .game-card {
+        min-height: 192px;
+        padding: 21px 10px 16px;
+      }
+
+      .game-icon {
+        width: 68px;
+        height: 68px;
+        font-size: 2.25rem;
+      }
+
+      .game-title {
+        font-size: 1.16rem;
+      }
+
+      .game-desc {
+        font-size: 0.84rem;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .game-card {
+        transition: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <nav class="top-bar" aria-label="Main navigation">
+    <a class="back-link" href="../">← Rewritten games</a>
+  </nav>
+
+  <header>
+    <span class="eyebrow">The originals</span>
+    <h1>Classic Game Shelf</h1>
+    <p class="subtitle">Our earlier games are still here to play, exactly where we left them.</p>
+  </header>
+
+  <main class="games-shelf">
+    <div class="games-grid">
+      <a class="game-card" href="train-tracks.html">
+        <span class="game-icon" aria-hidden="true">🚂</span>
+        <h2 class="game-title">Train Tracks</h2>
+        <p class="game-desc">Build a railway and guide the train home.</p>
+      </a>
+
+      <a class="game-card" href="animal-memory.html">
+        <span class="game-icon" aria-hidden="true">🐾</span>
+        <h2 class="game-title">Animal Memory</h2>
+        <p class="game-desc">Turn the cards and find every animal pair.</p>
+      </a>
+
+      <a class="game-card" href="monkey-banana.html">
+        <span class="game-icon" aria-hidden="true">🍌</span>
+        <h2 class="game-title">Monkey Banana</h2>
+        <p class="game-desc">Help the monkey collect bananas.</p>
+      </a>
+
+      <a class="game-card" href="robot-factory.html">
+        <span class="game-icon" aria-hidden="true">🤖</span>
+        <h2 class="game-title">Robot Factory</h2>
+        <p class="game-desc">Program a robot to finish its factory jobs.</p>
+      </a>
+
+      <a class="game-card" href="cheese-heist/">
+        <span class="game-icon" aria-hidden="true">🧀</span>
+        <h2 class="game-title">Cheese Heist</h2>
+        <p class="game-desc">Sneak through the kitchen and steal the cheese.</p>
+      </a>
+
+      <a class="game-card" href="../mouse-adventure.html">
+        <span class="game-icon" aria-hidden="true">🐭</span>
+        <h2 class="game-title">Mouse Adventure</h2>
+        <p class="game-desc">Jump and climb through a tiny adventure.</p>
+      </a>
+
+      <a class="game-card" href="../valley-explorer.html">
+        <span class="game-icon" aria-hidden="true">🌸</span>
+        <h2 class="game-title">Valley Explorer</h2>
+        <p class="game-desc">Explore a world of animals, trees, and flowers.</p>
+      </a>
+
+      <a class="game-card" href="../code-adventure.html">
+        <span class="game-icon" aria-hidden="true">👾</span>
+        <h2 class="game-title">Code Adventure</h2>
+        <p class="game-desc">Learn code with Bit the robot.</p>
+      </a>
+
+      <a class="game-card" href="../crocodile-game/">
+        <span class="game-icon" aria-hidden="true">🐊</span>
+        <h2 class="game-title">Coco's Lost Hat</h2>
+        <p class="game-desc">Find Coco's hat in a Greek story adventure.</p>
+      </a>
+
+      <a class="game-card" href="../hippo.html">
+        <span class="game-icon" aria-hidden="true">🦛</span>
+        <h2 class="game-title">Hippo's Great Feast</h2>
+        <p class="game-desc">Search for the Golden Watermelon.</p>
+      </a>
+
+      <a class="game-card" href="../little-chef-kitchen/">
+        <span class="game-icon" aria-hidden="true">🍳</span>
+        <h2 class="game-title">Little Chef's Kitchen</h2>
+        <p class="game-desc">Run a busy kitchen for hungry customers.</p>
+      </a>
+
+      <a class="game-card" href="../thegame/">
+        <span class="game-icon" aria-hidden="true">⚔️</span>
+        <h2 class="game-title">Critter Tactics</h2>
+        <p class="game-desc">Lead a critter team through tactical battles.</p>
+      </a>
+    </div>
+  </main>
+
+  <footer>Old favorites, kept playable for family fun.</footer>
+</body>
+</html>

@@ -264,6 +264,25 @@
         footer span {
             color: #FF6B6B;
         }
+
+        .classic-link {
+            display: inline-block;
+            margin-top: 14px;
+            color: #60437c;
+            font-weight: 700;
+            text-underline-offset: 4px;
+        }
+
+        .classic-link:hover,
+        .classic-link:focus-visible {
+            color: #3d2854;
+        }
+
+        .classic-link:focus-visible {
+            outline: 3px solid #FFE66D;
+            outline-offset: 5px;
+            border-radius: 4px;
+        }
         
         @media (max-width: 600px) {
             h1 {
@@ -289,10 +308,10 @@
     
     <header>
         <h1>🎮 Play Time! 🎮</h1>
-        <p class="subtitle">Pick a fun game to play!</p>
+        <p class="subtitle">Pick one of our rewritten games!</p>
     </header>
     
-    <div class="games-container">
+    <main class="games-container">
         <a href="railway-workshop/" class="game-card">
             <div class="game-icon">🚂</div>
             <h2 class="game-title">Railway Workshop</h2>
@@ -307,20 +326,6 @@
             <span class="age-badge">Ages 2+</span>
         </a>
         
-        <a href="mouse-adventure.html" class="game-card">
-            <div class="game-icon">🐭</div>
-            <h2 class="game-title">Mouse Adventure</h2>
-            <p class="game-desc">Help the mouse jump and climb through an exciting adventure!</p>
-            <span class="age-badge">Ages 3+</span>
-        </a>
-        
-        <a href="valley-explorer.html" class="game-card">
-            <div class="game-icon">🌸</div>
-            <h2 class="game-title">Valley Explorer</h2>
-            <p class="game-desc">Explore an infinite world with friendly animals, trees and flowers!</p>
-            <span class="age-badge">Ages 2+</span>
-        </a>
-
         <a href="canopy-caper/" class="game-card">
             <div class="game-icon">🐵</div>
             <h2 class="game-title">Canopy Caper</h2>
@@ -335,51 +340,17 @@
             <span class="age-badge">Ages 4+</span>
         </a>
 
-        <a href="code-adventure.html" class="game-card">
-            <div class="game-icon">👾</div>
-            <h2 class="game-title">Code Adventure</h2>
-            <p class="game-desc">Learn programming with Bit the robot! Code, loops, and conditions!</p>
-            <span class="age-badge">Ages 3+</span>
-        </a>
-
-        <a href="crocodile-game/" class="game-card">
-            <div class="game-icon">🐊</div>
-            <h2 class="game-title">Coco's Lost Hat</h2>
-            <p class="game-desc">Help Coco find her red hat in a narrated Greek adventure!</p>
-            <span class="age-badge">Ages 3+</span>
-        </a>
-
-        <a href="hippo.html" class="game-card">
-            <div class="game-icon">🦛</div>
-            <h2 class="game-title">Hippo's Great Feast</h2>
-            <p class="game-desc">Leap across ten magical lands on a quest for the Golden Watermelon!</p>
-            <span class="age-badge">Ages 3+</span>
-        </a>
-
-        <a href="little-chef-kitchen/" class="game-card">
-            <div class="game-icon">🍳</div>
-            <h2 class="game-title">Little Chef's Kitchen</h2>
-            <p class="game-desc">Run a busy automated kitchen and keep every hungry customer happy!</p>
-            <span class="age-badge">Ages 3+</span>
-        </a>
-
-        <a href="thegame/" class="game-card">
-            <div class="game-icon">⚔️</div>
-            <h2 class="game-title">Critter Tactics</h2>
-            <p class="game-desc">Command a team of clever critters in colorful tactical battles!</p>
-            <span class="age-badge">Ages 4+</span>
-        </a>
-
         <a href="cheese-heist/" class="game-card">
             <div class="game-icon">🧸</div>
             <h2 class="game-title">The Enchanted Toyshop</h2>
-            <p class="game-desc">Solve four cozy picture puzzles and open the magical moonlit door!</p>
+            <p class="game-desc">Restore eight magical stars and follow the fairy through two enchanted rooms!</p>
             <span class="age-badge">Ages 3+</span>
         </a>
-    </div>
+    </main>
     
     <footer>
-        Made with <span>❤️</span> for family fun!
+        Made with <span>❤️</span> for family fun!<br>
+        <a class="classic-link" href="classic/">Visit the classic games shelf →</a>
     </footer>
 </body>
 </html>

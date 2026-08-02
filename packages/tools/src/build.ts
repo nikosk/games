@@ -30,7 +30,7 @@ const legacyDirectories = [
   },
   {
     destination: 'classic',
-    sources: ['train-tracks.html', 'animal-memory.html', 'monkey-banana.html', 'robot-factory.html'],
+    sources: ['index.html', 'train-tracks.html', 'animal-memory.html', 'monkey-banana.html', 'robot-factory.html'],
   },
 ] as const;
 
