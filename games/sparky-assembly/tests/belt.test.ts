@@ -10,11 +10,24 @@ describe('belt editing', () => {
     expect(second).toEqual({ belt: ['move', 'turn-left'], changed: true });
   });
 
-  it('does not append past the belt capacity', () => {
+  it('does not append past the default belt capacity', () => {
     const full: Command[] = Array.from({ length: BELT_SLOTS }, () => 'move');
     const edit = appendCommand(full, 'grab');
     expect(edit).toEqual({ belt: full, changed: false });
     expect(edit.belt).toBe(full);
+  });
+
+  it('accepts a custom capacity larger than the default', () => {
+    const nine: Command[] = Array.from({ length: 9 }, () => 'move');
+    const edit = appendCommand(nine, 'grab', 10);
+    expect(edit.changed).toBe(true);
+    expect(edit.belt).toEqual([...nine, 'grab']);
+  });
+
+  it('caps at the custom capacity', () => {
+    const full: Command[] = Array.from({ length: 10 }, () => 'move');
+    const edit = appendCommand(full, 'grab', 10);
+    expect(edit).toEqual({ belt: full, changed: false });
   });
 
   it('removes a tapped command and shifts the tail left', () => {

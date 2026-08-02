@@ -68,6 +68,26 @@ describe('responsive assembly layout', () => {
     expect(layout.beltSlotHeight).toBeGreaterThanOrEqual(64);
   });
 
+  it.each(viewports)('keeps an 8- and 10-slot belt in bounds and touchable at %d×%d', (width, height) => {
+    for (const slots of [8, 10] as const) {
+      const layout = createLayout(width, height, slots);
+      expect(layout.beltY + layout.beltHeight).toBeLessThanOrEqual(height);
+      expect(layout.panelY + layout.panelHeight).toBeLessThanOrEqual(height);
+      expect(layout.beltRows * layout.beltCols).toBe(slots);
+      expect(layout.beltCols).toBe(slots > 8 ? 5 : layout.beltRows === 2 ? 4 : slots);
+      const seen = new Set<string>();
+      for (let index = 0; index < slots; index += 1) {
+        const slot = beltSlotRect(layout, index);
+        expectInside(slot, layout.beltX, layout.beltY, layout.beltWidth, layout.beltHeight);
+        expect(slot.width).toBeGreaterThanOrEqual(44);
+        expect(slot.height).toBeGreaterThanOrEqual(44);
+        const key = `${slot.x},${slot.y},${slot.width},${slot.height}`;
+        expect(seen.has(key), `belt slot ${index} overlaps another at ${slots} slots`).toBe(false);
+        seen.add(key);
+      }
+    }
+  });
+
   it('uses a non-overlapping 2×2 palette and touchable compact actions at 780×437', () => {
     const layout = createLayout(780, 437);
     const controls = computeControls(layout);
@@ -105,8 +125,11 @@ describe('responsive assembly layout', () => {
     const regular = createLayout(390, 844);
     expect(regular.beltRows).toBe(1);
     expect(regular.beltCols).toBe(BELT_SLOTS);
-    for (const layout of [narrow, regular]) {
-      for (let index = 0; index < BELT_SLOTS; index += 1) {
+    const wideTen = createLayout(1280, 720, 10);
+    expect(wideTen.beltRows).toBe(2);
+    expect(wideTen.beltCols).toBe(5);
+    for (const layout of [narrow, regular, wideTen]) {
+      for (let index = 0; index < (layout.beltRows * layout.beltCols); index += 1) {
         const slot = beltSlotRect(layout, index);
         expectInside(slot, layout.beltX, layout.beltY, layout.beltWidth, layout.beltHeight);
         expect(slot.width).toBeGreaterThanOrEqual(44);

@@ -1,9 +1,11 @@
 import Phaser from 'phaser';
 import sparkyTextureUrl from '../../assets/images/sparky-topdown.webp';
 import gearBinTextureUrl from '../../assets/images/gear-bin.webp';
+import batteryPackTextureUrl from '../../assets/images/battery-pack.webp';
+import circuitCrateTextureUrl from '../../assets/images/circuit-crate.webp';
 import workbenchTextureUrl from '../../assets/images/factory-workbench.webp';
 import receivingDockTextureUrl from '../../assets/images/receiving-dock.webp';
-import { COLS, ROWS, BELT_SLOTS, FIRST_LEVEL, LEVELS, initialState, type SparkyLevel } from '../game/level';
+import { COLS, ROWS, FIRST_LEVEL, LEVELS, initialState, type SparkyLevel } from '../game/level';
 import {
   createLayout,
   computeControls,
@@ -16,12 +18,17 @@ import {
 import { angleFor, DIRECTION_VECTORS, type Direction } from '../game/direction';
 import {
   executeStep,
+  isDelivered,
   isSolved,
-  facingCell,
+  type CargoType,
   type Command,
+  type Delivery,
   type FloorState,
+  type Robot,
   type StepResult,
 } from '../game/rules';
+import { findRandomLevel } from '../game/random';
+import { payloadMeta } from '../game/payloads';
 import { COMMANDS, commandMeta } from '../game/commands';
 import { appendCommand as appendToBelt, clearBelt, removeCommandAt, removeLastCommand } from '../game/belt';
 import { Sfx } from '../game/sfx';
@@ -29,8 +36,25 @@ import { Sfx } from '../game/sfx';
 const CELL = DESIGN_CELL_SIZE;
 const SPARKY_TEXTURE = 'sparky-topdown';
 const GEAR_BIN_TEXTURE = 'gear-bin';
+const BATTERY_TEXTURE = 'battery-pack';
+const CIRCUIT_TEXTURE = 'circuit-crate';
 const WORKBENCH_TEXTURE = 'factory-workbench';
 const RECEIVING_DOCK_TEXTURE = 'receiving-dock';
+
+/**
+ * Source-rect crop for each cargo texture so every prop fills the same
+ * visual footprint on the board. Bounds match the opaque alpha extent of
+ * each generated sprite (gear-bin 325x290+24+53, battery 314x295+33+54,
+ * circuit 303x290+40+53).
+ */
+const CARGO_CROPS: Readonly<Record<CargoType, { x: number; y: number; width: number; height: number }>> = {
+  gear: { x: 24, y: 53, width: 325, height: 290 },
+  battery: { x: 33, y: 54, width: 314, height: 295 },
+  circuit: { x: 40, y: 53, width: 303, height: 290 },
+};
+
+/** First base seed searched when Random Shifts start after level 10. */
+const RANDOM_FIRST_SEED = 1000;
 
 // The approved source art's visible nose points south, so rotate it to match
 // the logical direction (0 = north, 1 = east) everywhere it is oriented.
@@ -98,7 +122,9 @@ export class AssemblyScene extends Phaser.Scene {
   private beltLayer!: Phaser.GameObjects.Container;
   private controlsLayer!: Phaser.GameObjects.Container;
   private robot!: Phaser.GameObjects.Container;
-  private crate!: Phaser.GameObjects.Container;
+  /** One visual container per cargo id; the held cargo is tweened, the rest stay put. */
+  private cargoItems = new Map<string, Phaser.GameObjects.Container>();
+  private cargoChips: Phaser.GameObjects.Container[] = [];
   private glow!: Phaser.GameObjects.Graphics;
   private nextMarker!: Phaser.GameObjects.Graphics;
   private objectiveText!: Phaser.GameObjects.Text;
@@ -112,6 +138,11 @@ export class AssemblyScene extends Phaser.Scene {
   private controlTooltipBg!: Phaser.GameObjects.Graphics;
   private controlTooltipText!: Phaser.GameObjects.Text;
   private currentLevelIndex = 0;
+  private inRandomMode = false;
+  private randomLevelSeed: number | null = null;
+  private randomBaseSeed = RANDOM_FIRST_SEED;
+  /** Status message to apply after the next scene restart (level transition). */
+  private pendingStatus: string | null = null;
   private playIcon!: Phaser.GameObjects.Graphics;
   private playIconSize = 38;
   private playIconY = 0;
@@ -125,6 +156,8 @@ export class AssemblyScene extends Phaser.Scene {
   preload(): void {
     this.load.image(SPARKY_TEXTURE, sparkyTextureUrl);
     this.load.image(GEAR_BIN_TEXTURE, gearBinTextureUrl);
+    this.load.image(BATTERY_TEXTURE, batteryPackTextureUrl);
+    this.load.image(CIRCUIT_TEXTURE, circuitCrateTextureUrl);
     this.load.image(WORKBENCH_TEXTURE, workbenchTextureUrl);
     this.load.image(RECEIVING_DOCK_TEXTURE, receivingDockTextureUrl);
   }
@@ -132,7 +165,7 @@ export class AssemblyScene extends Phaser.Scene {
   create(): void {
     this.resizePending = false;
     this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    this.layout = createLayout(this.scale.width, this.scale.height);
+    this.layout = createLayout(this.scale.width, this.scale.height, this.level.beltSlots);
     this.controls = computeControls(this.layout);
     this.input.mouse?.disableContextMenu();
     this.drawBackground();
@@ -147,12 +180,7 @@ export class AssemblyScene extends Phaser.Scene {
     this.glow = this.add.graphics().setDepth(9);
     this.nextMarker = this.add.graphics().setDepth(21);
 
-    this.renderBoard();
-    this.renderBelt();
-    this.renderControls();
-    this.liveState = initialState(this.level);
-    this.placeActors(this.liveState.robot, this.liveState.crate, false, true);
-    this.markNextSlot();
+    this.loadLevel(this.level);
 
     this.installKeyboard();
     this.installScaleEvents();
@@ -224,9 +252,14 @@ export class AssemblyScene extends Phaser.Scene {
     for (let y = 0; y < ROWS; y += 1) {
       for (let x = 0; x < COLS; x += 1) {
         this.drawFloorTile(x, y);
-        if (x === this.level.goal.x && y === this.level.goal.y) this.drawGoal();
+        if (this.isWall(x, y)) this.drawWall(x, y);
       }
     }
+    for (const delivery of this.level.deliveries) this.drawDock(delivery);
+  }
+
+  private isWall(x: number, y: number): boolean {
+    return this.level.walls.some((w) => w.x === x && w.y === y);
   }
 
   private drawFloorTile(x: number, y: number): void {
@@ -262,17 +295,115 @@ export class AssemblyScene extends Phaser.Scene {
     this.boardLayer.add(g);
   }
 
-  private drawGoal(): void {
-    const cx = this.level.goal.x * CELL + CELL / 2;
-    const cy = this.level.goal.y * CELL + CELL / 2;
+  private drawDock(delivery: Delivery): void {
+    const meta = payloadMeta(delivery.type);
+    const cx = delivery.dock.x * CELL + CELL / 2;
+    const cy = delivery.dock.y * CELL + CELL / 2;
     const dock = this.add.image(cx, cy, RECEIVING_DOCK_TEXTURE).setDisplaySize(CELL - 10, CELL - 10);
     this.boardLayer.add(dock);
 
-    // A restrained highlight reinforces the exact logical target cell.
-    const highlight = this.add.graphics();
-    highlight.lineStyle(2, COLORS.goal, 0.5);
-    highlight.strokeRoundedRect(cx - CELL / 2 + 7, cy - CELL / 2 + 7, CELL - 14, CELL - 14, 5);
-    this.boardLayer.add(highlight);
+    // A thick ring in the required cargo colour makes the dock's type
+    // readable even before a child can tell the painted art apart.
+    const ring = this.add.graphics();
+    ring.lineStyle(3, meta.color, 0.95);
+    ring.strokeRoundedRect(cx - CELL / 2 + 7, cy - CELL / 2 + 7, CELL - 14, CELL - 14, 6);
+    this.boardLayer.add(ring);
+
+    const chipSize = CELL * 0.24;
+    const chipX = cx + CELL * 0.16;
+    const chipY = cy - CELL * 0.4;
+    const chip = this.add.graphics();
+    chip.fillStyle(meta.color, 1);
+    chip.fillRoundedRect(chipX, chipY, chipSize, chipSize, 4);
+    chip.lineStyle(2, 0xffffff, 0.8);
+    chip.strokeRoundedRect(chipX, chipY, chipSize, chipSize, 4);
+    this.boardLayer.add(chip);
+    this.drawPayloadGlyph(
+      this.boardLayer,
+      delivery.type,
+      chipX + chipSize / 2,
+      chipY + chipSize / 2,
+      chipSize * 0.62,
+      0xffffff,
+    );
+  }
+
+  /** Raised steel obstacle with a yellow/black caution band and rivets. */
+  private drawWall(x: number, y: number): void {
+    const left = x * CELL;
+    const top = y * CELL;
+    const g = this.add.graphics();
+    g.fillStyle(0x2b3a4a, 1);
+    g.fillRoundedRect(left + 3, top + 3, CELL - 6, CELL - 6, 7);
+    g.fillStyle(0x42556b, 1);
+    g.fillRoundedRect(left + 6, top + 6, CELL - 12, CELL - 12, 5);
+    g.lineStyle(2, 0x1c2833, 1);
+    g.strokeRoundedRect(left + 6, top + 6, CELL - 12, CELL - 12, 5);
+    this.drawHazardBand(g, left + 10, top + CELL * 0.4, CELL - 20, CELL * 0.2);
+    for (const [dx, dy] of [[16, 16], [CELL - 16, 16], [16, CELL - 16], [CELL - 16, CELL - 16]] as const) {
+      g.fillStyle(0x1c2833, 1);
+      g.fillCircle(left + dx, top + dy, 3.4);
+      g.fillStyle(0x6d8296, 1);
+      g.fillCircle(left + dx - 0.7, top + dy - 0.7, 1.6);
+    }
+    this.boardLayer.add(g);
+  }
+
+  private drawHazardBand(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number): void {
+    g.fillStyle(0xf5c542, 1);
+    g.fillRect(x, y, w, h);
+    g.fillStyle(0x2b2b2b, 1);
+    const step = 13;
+    const clampX = (value: number): number => Phaser.Math.Clamp(value, x, x + w);
+    for (let bx = x - h; bx < x + w; bx += step) {
+      g.fillPoints([
+        { x: clampX(bx), y: y + h },
+        { x: clampX(bx + step * 0.5), y: y + h },
+        { x: clampX(bx + step * 0.5 + h * 0.7), y },
+        { x: clampX(bx + h * 0.7), y },
+      ], true);
+    }
+  }
+
+  /** Distinct white glyph for each cargo type: gear teeth, battery body, chip pins. */
+  private drawPayloadGlyph(
+    parent: Phaser.GameObjects.Container,
+    type: 'gear' | 'battery' | 'circuit',
+    cx: number,
+    cy: number,
+    s: number,
+    color: number,
+  ): void {
+    const g = this.add.graphics();
+    g.fillStyle(color, 1);
+    if (type === 'gear') {
+      g.fillCircle(cx, cy, s * 0.34);
+      g.save();
+      g.translateCanvas(cx, cy);
+      for (let i = 0; i < 8; i += 1) {
+        g.rotateCanvas(Math.PI / 4);
+        g.fillRect(-s * 0.1, -s * 0.54, s * 0.2, s * 0.26);
+      }
+      g.restore();
+      g.fillCircle(cx, cy, s * 0.17);
+    } else if (type === 'battery') {
+      g.fillRoundedRect(cx - s * 0.34, cy - s * 0.2, s * 0.68, s * 0.46, s * 0.08);
+      g.fillRect(cx - s * 0.1, cy - s * 0.34, s * 0.2, s * 0.16);
+      g.lineStyle(Math.max(2, s * 0.14), color, 1);
+      g.lineBetween(cx - s * 0.24, cy - s * 0.07, cx - s * 0.08, cy - s * 0.07);
+      g.lineBetween(cx - s * 0.16, cy - s * 0.15, cx - s * 0.16, cy + 0.01 * s);
+      g.lineBetween(cx + s * 0.08, cy - s * 0.07, cx + s * 0.24, cy - s * 0.07);
+    } else {
+      g.fillRect(cx - s * 0.26, cy - s * 0.26, s * 0.52, s * 0.52);
+      for (let i = 0; i < 3; i += 1) {
+        const px = cx - s * 0.16 + i * s * 0.16;
+        g.fillRect(px, cy - s * 0.4, s * 0.07, s * 0.16);
+        g.fillRect(px, cy + s * 0.24, s * 0.07, s * 0.16);
+      }
+      g.fillCircle(cx + s * 0.08, cy - s * 0.08, s * 0.05);
+      g.fillRect(cx - s * 0.18, cy + s * 0.04, s * 0.2, s * 0.07);
+    }
+    parent.add(g);
   }
 
   // ── actors ──────────────────────────────────────────────────
@@ -289,45 +420,84 @@ export class AssemblyScene extends Phaser.Scene {
     this.boardLayer.add(this.robot);
   }
 
-  private buildCrate(): void {
-    this.crate = this.add.container(0, 0);
+  private buildCargoItems(): void {
+    for (const container of this.cargoItems.values()) container.destroy();
+    this.cargoItems.clear();
+    for (const delivery of this.level.deliveries) {
+      this.cargoItems.set(delivery.id, this.buildCargoItem(delivery));
+    }
+  }
+
+  /** One cargo container per delivery: colored plate + cargo art + type glyph. */
+  private buildCargoItem(delivery: Delivery): Phaser.GameObjects.Container {
+    const meta = payloadMeta(delivery.type);
+    const container = this.add.container(0, 0);
     const shadow = this.add.graphics();
     shadow.fillStyle(0x22365a, 0.25);
     shadow.fillEllipse(0, 20, 62, 10);
-    const texture = this.textures.get(GEAR_BIN_TEXTURE);
-    if (!texture.has('silhouette')) texture.add('silhouette', 0, 24, 53, 325, 290);
-    const bin = this.add.image(0, 0, GEAR_BIN_TEXTURE, 'silhouette').setDisplaySize(65, 58);
-    this.crate.add([shadow, bin]);
-    this.crate.setDepth(14);
-    this.boardLayer.add(this.crate);
+    container.add(shadow);
+
+    const plate = this.add.graphics();
+    plate.fillStyle(meta.accent, 0.9);
+    plate.fillRoundedRect(-31, -28, 62, 56, 9);
+    plate.fillStyle(meta.color, 1);
+    plate.fillRoundedRect(-28, -25, 56, 50, 7);
+    plate.lineStyle(2, 0xffffff, 0.4);
+    plate.strokeRoundedRect(-28, -25, 56, 50, 7);
+    container.add(plate);
+
+    // Crop each generated prop to its opaque bounds so gear, battery, and
+    // circuit all read at the same size and weight on the board.
+    const crop = CARGO_CROPS[delivery.type];
+    const texture = this.textures.get(meta.textureKey);
+    if (!texture.has('cargo')) texture.add('cargo', 0, crop.x, crop.y, crop.width, crop.height);
+    const bin = this.add.image(0, 0, meta.textureKey, 'cargo').setDisplaySize(52, 46);
+    container.add(bin);
+
+    const glyph = this.add.graphics();
+    glyph.fillStyle(meta.accent, 1);
+    glyph.fillCircle(21, -19, 11);
+    glyph.lineStyle(2, 0xffffff, 0.85);
+    glyph.strokeCircle(21, -19, 11);
+    container.add(glyph);
+    this.drawPayloadGlyph(container, delivery.type, 21, -19, 13, 0xffffff);
+
+    container.setDepth(14);
+    this.boardLayer.add(container);
+    return container;
   }
 
-  private placeActors(
-    robot: { x: number; y: number; direction: Direction },
-    crate: { x: number; y: number },
-    holding: boolean,
-    build: boolean,
-  ): void {
-    if (build || this.robot === undefined) this.buildRobot();
-    if (build || this.crate === undefined) this.buildCrate();
+  private placeRobot(robot: Robot): void {
+    if (this.robot === undefined) this.buildRobot();
     const rc = this.cellLocal(robot);
     this.robot.setPosition(rc.x, rc.y);
     this.robot.setAngle(sparkyAngleFor(robot.direction));
-    const cc = this.crateVisualPosition(crate, robot);
-    this.crate.setPosition(cc.x, cc.y);
-    this.crate.setScale(holding ? 0.78 : 1);
+  }
+
+  private placeCargo(state: FloorState): void {
+    for (const item of state.cargo) {
+      const container = this.cargoItems.get(item.id);
+      if (container === undefined) continue;
+      const held = state.heldId === item.id;
+      const pos = this.cargoVisualPosition(item, state.robot, held);
+      container.setPosition(pos.x, pos.y);
+      container.setScale(held ? 0.78 : 1);
+      // Delivered cargo sits on top of the dock; everything else stays under the robot.
+      container.setDepth(isDelivered(item, this.level) ? 16 : 14);
+    }
   }
 
   private cellLocal(point: { x: number; y: number }): { x: number; y: number } {
     return { x: (point.x + 0.5) * CELL, y: (point.y + 0.5) * CELL };
   }
 
-  private crateVisualPosition(
-    crate: { x: number; y: number },
+  private cargoVisualPosition(
+    cargo: { x: number; y: number },
     robot: { x: number; y: number; direction: Direction },
+    held: boolean,
   ): { x: number; y: number } {
-    const position = this.cellLocal(crate);
-    if (crate.x !== robot.x || crate.y !== robot.y) return position;
+    const position = this.cellLocal(cargo);
+    if (!held || cargo.x !== robot.x || cargo.y !== robot.y) return position;
     const facing = DIRECTION_VECTORS[robot.direction];
     return {
       x: position.x + facing.x * CELL * 0.28,
@@ -396,7 +566,7 @@ export class AssemblyScene extends Phaser.Scene {
     this.beltLayer.add(label);
 
     this.beltSlots = [];
-    for (let i = 0; i < BELT_SLOTS; i += 1) {
+    for (let i = 0; i < this.level.beltSlots; i += 1) {
       const rect = beltSlotRect(this.layout, i);
       const slot = this.add.container(rect.x, rect.y);
       this.beltSlots.push(slot);
@@ -533,11 +703,6 @@ export class AssemblyScene extends Phaser.Scene {
     }
   }
 
-  private beltSlotCenter(index: number): { x: number; y: number } {
-    const rect = beltSlotRect(this.layout, index);
-    return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
-  }
-
   private highlightBeltSlot(index: number): void {
     const slot = this.beltSlots[index];
     if (slot === undefined) return;
@@ -559,7 +724,7 @@ export class AssemblyScene extends Phaser.Scene {
     this.nextMarker.clear();
     if (this.phase !== 'idle' && this.phase !== 'done') return;
     const next = this.belt.length;
-    if (next >= BELT_SLOTS) return;
+    if (next >= this.level.beltSlots) return;
     const rect = beltSlotRect(this.layout, next);
     const pad = 4;
     const g = this.nextMarker;
@@ -595,11 +760,14 @@ export class AssemblyScene extends Phaser.Scene {
       letterSpacing: 1,
       wordWrap: { width: c.objective.width },
     });
-    const levelLine = `L${this.currentLevelIndex + 1}/${LEVELS.length} ${this.level.name}`;
-    const goalLine = 'Dock bin, then DROP.';
+    const levelLine = this.inRandomMode
+      ? `Random Shift ${this.randomLevelSeed ?? ''}`
+      : `Level ${this.currentLevelIndex + 1}/${LEVELS.length} ${this.level.name}`;
+    const goalLine = this.level.deliveries.length > 1 ? 'Match both parts.' : 'Match the part.';
     this.objectiveText.setFontSize(this.layout.stacked ? '11px' : '12px');
     this.objectiveText.setText(`${levelLine}\n${goalLine}`);
     this.controlsLayer.add(this.objectiveText);
+    this.buildObjectiveChips();
 
     this.statusText = this.add.text(c.status.x, c.status.y, 'Tap commands to build a program.', {
       fontFamily: '"Trebuchet MS", sans-serif',
@@ -639,6 +807,35 @@ export class AssemblyScene extends Phaser.Scene {
       .container(0, 0, [this.controlTooltipBg, this.controlTooltipText])
       .setVisible(false);
     this.controlsLayer.add(this.controlTooltip);
+  }
+
+  /** Small colored chips after the objective text showing each required cargo type. */
+  private buildObjectiveChips(): void {
+    for (const chip of this.cargoChips) chip.destroy();
+    this.cargoChips = [];
+    if (this.objectiveText === undefined) return;
+    const text = this.objectiveText;
+    const chipSize = Math.min(20, this.controls.objective.height);
+    let x = text.x + text.width + 8;
+    for (const delivery of this.level.deliveries) {
+      const meta = payloadMeta(delivery.type);
+      const chip = this.add.container(x, text.y + text.height / 2);
+      const bg = this.add.graphics();
+      bg.fillStyle(meta.color, 1);
+      bg.fillRoundedRect(-chipSize / 2, -chipSize / 2, chipSize, chipSize, 5);
+      bg.lineStyle(2, 0xffffff, 0.75);
+      bg.strokeRoundedRect(-chipSize / 2, -chipSize / 2, chipSize, chipSize, 5);
+      chip.add(bg);
+      this.drawPayloadGlyph(chip, delivery.type, 0, 0, chipSize * 0.62, 0xffffff);
+      chip.setDepth(35);
+      this.controlsLayer.add(chip);
+      this.cargoChips.push(chip);
+      x += chipSize + 6;
+    }
+    // Hide the chips when there is not enough room (compact layouts).
+    if (x - 6 > this.controls.objective.x + this.controls.objective.width) {
+      for (const chip of this.cargoChips) chip.setVisible(false);
+    }
   }
 
   private createButton(
@@ -704,9 +901,11 @@ export class AssemblyScene extends Phaser.Scene {
     container.on('pointerover', () => {
       const tip =
         action === 'play' && this.phase === 'done'
-          ? this.currentLevelIndex >= LEVELS.length - 1
-            ? 'RESTART'
-            : 'NEXT LEVEL'
+          ? this.inRandomMode
+            ? 'NEXT SHIFT'
+            : this.currentLevelIndex >= LEVELS.length - 1
+              ? 'NEXT: RANDOM'
+              : 'NEXT LEVEL'
           : label;
       this.showControlTooltip(tip, rect);
     });
@@ -837,30 +1036,78 @@ export class AssemblyScene extends Phaser.Scene {
   }
 
   // ── level progression ─────────────────────────────────────
-  private advanceLevel(): void {
-    this.currentLevelIndex = (this.currentLevelIndex + 1) % LEVELS.length;
-    this.level = LEVELS[this.currentLevelIndex]!;
+  /** Load a level fresh: reset the belt, render everything, and place actors. */
+  private loadLevel(level: SparkyLevel): void {
+    this.level = level;
     this.belt = [];
     this.phase = 'idle';
     this.solved = false;
     this.stepIndex = 0;
-    this.liveState = initialState(this.level);
+    this.liveState = initialState(level);
     this.renderBoard();
+    this.buildRobot(); // renderBoard() removeAll(true) destroyed the previous robot
+    this.buildCargoItems();
     this.renderBelt();
     this.renderControls();
-    this.placeActors(this.liveState.robot, this.liveState.crate, false, true);
+    this.placeRobot(this.liveState.robot);
+    this.placeCargo(this.liveState);
     this.markNextSlot();
-    this.setStatus(`Level ${this.currentLevelIndex + 1}/${LEVELS.length}: ${this.level.name}.`);
+    if (this.pendingStatus !== null) {
+      this.setStatus(this.pendingStatus);
+      this.pendingStatus = null;
+    }
   }
 
-  private redrawPlayIcon(action: 'play' | 'next' | 'restart'): void {
+  private advanceLevel(): void {
+    if (this.inRandomMode) {
+      this.enterRandomShift(
+        this.randomLevelSeed !== null ? this.randomLevelSeed + 1 : this.randomBaseSeed,
+      );
+      return;
+    }
+    if (this.currentLevelIndex + 1 >= LEVELS.length) {
+      this.inRandomMode = true;
+      this.enterRandomShift(RANDOM_FIRST_SEED);
+      return;
+    }
+    this.currentLevelIndex += 1;
+    this.level = LEVELS[this.currentLevelIndex]!;
+    this.restartForLevel(`Level ${this.currentLevelIndex + 1}/${LEVELS.length}: ${this.level.name}.`);
+  }
+
+  /** Deterministic Random Shift: first solver-verified seed at or after `baseSeed`. */
+  private enterRandomShift(baseSeed: number): void {
+    let found = findRandomLevel(baseSeed);
+    let nextBase = baseSeed;
+    for (let guard = 0; guard < 20 && found === null; guard += 1) {
+      nextBase += 50;
+      found = findRandomLevel(nextBase);
+    }
+    if (found === null) {
+      this.inRandomMode = false;
+      this.currentLevelIndex = 0;
+      this.level = FIRST_LEVEL;
+      this.restartForLevel('Random shift unavailable — back to level 1.');
+      return;
+    }
+    this.randomBaseSeed = nextBase;
+    this.randomLevelSeed = found.seed;
+    this.level = found.level;
+    this.restartForLevel(`Random Shift ${found.seed}: deliver the parts to their matching docks.`);
+  }
+
+  /** Rebuild the scene so board, panel, and belt geometry match the current level. */
+  private restartForLevel(status: string): void {
+    this.pendingStatus = status;
+    this.scene.restart();
+  }
+
+  private redrawPlayIcon(action: 'play' | 'next'): void {
     if (this.playIcon === undefined) return;
     this.playIcon.clear();
     const color = 0x22365a;
     if (action === 'next') {
       this.drawNextGlyph(this.playIcon, 0, this.playIconY, this.playIconSize, color);
-    } else if (action === 'restart') {
-      this.drawRestartGlyph(this.playIcon, 0, this.playIconY, this.playIconSize, color);
     } else {
       this.drawActionGlyph(this.playIcon, 'play', 0, this.playIconY, this.playIconSize, color);
     }
@@ -875,16 +1122,6 @@ export class AssemblyScene extends Phaser.Scene {
     }
   }
 
-  private drawRestartGlyph(g: Phaser.GameObjects.Graphics, cx: number, cy: number, s: number, color: number): void {
-    g.lineStyle(Math.max(2, s * 0.14), color, 1);
-    g.fillStyle(color, 1);
-    g.beginPath();
-    g.arc(cx, cy + s * 0.04, s * 0.38, -Math.PI * 0.22, Math.PI * 1.42, false);
-    g.strokePath();
-    const hx = cx - s * 0.44;
-    const hy = cy - s * 0.06;
-    g.fillTriangle(hx, hy, hx + s * 0.18, hy - s * 0.18, hx + s * 0.08, hy + s * 0.16);
-  }
 
   // ── interaction ─────────────────────────────────────────────
   private handleAction(action: string): void {
@@ -924,11 +1161,11 @@ export class AssemblyScene extends Phaser.Scene {
 
   private appendCommand(command: Command): void {
     if (this.phase === 'running') return;
-    if (this.belt.length >= BELT_SLOTS) {
+    if (this.belt.length >= this.level.beltSlots) {
       this.setStatus('Belt is full. Tap a filled slot to remove it.');
       return;
     }
-    const edit = appendToBelt(this.belt, command);
+    const edit = appendToBelt(this.belt, command, this.level.beltSlots);
     if (!edit.changed) return;
     this.belt = [...edit.belt];
     this.resetExecution(false);
@@ -981,7 +1218,8 @@ export class AssemblyScene extends Phaser.Scene {
     this.stepIndex = 0;
     this.liveState = initialState(this.level);
     let state: FloorState = this.liveState;
-    this.placeActors(state.robot, state.crate, state.holding, false);
+    this.placeRobot(state.robot);
+    this.placeCargo(state);
     this.sfx.unlock();
     this.nextMarker.clear();
 
@@ -991,12 +1229,15 @@ export class AssemblyScene extends Phaser.Scene {
       this.highlightBeltSlot(i);
       this.highlightCell(state.robot);
       this.setStatus(`Running ${i + 1}/${this.belt.length}: ${commandMeta(this.belt[i]!).label}`);
-      const outcome = executeStep(state, this.belt[i]!, this.level.cols, this.level.rows);
+      const outcome = executeStep(state, this.belt[i]!, this.level);
       await this.animate(state, outcome.state, outcome.result, this.belt[i]!);
       state = outcome.state;
       this.liveState = state;
       lastResult = outcome.result;
-      if (isSolved(state, this.level.goal)) {
+      // Wrong-dock already showed clear feedback; stop here so later steps
+      // cannot overwrite the mismatch cue with a generic status line.
+      if (outcome.result === 'wrong-dock') break;
+      if (isSolved(state, this.level)) {
         this.solved = true;
         break;
       }
@@ -1009,11 +1250,13 @@ export class AssemblyScene extends Phaser.Scene {
       this.celebrate();
     } else {
       this.phase = 'idle';
+      this.pulseRemaining();
       // Preserve specific blocked / no-crate feedback instead of overwriting it.
       if (lastResult === 'ok') {
-        this.setStatus('Program finished but the bin is not on the dock. Adjust and PLAY again.');
+        this.setStatus('Program finished but not every part is on its matching dock. Adjust and PLAY again.');
         this.sfx.blocked();
       }
+      this.markNextSlot();
     }
 
     if (this.resizePending) this.scene.restart();
@@ -1021,6 +1264,7 @@ export class AssemblyScene extends Phaser.Scene {
 
   private async stepProgram(): Promise<void> {
     if (this.phase === 'running') return;
+    if (this.phase === 'done') return; // solved state must not be erased by STEP
     if (this.belt.length === 0) {
       this.setStatus('Add some commands to the belt first.');
       return;
@@ -1036,18 +1280,19 @@ export class AssemblyScene extends Phaser.Scene {
     if (this.stepIndex === 0) {
       state = initialState(this.level);
       this.liveState = state;
-      this.placeActors(state.robot, state.crate, state.holding, false);
+      this.placeRobot(state.robot);
+      this.placeCargo(state);
     }
     const command = this.belt[this.stepIndex]!;
     this.highlightBeltSlot(this.stepIndex);
     this.highlightCell(state.robot);
     this.sfx.step();
-    const outcome = executeStep(state, command, this.level.cols, this.level.rows);
+    const outcome = executeStep(state, command, this.level);
     await this.animate(state, outcome.state, outcome.result, command);
     this.liveState = outcome.state;
     this.stepIndex += 1;
 
-    if (isSolved(outcome.state, this.level.goal)) {
+    if (isSolved(outcome.state, this.level)) {
       this.solved = true;
       this.phase = 'done';
       this.clearHighlight();
@@ -1057,11 +1302,12 @@ export class AssemblyScene extends Phaser.Scene {
     this.phase = 'idle';
     // animate() supplies useful blocked/no-crate feedback; do not replace it.
     if (outcome.result === 'ok') {
-      this.setStatus(
-        this.stepIndex >= this.belt.length
-          ? 'End of program. Edit the belt or PLAY again.'
-          : `Step ${this.stepIndex}/${this.belt.length} done. Tap STEP again.`,
-      );
+      if (this.stepIndex >= this.belt.length) {
+        this.setStatus('End of program. Edit the belt or PLAY again.');
+        this.pulseRemaining();
+      } else {
+        this.setStatus(`Step ${this.stepIndex}/${this.belt.length} done. Tap STEP again.`);
+      }
     }
     if (this.resizePending) this.scene.restart();
   }
@@ -1073,7 +1319,8 @@ export class AssemblyScene extends Phaser.Scene {
     this.stepIndex = 0;
     this.liveState = initialState(this.level);
     this.clearHighlight();
-    this.placeActors(this.liveState.robot, this.liveState.crate, false, false);
+    this.placeRobot(this.liveState.robot);
+    this.placeCargo(this.liveState);
     this.markNextSlot();
     this.redrawPlayIcon('play');
     if (feedback) {
@@ -1093,15 +1340,19 @@ export class AssemblyScene extends Phaser.Scene {
     if (result === 'blocked') {
       this.shake(this.robot);
       this.sfx.blocked();
-      this.setStatus('Bonk! Sparky hit the edge.');
+      this.setStatus('Bonk! Sparky hit a wall or the edge.');
       await this.wait(duration);
       return;
     }
     if (result === 'no-crate') {
       this.shake(this.robot);
       this.sfx.blocked();
-      this.setStatus('Nothing here to grab. Move next to the bin.');
+      this.setStatus('Nothing here to grab.');
       await this.wait(duration);
+      return;
+    }
+    if (result === 'wrong-dock') {
+      await this.wrongDockFeedback(from);
       return;
     }
 
@@ -1109,12 +1360,11 @@ export class AssemblyScene extends Phaser.Scene {
       this.sfx.move();
       const tc = this.cellLocal(to.robot);
       const tweenRobot = this.tweenTo(this.robot, tc.x, tc.y, duration);
-      if (to.holding) {
-        const cc = this.crateVisualPosition(to.crate, to.robot);
-        await Promise.all([
-          tweenRobot,
-          this.tweenTo(this.crate, cc.x, cc.y, duration),
-        ]);
+      if (to.heldId !== null) {
+        const held = to.cargo.find((c) => c.id === to.heldId)!;
+        const container = this.cargoItems.get(held.id)!;
+        const cc = this.cargoVisualPosition(held, to.robot, true);
+        await Promise.all([tweenRobot, this.tweenTo(container, cc.x, cc.y, duration)]);
       } else {
         await tweenRobot;
       }
@@ -1134,33 +1384,139 @@ export class AssemblyScene extends Phaser.Scene {
           onComplete: () => resolve(),
         });
       });
-      if (to.holding) {
-        const cc = this.crateVisualPosition(to.crate, to.robot);
-        await Promise.all([turnRobot, this.tweenTo(this.crate, cc.x, cc.y, duration)]);
+      if (to.heldId !== null) {
+        const held = to.cargo.find((c) => c.id === to.heldId)!;
+        const container = this.cargoItems.get(held.id)!;
+        const cc = this.cargoVisualPosition(held, to.robot, true);
+        await Promise.all([turnRobot, this.tweenTo(container, cc.x, cc.y, duration)]);
       } else {
         await turnRobot;
       }
       return;
     }
+
     // grab / release
-    this.sfx.grab();
-    const cc = this.crateVisualPosition(to.crate, to.robot);
-    const scale = to.holding ? 0.78 : 1;
-    await Promise.all([
-      this.tweenTo(this.crate, cc.x, cc.y, duration * 0.7, { scale }),
-      new Promise<void>((resolve) => {
-        this.tweens.add({
-          targets: this.robot,
-          scaleX: to.holding ? 0.92 : 1.08,
-          duration: duration * 0.35,
-          yoyo: true,
-          onComplete: () => {
-            this.robot.setScale(1);
-            resolve();
-          },
-        });
-      }),
-    ]);
+    const pickedUp = from.heldId === null && to.heldId !== null;
+    const dropped = from.heldId !== null && to.heldId === null;
+    const heldId = to.heldId ?? from.heldId!;
+    const item = to.cargo.find((c) => c.id === heldId)!;
+    const container = this.cargoItems.get(heldId)!;
+    const cc = this.cargoVisualPosition(item, to.robot, to.heldId !== null);
+
+    const squash = new Promise<void>((resolve) => {
+      this.tweens.add({
+        targets: this.robot,
+        scaleX: pickedUp ? 0.92 : 1.08,
+        duration: duration * 0.35,
+        yoyo: true,
+        onComplete: () => {
+          this.robot.setScale(1);
+          resolve();
+        },
+      });
+    });
+
+    if (pickedUp) {
+      this.sfx.grab();
+      await Promise.all([
+        this.tweenTo(container, cc.x, cc.y, duration * 0.7, { scale: 0.78 }),
+        squash,
+      ]);
+      return;
+    }
+    if (dropped) {
+      this.sfx.grab();
+      await Promise.all([
+        this.tweenTo(container, cc.x, cc.y, duration * 0.7, { scale: 1 }),
+        squash,
+      ]);
+      if (isDelivered(item, this.level)) {
+        container.setDepth(16);
+        this.sfx.place();
+        this.flashDock(item.x, item.y);
+      }
+      return;
+    }
+    // Neither picked up nor dropped: nothing to animate.
+    await this.wait(duration * 0.3);
+  }
+
+  /** Shake the carried cargo, buzz, and flash the mismatched dock red. */
+  private async wrongDockFeedback(from: FloorState): Promise<void> {
+    const heldId = from.heldId!;
+    const held = from.cargo.find((c) => c.id === heldId)!;
+    const container = this.cargoItems.get(heldId);
+    if (container !== undefined) this.shake(container);
+    this.shake(this.robot);
+    this.sfx.denied();
+    const dock = this.level.deliveries.find(
+      (d) => d.dock.x === from.robot.x && d.dock.y === from.robot.y,
+    )!;
+    const g = this.add.graphics().setDepth(22);
+    const cx = this.layout.boardX + (dock.dock.x + 0.5) * this.layout.cellSize;
+    const cy = this.layout.boardY + (dock.dock.y + 0.5) * this.layout.cellSize;
+    g.lineStyle(5 * this.layout.boardScale, 0xe8717a, 0.95);
+    g.strokeRoundedRect(
+      cx - this.layout.cellSize / 2 + 2,
+      cy - this.layout.cellSize / 2 + 2,
+      this.layout.cellSize - 4,
+      this.layout.cellSize - 4,
+      10,
+    );
+    this.tweens.add({ targets: g, alpha: 0, duration: 500, onComplete: () => g.destroy() });
+    this.setStatus('Wrong dock! Bring this part to the dock with the same color.');
+    await this.wait(420);
+  }
+
+  /** Brief bright ring on a cell after a successful delivery. */
+  private flashDock(x: number, y: number): void {
+    const g = this.add.graphics().setDepth(22);
+    const cx = this.layout.boardX + (x + 0.5) * this.layout.cellSize;
+    const cy = this.layout.boardY + (y + 0.5) * this.layout.cellSize;
+    g.lineStyle(4 * this.layout.boardScale, 0xfff4d6, 1);
+    g.strokeRoundedRect(
+      cx - this.layout.cellSize / 2 + 3,
+      cy - this.layout.cellSize / 2 + 3,
+      this.layout.cellSize - 6,
+      this.layout.cellSize - 6,
+      10,
+    );
+    this.tweens.add({ targets: g, alpha: 0, duration: 450, onComplete: () => g.destroy() });
+  }
+
+  /** Pulse the undelivered cargo and its matching dock so feedback is not text-only. */
+  private pulseRemaining(): void {
+    const g = this.add.graphics().setDepth(22);
+    const cells = new Map<string, { x: number; y: number; color: number }>();
+    for (const delivery of this.level.deliveries) {
+      const item = this.liveState.cargo.find((c) => c.id === delivery.id);
+      if (item === undefined || isDelivered(item, this.level)) continue;
+      const meta = payloadMeta(delivery.type);
+      cells.set(`cargo:${delivery.id}`, { x: item.x, y: item.y, color: meta.color });
+      cells.set(`dock:${delivery.id}`, { x: delivery.dock.x, y: delivery.dock.y, color: meta.color });
+    }
+    for (const cell of cells.values()) {
+      const cx = this.layout.boardX + (cell.x + 0.5) * this.layout.cellSize;
+      const cy = this.layout.boardY + (cell.y + 0.5) * this.layout.cellSize;
+      g.lineStyle(4 * this.layout.boardScale, cell.color, 1);
+      g.strokeRoundedRect(
+        cx - this.layout.cellSize / 2 + 4,
+        cy - this.layout.cellSize / 2 + 4,
+        this.layout.cellSize - 8,
+        this.layout.cellSize - 8,
+        10,
+      );
+    }
+    if (!this.reducedMotion) {
+      this.tweens.add({
+        targets: g,
+        alpha: { from: 1, to: 0.35 },
+        duration: 350,
+        yoyo: true,
+        repeat: 2,
+      });
+    }
+    this.time.delayedCall(1400, () => g.destroy());
   }
 
   private tweenTo(
@@ -1223,13 +1579,13 @@ export class AssemblyScene extends Phaser.Scene {
     if (!this.reducedMotion) {
       this.tweens.add({ targets: this.robot, scale: 1.15, duration: 180, yoyo: true, repeat: 2 });
     }
-    const isLast = this.currentLevelIndex >= LEVELS.length - 1;
-    this.redrawPlayIcon(isLast ? 'restart' : 'next');
-    this.setStatus(
-      isLast
-        ? 'Sparky did it! Press PLAY to restart from level 1.'
-        : 'Sparky did it! Press NEXT to continue.',
-    );
+    this.redrawPlayIcon('next');
+    const nextMessage = this.inRandomMode
+      ? 'Sparky did it! Press NEXT for a new Random Shift.'
+      : this.currentLevelIndex >= LEVELS.length - 1
+        ? 'Sparky did it! Press NEXT to start Random Shifts.'
+        : 'Sparky did it! Press NEXT to continue.';
+    this.setStatus(nextMessage);
   }
 
   // ── fullscreen ─────────────────────────────────────────────

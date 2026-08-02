@@ -80,6 +80,12 @@ export class Sfx {
     this.tone(150, 0.16, 'sawtooth', 0.16);
   }
 
+  /** Short descending buzz for a refused drop on the wrong dock. */
+  denied(): void {
+    this.tone(300, 0.1, 'sawtooth', 0.15, 180);
+    this.tone(180, 0.14, 'sawtooth', 0.15, 120, 0.09);
+  }
+
   success(): void {
     const notes = [523.25, 659.25, 783.99, 1046.5];
     notes.forEach((freq, index) => this.tone(freq, 0.2, 'sine', 0.18, undefined, index * 0.11));

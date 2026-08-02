@@ -7,8 +7,12 @@ export interface BeltEdit {
 }
 
 /** Append a command to the next free belt slot if there is room. */
-export function appendCommand(belt: readonly Command[], command: Command): BeltEdit {
-  if (belt.length >= BELT_SLOTS) return { belt, changed: false };
+export function appendCommand(
+  belt: readonly Command[],
+  command: Command,
+  slots: number = BELT_SLOTS,
+): BeltEdit {
+  if (belt.length >= slots) return { belt, changed: false };
   return { belt: [...belt, command], changed: true };
 }
 

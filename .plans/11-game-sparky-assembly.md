@@ -2,11 +2,21 @@
 
 **Existing version:** `robot-factory.html`
 
-**Status (implemented):** First playable Phaser+TS rewrite lives at `games/sparky-assembly/`.
-One 5×5 puzzle (Sparky at (0,4) facing east, crate at (0,2), goal at (2,2)); commands move /
-turn-left / turn-right / grab(release) on an 8-slot belt; Run, Step, Reset; procedural visuals +
-procedural Web Audio sound. `robot-factory.html` redirects to the new game and the original is kept at
-`classic/robot-factory.html`. Root build + validate pass. Still needs: tablet playtest and tuning.
+**Status (implemented):** The Phaser+TS rewrite lives at `games/sparky-assembly/` and replaces
+`robot-factory.html`, which now redirects to the new game; the original is kept at
+`classic/robot-factory.html`.
+
+Ten authored levels on a 5×5 floor teach the core commands (move / turn-left / turn-right /
+grab-drop) on an 8-slot belt, then introduce raised wall obstacles, three matching cargo types
+(gears, batteries, circuits), and two-delivery shifts on a 10-slot belt. Each part must be dropped
+on the dock with the same colour and glyph; the wrong dock is refused without losing the part.
+After level 10, an endless stream of deterministic, solver-checked **Random Shifts** begins — every
+level is verified reachable and solvable within its belt capacity before it appears. Run, Step,
+Undo, Clear, sound, and fullscreen are on screen and via keyboard. The robot, workbench backdrop, and
+the three cargo props (gear bin, battery pack, circuit crate) are generated raster art; the steel
+floor, walls, docks, plates, and effects are Phaser graphics; sound is procedural Web Audio.
+Workspace typecheck, tests, and build pass. Still
+needs: tablet playtest and tuning.
 
 ## Idea
 
@@ -29,11 +39,11 @@ The program should always be readable from what Sparky does.
 
 | Action | Touch | Keyboard/mouse |
 |---|---|---|
-| Add or move module | Drag | Drag |
-| Remove module | Tap then remove | Delete |
-| Run or pause | Tap button | Space |
-| Step | Tap Step | S |
-| Reset | Tap Reset | R |
+| Add command | Tap its large button | W / A / D / G or arrow keys |
+| Remove command | Tap a filled belt slot | Backspace / Delete removes the last command |
+| Run program | Tap Play | Space / Enter |
+| Step once | Tap Step | S / Period |
+| Undo or clear | Tap Undo or Clear | Backspace / Delete or C |
 
 ## Smallest fun version
 
@@ -62,10 +72,10 @@ Bright mechanical toy factory, physical modules with lights and satisfying snap,
 ## Tricky logic worth testing
 
 - deterministic command execution
-- bounded loops
-- floor and goal validity
-- execution trace and failure location
-- save progress if added
+- matching deliveries and locked completed cargo
+- authored and generated floor validity
+- shortest-program solving within each belt
+- seeded Random Shift determinism
 
 ## Ready for the portfolio when
 

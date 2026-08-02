@@ -57,33 +57,55 @@ function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value));
 }
 
-export function createLayout(width: number, height: number): AssemblyLayout {
+export function createLayout(width: number, height: number, beltSlots: number = BELT_SLOTS): AssemblyLayout {
   const stacked = width < height;
-  if (stacked) return stackedLayout(width, height);
-  return sideBySideLayout(width, height);
+  if (stacked) return stackedLayout(width, height, beltSlots);
+  return sideBySideLayout(width, height, beltSlots);
 }
 
-function sideBySideLayout(width: number, height: number): AssemblyLayout {
+function sideBySideLayout(width: number, height: number, beltSlots: number): AssemblyLayout {
   const margin = clamp(Math.min(width, height) * 0.03, 12, 28);
   const gap = clamp(width * 0.014, 12, 20);
   const panelWidth = clamp(width * 0.26, 220, 300);
 
   const availableBoardWidth = width - margin * 2 - gap - panelWidth;
-  const beltHeight = clamp(availableBoardWidth * 0.17, 64, 112);
+  const baseBeltHeight = clamp(availableBoardWidth * 0.17, 64, 112);
+
+  // Ten-slot belts wrap into two rows of five so every slot stays a touch
+  // target; eight-slot belts stay in one aligned row unless the row would
+  // shrink below a touchable width, in which case they wrap into two rows.
+  let beltRows = beltSlots > 8 ? 2 : 1;
+  let beltCols = beltSlots > 8 ? 5 : beltSlots;
+  let beltGap = beltRows > 1 ? 8 : 0;
+  let beltSlotHeight = beltRows > 1
+    ? clamp(Math.round(baseBeltHeight * 0.62), 44, 76)
+    : baseBeltHeight;
+  let beltHeight = beltRows * beltSlotHeight + (beltRows - 1) * beltGap;
+
+  {
+    const estimateHeight = height - margin * 2 - gap - beltHeight;
+    const estimateCell = Math.min(availableBoardWidth / COLS, estimateHeight / ROWS);
+    const estimateSlot = Math.floor((estimateCell * COLS) / beltCols);
+    if (beltSlots === 8 && estimateSlot < 44) {
+      beltRows = 2;
+      beltCols = 4;
+      beltGap = 8;
+      beltSlotHeight = clamp(Math.round(baseBeltHeight * 0.62), 44, 76);
+      beltHeight = beltRows * beltSlotHeight + (beltRows - 1) * beltGap;
+    }
+  }
 
   const availableBoardHeight = height - margin * 2 - gap - beltHeight;
   const cellSize = Math.min(availableBoardWidth / COLS, availableBoardHeight / ROWS);
   const boardWidth = cellSize * COLS;
   const boardHeight = cellSize * ROWS;
 
-  // Belt spans the actual board width so it stays aligned with the board
-  // even when the board height (not width) is what limits cell size.
-  const beltWidth = boardWidth;
-  const beltSlotWidth = Math.floor(beltWidth / BELT_SLOTS);
-  const beltCols = BELT_SLOTS;
-  const beltRows = 1;
-  const beltGap = 0;
-  const beltSlotHeight = beltHeight;
+  // A wrapped belt includes its column gaps; a single row stays aligned to
+  // the board width with any rounding remainder centered under it.
+  const beltSlotWidth = Math.floor(boardWidth / beltCols);
+  const beltWidth = beltRows > 1
+    ? beltCols * beltSlotWidth + (beltCols - 1) * beltGap
+    : boardWidth;
 
   const contentHeight = boardHeight + gap + beltHeight;
 
@@ -93,7 +115,7 @@ function sideBySideLayout(width: number, height: number): AssemblyLayout {
   const boardY = Math.round((height - contentHeight) / 2);
   const boardScale = cellSize / DESIGN_CELL_SIZE;
 
-  const beltX = boardX + (boardWidth - beltSlotWidth * BELT_SLOTS) / 2;
+  const beltX = boardX + (boardWidth - beltWidth) / 2;
   const beltY = boardY + boardHeight + gap;
 
   const panelX = boardX + boardWidth + gap;
@@ -127,15 +149,16 @@ function sideBySideLayout(width: number, height: number): AssemblyLayout {
   };
 }
 
-function stackedLayout(width: number, height: number): AssemblyLayout {
+function stackedLayout(width: number, height: number, beltSlots: number): AssemblyLayout {
   const margin = clamp(Math.min(width, height) * 0.03, 10, 24);
   const gap = clamp(width * 0.02, 8, 16);
 
-  // Two rows of four below 390px keep each slot a usable touch target.
+  // Ten-slot belts always wrap into two rows of five; narrow phones wrap
+  // eight-slot belts into two rows of four to keep each slot a touch target.
   const wrapped = width < BELT_WRAP_WIDTH;
-  const beltCols = wrapped ? 4 : BELT_SLOTS;
-  const beltRows = wrapped ? 2 : 1;
-  const slotGap = wrapped ? 6 : 0;
+  const beltCols = beltSlots > 8 ? 5 : wrapped ? 4 : beltSlots;
+  const beltRows = beltSlots > 8 || wrapped ? 2 : 1;
+  const slotGap = beltRows > 1 ? 6 : 0;
   const innerW = width - margin * 2;
   const beltSlotWidth = Math.floor((innerW - (beltCols - 1) * slotGap) / beltCols);
   const beltSlotHeight = clamp(Math.round(beltSlotWidth * 0.78), 44, 84);
