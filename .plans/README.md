@@ -83,13 +83,16 @@ A game does not need a large campaign, a fixed number of levels, every idea in i
 
 The small technical foundation is working: the npm workspace, strict TypeScript setup, tests, portfolio build, and generated-site validation are in place.
 
-Three Phaser rewrites are included in the generated portfolio:
+Six Phaser rewrites are included in the generated portfolio:
 
 - **Railway Workshop:** endless procedurally generated track puzzles (deterministic per session) with touch controls, sound, route navigation, and responsive layout. Playtested on the target tablet and working well.
 - **Wild Pairs:** four board sizes with procedural animal art, touch and keyboard controls, sound, and a completion celebration. Playtested on the target tablet and working well.
-- **Canopy Caper:** one authored jungle climb with running, jumping, a vine swing, fruit, checkpoints, touch controls, and procedural sound. Tablet playtesting found that combining direction and jump is difficult.
+- **Canopy Caper:** one authored jungle climb with running, jumping, a vine swing, fruit, checkpoints, touch controls, and procedural sound. Tablet controls are working well.
+- **The Enchanted Toyshop:** a paper-theatre puzzle story with two rooms, persistent progress, and touch-friendly play.
+- **Sparky's Assembly Line:** deterministic solver-generated robot factory puzzles with a celebration and automatic progression.
+- **Little Chef's Grand Kitchen:** a first playable bread-line puzzle awaiting owner tablet playtest.
 
-The originals of those three games are preserved under `classic/`. Type checking, tests, and generated-site validation currently pass. The main unfinished work is fixing and retesting Canopy Caper's touch controls.
+The originals of these rewritten games are preserved under `classic/`. Type checking, tests, and generated-site validation currently pass. Little Chef is the newest first playable and is awaiting owner tablet playtest.
 
 ## Portfolio
 
@@ -99,14 +102,14 @@ These are available ideas, not a binding schedule:
 |---|---|---|
 | Train Tracks | [Railway Workshop](06-game-railway-workshop.md) | In portfolio; tablet playtest passed |
 | Animal Memory | [Wild Pairs](07-game-wild-pairs.md) | In portfolio; tablet playtest passed |
-| Monkey Banana | [Canopy Caper](08-game-canopy-caper.md) | In portfolio; touch direction and jumping need work |
+| Monkey Banana | [Canopy Caper](08-game-canopy-caper.md) | In portfolio; tablet playtest passed and controls working |
 | Cheese Heist | [The Enchanted Toyshop](09-game-enchanted-toyshop.md) | First playable version |
 | Valley Explorer | [Valley of Echoes](10-game-valley-echoes.md) | Idea |
-| Robot Factory | [Sparky's Assembly Line](11-game-sparky-assembly.md) | Idea |
+| Robot Factory | [Sparky's Assembly Line](11-game-sparky-assembly.md) | In portfolio |
 | Code Adventure | [Bit's Grand Adventure](12-game-bit-adventure.md) | Idea |
 | Coco's Lost Hat | [Coco's Lost Hat](13-game-coco-hat.md) | Idea |
 | Hippo | [Hippo's Great Feast](14-game-hippo-feast.md) | Idea |
-| Little Chef's Kitchen | [Little Chef's Grand Kitchen](15-game-little-chef.md) | Idea |
+| Little Chef's Kitchen | [Little Chef's Grand Kitchen](15-game-little-chef.md) | First playable; awaiting owner tablet playtest |
 | Critter Tactics | [Critter Tactics](16-game-critter-tactics.md) | Existing Vite game builds correctly; rewrite is optional |
 
 Choose the next game freely; there is no required order.
@@ -136,8 +139,7 @@ Before publishing, run the relevant checks, open the built game, play its main p
 
 ## Next steps
 
-1. Fix Canopy Caper's touch controls so the player can hold a direction and jump reliably at the same time.
-2. Replay the full climb on the target tablet and tune the control size, placement, jump timing, and vine release until movement feels comfortable.
-3. Run the production build, open Canopy Caper, and play its main path before publishing the revision.
-4. Playtest The Enchanted Toyshop with a child and simplify anything that needs explanation.
-5. Add a lightweight game starter or extract shared code only when starting that next game proves it will save time.
+1. Playtest Little Chef's Grand Kitchen on the target tablet and tune the line-building interaction.
+2. Continue publishing playable builds for owner testing as they are ready, then tune them from feedback.
+3. Playtest The Enchanted Toyshop with a child and simplify anything that needs explanation.
+4. Add a lightweight game starter or extract shared code only when starting that next game proves it will save time.

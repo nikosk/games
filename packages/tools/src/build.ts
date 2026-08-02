@@ -25,10 +25,6 @@ const legacyDirectories = [
     sources: ['index.html', 'styles.css', 'game.js', 'assets'],
   },
   {
-    destination: 'little-chef-kitchen',
-    sources: ['index.html', 'css', 'js'],
-  },
-  {
     destination: 'classic',
     sources: ['index.html', 'train-tracks.html', 'animal-memory.html', 'monkey-banana.html', 'robot-factory.html'],
   },
@@ -115,6 +111,7 @@ async function build(): Promise<void> {
         await copy(`${directory.destination}/${source}`);
       }
     }
+    await copy('classic/little-chef-kitchen', 'classic/little-chef-kitchen');
 
     await buildWorkspaceGames();
     await buildClassicCheeseHeist();
