@@ -4,11 +4,11 @@
 
 **Player fantasy:** Wake a cozy toyshop at night and solve its magical picture puzzles.
 
-**Main action:** Tap glowing toy displays, match shapes, copy a visual pattern, and collect four stars that open the moonlit door.
+**Main action:** Tap eight glowing room objects, solve a varied word-free puzzle at each one, and restore the stars that open the moonlit door.
 
 **Controls:** Large tap and drag targets. No reading and no voice-over.
 
-**Visual mood:** Bold preschool-cartoon shapes, thick navy outlines, plum twilight, bright toy colours, and cream-and-gold magic.
+**Visual mood:** A handcrafted paper theatre made from layered card, felt toys, painted wood, embroidery, plum curtains, and cream-and-gold magic.
 
 ## Audience
 
@@ -16,14 +16,15 @@ Ages 3–5. Every clue must be visual. Mistakes should gently reset only the cur
 
 ## Current version
 
-The first playable version replaces Cheese Heist at `games/cheese-heist/` while keeping its public URL. It has one room and four puzzles:
+The playable version replaces Cheese Heist at `games/cheese-heist/` while keeping its public URL. A visual level picker gives direct access to both rooms. Each room has eight large clickable objects, home and fullscreen controls, and a full-viewport responsive canvas.
 
-- match coloured hats to teddy bears
-- copy a three-symbol light pattern
-- drag picture tiles onto matching shadows
-- turn kaleidoscope lenses to match the pictures above
+Level 1 randomly assigns eight distinct visual puzzles: colour match, light melody, shadow fit, kaleidoscope dials, find the twin, odd one out, toy tower, and peekaboo pairs.
 
-Each puzzle awards a star. All four stars open the door, which reveals a forward arrow into Level 2, The Counting Menagerie: a second toy room where children drag numeral tiles onto groups of animals, answer picture addition from three choices (1+1, 1+2, 2+2), and fill the missing carriage on a number train. Each of the three counting stations awards a star, and three stars finish the level and show the replay button, which restarts from Level 1. The original Cheese Heist is preserved at `classic/cheese-heist/`.
+Level 2 randomly assigns eight early-number puzzles: count and match, picture addition, number train, more or fewer, number dials, number melody, find the group, and numeral/group odd one out. Generated challenges stay within numerals 1–5 and have one unambiguous solution.
+
+Each solved object restores a star without losing earlier progress. All eight stars open the moon door. A generated paper fairy guides the child, flies through the Level 1 door, and celebrates after Level 2 before returning to the picker. The original Cheese Heist is preserved at `classic/cheese-heist/`.
+
+The production art direction is **handcrafted paper theatre**: layered cut paper, felt toys, painted wood, embroidered details, deckled edges, and shallow material shadows. Generated assets carry the room and character presentation; Phaser provides deterministic hit areas, rules, animation, timing, input, and feedback.
 
 ## Next playtest
 
