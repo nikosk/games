@@ -1,687 +1,709 @@
 import Phaser from "phaser";
-import { createKitchenLayout, type KitchenLayout } from "../game/layout";
-import { LEVELS, levelFor, type Cell, type Direction } from "../game/level";
+import { LEVEL, type PieceKind, type Point } from "../game/level";
 import {
-  rotate,
-  traceKitchenLine,
-  type RunPhase,
+  freshKitchen,
+  nextMatchingSocket,
+  placePiece,
+  placementsReady,
+  type KitchenState,
 } from "../game/rules";
+import {
+  createKitchenLayout,
+  type KitchenLayout,
+  type Rect,
+} from "../game/layout";
+import backgroundUrl from "../../assets/images/kitchen-background.webp";
+import customerUrl from "../../assets/images/tilly-rabbit-display.png";
 
-const COLORS = {
-  ink: 0x3d291e,
-  wood: 0x70452e,
-  cream: 0xffedc4,
-  gold: 0xffd77c,
-  terracotta: 0xc95c43,
-  green: 0x315d50,
-  cell: 0xf8dda7,
-  belt: 0xa66a48,
-  route: 0xffef9a,
+const C = {
+  ink: 0x493327,
+  wood: 0x75442e,
+  cream: 0xfff3d4,
+  gold: 0xf4c965,
+  red: 0xc95c43,
+  toast: 0xd77b31,
+  dark: 0x533529,
 };
-const ARROWS: Record<Direction, string> = {
-  right: "→",
-  down: "↓",
-  left: "←",
-  up: "↑",
-};
-const key = (cell: Cell) => `${cell.x},${cell.y}`;
-
-class KitchenAudio {
-  private context: AudioContext | null = null;
-  unlock() {
-    if (!this.context) this.context = new AudioContext();
-    if (this.context.state === "suspended") void this.context.resume();
-  }
-  tone(frequency: number, duration = 0.12, type: OscillatorType = "sine") {
-    if (!this.context) return;
-    const now = this.context.currentTime;
-    const oscillator = this.context.createOscillator();
-    const gain = this.context.createGain();
-    oscillator.type = type;
-    oscillator.frequency.value = frequency;
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.12, now + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-    oscillator.connect(gain).connect(this.context.destination);
-    oscillator.start(now);
-    oscillator.stop(now + duration + 0.02);
-  }
-  placement() {
-    this.tone(420);
-  }
-  rotate() {
-    this.tone(560);
-  }
-  jam() {
-    this.tone(130, 0.22, "sawtooth");
-  }
-  toaster() {
-    this.tone(220, 0.5, "square");
-  }
-  ding() {
-    this.tone(880, 0.2);
-  }
-  serve() {
-    this.tone(660, 0.18);
-    setTimeout(() => this.tone(990, 0.22), 100);
-  }
-  destroy() {
-    void this.context?.close();
-    this.context = null;
-  }
-}
-
 export class KitchenScene extends Phaser.Scene {
+  private level = LEVEL;
+  private state: KitchenState = freshKitchen(this.level);
   private layout!: KitchenLayout;
-  private level = LEVELS[0]!;
-  private belts = new Map<string, Direction>();
-  private selected: Direction = "right";
-  private phase: RunPhase = "editing";
-  private message = "Build a line to the toaster.";
-  private moving: Phaser.GameObjects.Container | null = null;
+  private selected: number | null = null;
+  private dragging: number | null = null;
+  private moved = false;
+  private dragStart = { x: 0, y: 0 };
+  private running = false;
+  private pendingResize = false;
+  private token = 0;
+  private ghost: Phaser.GameObjects.Graphics | undefined;
+  private ghostTween: Phaser.Tweens.Tween | undefined;
+  private wrongTray: number | null = null;
   private reduced = false;
-  private audio = new KitchenAudio();
-  private keyHandler!: (event: KeyboardEvent) => void;
-  private resizePending = false;
-  private jamCell: Cell | null = null;
-  private itemGlyph = "🍞";
-
+  private message = "Help Tilly make toast!";
+  private audio?: AudioContext;
+  private keyHandler!: (e: KeyboardEvent) => void;
   constructor() {
     super("KitchenScene");
   }
-
+  preload() {
+    this.load.image("kitchen-background", backgroundUrl);
+    this.load.image("tilly-rabbit", customerUrl);
+  }
   create() {
     this.reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    this.keyHandler = (event) => {
-      if (event.key === "r") this.run();
-      else if (event.key === "z") this.undo();
-      else if (event.key === "c") this.clear();
-      else if (event.key === "s") this.serve();
-      else if (event.key === "1") this.selectDirection("right");
-      else if (event.key === "2") this.selectDirection("down");
-      else if (event.key === "3") this.selectDirection("left");
-      else if (event.key === "4") this.selectDirection("up");
+    this.keyHandler = (e) => {
+      if (e.key === "1") this.select(0);
+      if (e.key === "2") this.select(1);
+      if (e.key === "3") this.select(2);
+      if (e.key.toLowerCase() === "n" && !this.running && this.state.complete)
+        this.reset();
     };
     addEventListener("keydown", this.keyHandler);
-    this.scale.on("resize", this.handleResize, this);
+    this.input.on("pointermove", (p: Phaser.Input.Pointer) => {
+      if (
+        this.dragging !== null &&
+        Phaser.Math.Distance.Between(
+          p.x,
+          p.y,
+          this.dragStart.x,
+          this.dragStart.y,
+        ) > 10
+      )
+        this.moved = true;
+    });
+    this.input.on("pointerup", () => {
+      if (this.dragging !== null && this.moved)
+        this.drop(this.input.activePointer.x, this.input.activePointer.y);
+      else this.dragging = null;
+    });
+    this.scale.on(Phaser.Scale.Events.RESIZE, this.resize, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
     this.redraw();
+    this.showGhost();
   }
-
   private shutdown() {
     removeEventListener("keydown", this.keyHandler);
-    this.scale.off("resize", this.handleResize, this);
+    this.scale.off(Phaser.Scale.Events.RESIZE, this.resize, this);
     this.tweens.killAll();
     this.time.removeAllEvents();
-    this.audio.destroy();
+    void this.audio?.close();
   }
-  private announce() {
-    const status = document.getElementById("kitchen-status");
-    if (status) status.textContent = this.message;
-  }
-  private handleResize() {
-    if (
-      this.phase === "moving" ||
-      this.phase === "toasting" ||
-      this.phase === "serving"
-    ) {
-      this.resizePending = true;
-      this.cancelMotionForResize();
+  private resize() {
+    if (this.running) {
+      this.pendingResize = true;
       return;
     }
     this.redraw();
   }
-  private cancelMotionForResize() {
-    this.tweens.killAll();
-    if (this.moving) {
-      this.moving.destroy();
-      this.moving = null;
-    }
-    this.phase = this.phase === "serving" ? "plated" : "editing";
-    this.message =
-      this.phase === "plated"
-        ? "The toast is ready. Tap SERVE."
-        : "Resize complete. Your belt line is ready to edit.";
-    this.resizePending = false;
-    this.redraw();
-  }
-
   private redraw() {
+    this.ghostTween?.stop();
+    this.ghost?.destroy();
+    this.ghost = undefined;
+    this.ghostTween = undefined;
     this.children.removeAll(true);
-    this.moving = null;
     this.layout = createKitchenLayout(
-      this.scale.width || innerWidth,
-      this.scale.height || innerHeight,
-    );
+      this.scale.width,
+      this.scale.height,
+       );
     this.drawBackground();
-    this.drawBoard();
-    this.drawPanel();
-    this.drawControls();
+    this.drawTitle();
+    this.drawCounter();
+    this.drawTray();
+    this.drawTilly(this.layout.customer);
+    if (this.state.complete) {
+      this.drawToastOnPlate();
+      this.drawNext();
+    }
     this.announce();
+  }
+  private announce() {
+    const el = document.getElementById("kitchen-status");
+    if (el) el.textContent = this.message;
+  }
+  private graphics() {
+    return this.add.graphics({});
   }
   private text(
     x: number,
     y: number,
-    content: string,
+    s: string,
     size: number,
-    color: number = COLORS.ink,
+    color = C.ink,
     bold = false,
-    width?: number,
   ) {
-    const style = {
-      fontFamily: "Georgia, serif",
-      fontSize: `${size}px`,
-      color: `#${color.toString(16).padStart(6, "0")}`,
-      fontStyle: bold ? "bold" : "normal",
-      align: "center",
-      ...(width ? { wordWrap: { width } } : {}),
-    };
-    return this.add.text(x, y, content, style).setOrigin(0.5);
-  }
-  private box(
-    rect: { x: number; y: number; width: number; height: number },
-    fill: number,
-    stroke = COLORS.gold,
-    radius = 14,
-  ) {
-    const graphics = this.add.graphics();
-    graphics
-      .fillStyle(fill, 1)
-      .fillRoundedRect(rect.x, rect.y, rect.width, rect.height, radius)
-      .lineStyle(3, stroke, 1)
-      .strokeRoundedRect(rect.x, rect.y, rect.width, rect.height, radius);
-    return graphics;
+    return this.add
+      .text(x, y, s, {
+        fontFamily: "Georgia,serif",
+        fontSize: `${size}px`,
+        color: `#${color.toString(16).padStart(6, "0")}`,
+        fontStyle: bold ? "bold" : "normal",
+        align: "center",
+      })
+      .setOrigin(0.5);
   }
   private drawBackground() {
-    const graphics = this.add.graphics();
-    graphics
-      .fillStyle(0x164c45, 1)
-      .fillRect(0, 0, this.scale.width, this.scale.height);
-    for (let x = 0; x < this.scale.width; x += 44)
-      for (let y = 0; y < this.scale.height; y += 44)
-        graphics.fillStyle(0x2c7063, 0.2).fillCircle(x + 9, y + 14, 2);
+    const w = this.scale.width,
+      h = this.scale.height;
+    this.add.image(w / 2, h / 2, "kitchen-background").setDisplaySize(w, h);
+    this.add.rectangle(w / 2, h / 2, w, h, 0xffe8b0, 0.06);
   }
-  private drawBoard() {
-    this.box(this.layout.board, COLORS.wood, 0xd99553, 18);
-    for (let i = 0; i < this.layout.cells.length; i += 1) {
-      const cell = this.layout.cells[i]!;
-      const coords = { x: i % 6, y: Math.floor(i / 6) };
-      const station = this.stationAt(coords);
-      const belt = this.belts.get(key(coords));
-      const fill =
-        station === "source"
-          ? 0xf0b84e
-          : station === "toaster"
-            ? 0xe07b45
-            : station === "plate"
-              ? 0x7abf9e
-              : belt
-                ? COLORS.belt
-                : COLORS.cell;
-      this.box(
-        cell,
-        fill,
-        station ? COLORS.gold : belt ? 0xdcae63 : 0xa9c77b,
-        station ? 18 : 12,
-      );
-      if (belt) {
-        this.text(
-          cell.x + cell.width / 2,
-          cell.y + cell.height / 2,
-          ARROWS[belt],
-          Math.max(28, cell.width * 0.36),
-          COLORS.cream,
-          true,
-        );
-        this.text(
-          cell.x + cell.width / 2,
-          cell.y + cell.height - 14,
-          "BELT",
-          11,
-          COLORS.cream,
-          true,
-        );
-      }
-      if (station === "source") {
-        this.text(
-          cell.x + cell.width / 2,
-          cell.y + cell.height * 0.37,
-          "▰",
-          Math.min(40, cell.width * 0.3),
-          COLORS.ink,
-          true,
-        );
-        this.text(
-          cell.x + cell.width / 2,
-          cell.y + cell.height * 0.74,
-          "BREAD IN",
-          12,
-          COLORS.ink,
-          true,
-        );
-      }
-      if (station === "toaster") {
-        this.text(
-          cell.x + cell.width / 2,
-          cell.y + cell.height * 0.35,
-          "♨",
-          Math.min(42, cell.width * 0.35),
-          COLORS.ink,
-        );
-        this.text(
-          cell.x + cell.width / 2,
-          cell.y + cell.height * 0.74,
-          "TOASTER",
-          12,
-          COLORS.ink,
-          true,
-        );
-      }
-      if (station === "plate") {
-        this.text(
-          cell.x + cell.width / 2,
-          cell.y + cell.height * 0.35,
-          "◉",
-          Math.min(42, cell.width * 0.35),
-          COLORS.ink,
-        );
-        this.text(
-          cell.x + cell.width / 2,
-          cell.y + cell.height * 0.74,
-          "PLATE OUT",
-          12,
-          COLORS.ink,
-          true,
-        );
-      }
-    }
-    if (this.jamCell) {
-      const jamRect = this.layout.cells[this.jamCell.y * 6 + this.jamCell.x];
-      if (jamRect) {
-        const marker = this.add.graphics().setDepth(15);
-        marker.lineStyle(7, 0xf04f45, 1).strokeRoundedRect(
-          jamRect.x + 4, jamRect.y + 4, jamRect.width - 8, jamRect.height - 8, 14,
-        );
-        this.tweens.add({ targets: marker, alpha: 0.25, duration: 360, yoyo: true, repeat: -1 });
-        this.text(jamRect.x + jamRect.width / 2, jamRect.y + 18, "FIX ME", 11, 0xf04f45, true).setDepth(16);
-      }
-    }
-    for (const coords of this.level.cells) {
-      const rect = this.layout.cells[coords.y * 6 + coords.x]!;
-      const zone = this.add
-        .zone(rect.x, rect.y, rect.width, rect.height)
-        .setOrigin(0)
-        .setInteractive();
-      zone.on("pointerdown", () => this.tapCell(coords.x, coords.y));
-    }
-  }
-  private stationAt(cell: Cell): "source" | "toaster" | "plate" | null {
-    if (key(cell) === key(this.level.source)) return "source";
-    if (key(cell) === key(this.level.toaster)) return "toaster";
-    if (key(cell) === key(this.level.plate)) return "plate";
-    return null;
-  }
-  private drawPanel() {
-    const panel = this.layout.panel;
-    this.box(panel, COLORS.wood, 0xd99553, 18);
+  private drawTitle() {
+    const r = this.layout.title,
+      g = this.graphics();
+    g.fillStyle(0x70452e, 0.88)
+      .fillRoundedRect(r.x, r.y, r.width, r.height, 20)
+      .lineStyle(3, C.gold, 0.9)
+      .strokeRoundedRect(r.x, r.y, r.width, r.height, 20);
     this.text(
-      panel.x + panel.width / 2,
-      panel.y + (this.layout.mode === "side" ? 30 : 27),
-      "LITTLE CHEF'S",
-      this.layout.mode === "side" ? 22 : 19,
-      COLORS.cream,
+      r.x + r.width * 0.5,
+      r.y + 26,
+      "Help Tilly make toast!",
+      Math.min(27, r.width * 0.06),
+      C.cream,
       true,
     );
-    this.text(
-      panel.x + panel.width / 2,
-      panel.y + (this.layout.mode === "side" ? 57 : 51),
-      "GRAND KITCHEN",
-      this.layout.mode === "side" ? 18 : 16,
-      COLORS.gold,
-      true,
-    );
-    this.text(
-      panel.x + panel.width / 2,
-      panel.y + (this.layout.mode === "side" ? 86 : 76),
-      `KITCHEN ${this.level.id} • ${this.level.title}`,
-      14,
-      COLORS.cream,
-      true,
-      panel.width - 24,
-    );
-    if (this.layout.mode === "side") {
-      this.drawCustomer(panel.x + panel.width / 2, panel.y + 122);
+    if (this.message !== "Help Tilly make toast!")
       this.text(
-        panel.x + panel.width / 2,
-        panel.y + 256,
-        this.message,
-        14,
-        COLORS.cream,
-        false,
-        panel.width - 26,
-      );
-    } else {
-      this.text(
-        this.layout.status.x + this.layout.status.width / 2,
-        this.layout.status.y + this.layout.status.height / 2,
+        r.x + r.width * 0.5,
+        r.y + 49,
         this.message,
         13,
-        COLORS.cream,
+        C.cream,
         false,
-        this.layout.status.width - 8,
-      ).setOrigin(0.5, 0.5);
-    }
+      );
   }
-  private drawCustomer(x: number, y: number) {
-    const bear = this.level.customerKind === "bear";
-    const fur = bear ? 0x9b633f : 0xf1d3a6;
-    const ear = bear ? 17 : 12;
-    const graphics = this.add.graphics();
-    graphics.fillStyle(fur, 1).fillCircle(x, y + 5, 34);
-    if (bear)
-      graphics.fillCircle(x - 27, y - 17, ear).fillCircle(x + 27, y - 17, ear);
-    else
-      graphics
-        .fillTriangle(x - 29, y - 33, x - 16, y - 4, x - 36, y - 9)
-        .fillTriangle(x + 29, y - 33, x + 16, y - 4, x + 36, y - 9);
-    graphics
-      .fillStyle(0x3d291e, 1)
-      .fillCircle(x - 11, y - 1, 4)
-      .fillCircle(x + 11, y - 1, 4)
-      .lineStyle(4, 0x3d291e, 1)
-      .arc(x, y + 10, 9, 0, Math.PI, false);
-    this.text(
-      x,
-      y + 54,
-      `${this.level.customer} ${bear ? "the bear" : "the bunny"}`,
-      14,
-      COLORS.cream,
-      true,
+  private drawCounter() {
+    const l = this.layout,
+      g = this.graphics();
+    g.fillStyle(0x6f432d, 0.11).fillRect(
+      l.counter.x,
+      l.counter.y,
+      l.counter.width,
+      l.counter.height,
     );
-    this.text(
-      x,
-      y + 78,
-      this.phase === "served"
-        ? "“That was delicious!”"
-        : "“I would love some toast!”",
-      13,
-      COLORS.cream,
-      false,
-      this.layout.panel.width - 20,
+    g.lineStyle(3, 0xd99950, 0.18).strokeRect(
+      l.counter.x,
+      l.counter.y,
+      l.counter.width,
+      l.counter.height,
     );
-  }
-  private drawButton(
-    rect: { x: number; y: number; width: number; height: number },
-    label: string,
-    action: () => void,
-    disabled = false,
-  ) {
-    const graphic = this.box(
-      rect,
-      disabled ? 0x7d7569 : COLORS.terracotta,
-      disabled ? 0xaaa18d : COLORS.gold,
-    );
-    graphic
-      .setInteractive(
-        new Phaser.Geom.Rectangle(rect.x, rect.y, rect.width, rect.height),
-        Phaser.Geom.Rectangle.Contains,
-      )
-      .on("pointerdown", () => {
-        if (!disabled) {
-          this.audio.unlock();
-          action();
-        }
+    this.drawPantry(l.pantry);
+    this.drawToaster(l.toaster);
+    this.drawPlate(l.plate);
+    l.sockets.forEach((r, i) => {
+      this.drawSocket(
+        r,
+        this.level.socketKinds[i]!,
+        this.state.placements[i] !== null,
+      );
+      const z = this.add
+        .zone(r.x - 24, r.y - 24, r.width + 48, r.height + 48)
+        .setOrigin(0)
+        .setInteractive();
+      z.on("pointerdown", () => {
+        if (this.selected !== null)
+          this.drop(r.x + r.width / 2, r.y + r.height / 2);
       });
-    this.text(
-      rect.x + rect.width / 2,
-      rect.y + rect.height / 2,
-      label,
-      Math.min(18, rect.height * 0.38),
-      COLORS.cream,
-      true,
-    );
-  }
-  private drawControls() {
-    const buttons = this.layout.buttons;
-    const isServable = this.phase === "plated";
-    const primary =
-      this.phase === "served"
-        ? "NEXT KITCHEN"
-        : isServable
-          ? "SERVE DISH"
-          : "RUN KITCHEN";
-    this.drawButton(
-      isServable || this.phase === "served" ? buttons.serve : buttons.run,
-      primary,
-      () =>
-        isServable
-          ? this.serve()
-          : this.phase === "served"
-            ? this.nextLevel()
-            : this.run(),
-      this.phase !== "served" &&
-        this.phase !== "plated" &&
-        this.phase !== "editing" &&
-        this.phase !== "jammed",
-    );
-    this.drawButton(buttons.undo, "UNDO", () => this.undo(), false);
-    this.drawButton(buttons.clear, "CLEAR", () => this.clear(), false);
-    for (const direction of ["right", "down", "left", "up"] as const) {
-      const rect = this.layout.directions[direction];
-      const selected = this.selected === direction;
-      const graphic = this.box(
-        rect,
-        selected ? COLORS.route : COLORS.green,
-        COLORS.gold,
-        9,
-      );
-      graphic
-        .setInteractive(
-          new Phaser.Geom.Rectangle(rect.x, rect.y, rect.width, rect.height),
-          Phaser.Geom.Rectangle.Contains,
-        )
-        .on("pointerdown", () => {
-          this.audio.unlock();
-          this.selectDirection(direction);
-        });
-      this.text(
-        rect.x + rect.width / 2,
-        rect.y + rect.height / 2,
-        `${ARROWS[direction]} ${direction.charAt(0).toUpperCase()}`,
-        Math.min(15, rect.height * 0.4),
-        selected ? COLORS.ink : COLORS.cream,
-        true,
-      );
-    }
-    this.text(
-      this.layout.instructions.x + this.layout.instructions.width / 2,
-      this.layout.instructions.y + this.layout.instructions.height / 2,
-      "Tap a belt to place • tap again to rotate • R run • S serve",
-      11,
-      COLORS.cream,
-      false,
-      this.layout.instructions.width - 4,
-    );
-  }
-  private selectDirection(direction: Direction) {
-    this.selected = direction;
-    this.message = `Selected ${direction} belt. Tap an empty belt cell.`;
-    this.redraw();
-  }
-  private tapCell(x: number, y: number) {
-    if (!["editing", "jammed"].includes(this.phase)) return;
-    const cell = { x, y };
-    const existing = this.belts.get(key(cell));
-    if (existing) {
-      this.belts.set(key(cell), rotate(existing));
-      this.audio.unlock();
-      this.audio.rotate();
-      this.message = `Rotated ${ARROWS[rotate(existing)]} belt.`;
-    } else {
-      this.belts.set(key(cell), this.selected);
-      this.audio.unlock();
-      this.audio.placement();
-      this.message = "Line ready? Run the kitchen!";
-    }
-    this.phase = "editing";
-    this.jamCell = null;
-    this.redraw();
-  }
-  private undo() {
-    if (
-      this.phase === "moving" ||
-      this.phase === "toasting" ||
-      this.phase === "serving"
-    )
-      return;
-    const last = [...this.belts.keys()].pop();
-    if (last) this.belts.delete(last);
-    this.phase = "editing";
-    this.message = "One belt removed. Keep cooking!";
-    this.redraw();
-  }
-  private clear() {
-    this.tweens.killAll();
-    this.belts.clear();
-    this.moving?.destroy();
-    this.moving = null;
-    this.phase = "editing";
-    this.jamCell = null;
-    this.message = "Build a line to the toaster.";
-    this.redraw();
-  }
-  private run() {
-    if (this.phase !== "editing" && this.phase !== "jammed") return;
-    this.audio.unlock();
-    const result = traceKitchenLine(this.level, this.belts);
-    if (!result.ok) {
-      this.phase = "jammed";
-      this.jamCell = result.cell;
-      this.message = result.message;
-      this.audio.jam();
-      this.redraw();
-      return;
-    }
-    this.phase = "moving";
-    this.message = "Bread is moving to the toaster!";
-    this.redraw();
-    this.animatePath(result.path, 0, false);
-  }
-  private animatePath(path: Cell[], index: number, toasted: boolean) {
-    if (this.resizePending || index >= path.length) {
-      this.phase = "plated";
-      this.itemGlyph = "▰";
-      this.message = "The toast is ready. Tap SERVE.";
-      this.redraw();
-      this.audio.ding();
-      return;
-    }
-    const rect = this.layout.cells[path[index]!.y * 6 + path[index]!.x]!;
-    if (!this.moving) {
-      this.moving = this.add
-        .container(rect.x + rect.width / 2, rect.y + rect.height / 2)
-        .setDepth(30);
-      this.moving.add(
-        this.add.circle(0, 0, Math.min(18, this.layout.cell * 0.2), 0xd9953f),
-      );
-      this.moving.add(
-        this.add
-          .text(0, 0, this.itemGlyph, {
-            fontSize: `${Math.min(28, this.layout.cell * 0.3)}px`,
-          })
-          .setOrigin(0.5),
-      );
-    }
-    if (path[index] && key(path[index]!) === key(this.level.toaster)) {
-      this.phase = "toasting";
-      this.message = "The toaster is sizzling…";
-      this.audio.toaster();
-      this.redraw();
-      this.time.delayedCall(this.reduced ? 100 : 700, () => {
-        if (this.phase !== "toasting") return;
-        this.phase = "moving";
-        this.itemGlyph = "▰";
-        this.moving = null;
-        this.message = "Toast is popping onto the plate!";
-        this.redraw();
-        this.animatePath(path, index + 1, true);
-      });
-      return;
-    }
-    const target = { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
-    const duration = this.reduced ? 80 : 300;
-    this.tweens.add({
-      targets: this.moving,
-      x: target.x,
-      y: target.y,
-      duration,
-      ease: "Sine.inOut",
-      onComplete: () => this.animatePath(path, index + 1, toasted),
+      if (this.state.placements[i])
+        this.drawPiece(r, this.state.placements[i]!);
     });
   }
-  private serve() {
-    if (this.phase !== "plated") return;
-    this.audio.unlock();
-    this.audio.serve();
-    this.phase = "serving";
-    this.message = `Serving ${this.level.customer}!`;
-    this.redraw();
-    const plate =
-      this.layout.cells[this.level.plate.y * 6 + this.level.plate.x]!;
-    const target = {
-      x: this.layout.panel.x + this.layout.panel.width / 2,
-      y: this.layout.panel.y + (this.layout.mode === "side" ? 124 : 68),
-    };
-    const dish = this.add
-      .text(plate.x + plate.width / 2, plate.y + plate.height / 2, "🍞", {
-        fontSize: `${Math.min(34, plate.width * 0.3)}px`,
-      })
-      .setOrigin(0.5)
-      .setDepth(40);
-    this.tweens.add({
-      targets: dish,
-      x: target.x,
-      y: target.y,
-      scale: 1.3,
-      duration: this.reduced ? 120 : 650,
-      onComplete: () => {
-        dish.destroy();
-        this.phase = "served";
-        this.message = `${this.level.customer} loved it!`;
+  private drawPantry(r: Rect) {
+    const g = this.graphics(),
+      x = r.x,
+      y = r.y,
+      w = r.width,
+      h = r.height;
+    g.fillStyle(0x9c592f, 1)
+      .fillRoundedRect(x, y + h * 0.18, w, h * 0.72, 16)
+      .lineStyle(4, 0x5a3025, 1)
+      .strokeRoundedRect(x, y + h * 0.18, w, h * 0.72, 16);
+    g.fillStyle(0xd58b3f, 1).fillRoundedRect(
+      x - 4,
+      y + h * 0.08,
+      w + 8,
+      h * 0.25,
+      12,
+    );
+    g.fillStyle(0xffc968, 1).fillEllipse(
+      x + w * 0.5,
+      y + h * 0.58,
+      w * 0.7,
+      h * 0.28,
+    );
+    g.fillStyle(0x6e3725, 1).fillEllipse(
+      x + w * 0.5,
+      y + h * 0.62,
+      w * 0.32,
+      h * 0.08,
+    );
+    this.text(
+      x + w / 2,
+      y + h * 0.9,
+      "BREAD",
+      Math.max(14, Math.min(20, w * 0.13)),
+      C.cream,
+      true,
+    );
+  }
+  private drawToaster(r: Rect) {
+    const g = this.graphics(),
+      x = r.x,
+      y = r.y,
+      w = r.width,
+      h = r.height;
+    g.fillStyle(0xc95c43, 1)
+      .fillRoundedRect(x, y + h * 0.18, w, h * 0.65, 18)
+      .lineStyle(4, 0x6a3329, 1)
+      .strokeRoundedRect(x, y + h * 0.18, w, h * 0.65, 18);
+    g.fillStyle(0xf2a15b, 1).fillRoundedRect(
+      x + w * 0.12,
+      y + h * 0.1,
+      w * 0.76,
+      h * 0.2,
+      10,
+    );
+    g.fillStyle(0x4a2825, 1)
+      .fillRoundedRect(x + w * 0.2, y + h * 0.14, w * 0.22, h * 0.08, 4)
+      .fillRoundedRect(x + w * 0.58, y + h * 0.14, w * 0.22, h * 0.08, 4);
+    g.lineStyle(5, 0x4a2825, 1).lineBetween(
+      x + w * 0.8,
+      y + h * 0.4,
+      x + w * 0.8,
+      y + h * 0.7,
+    );
+    g.fillStyle(0xffd17b, 1).fillCircle(x + w * 0.8, y + h * 0.72, 5);
+    this.text(
+      x + w / 2,
+      y + h * 0.9,
+      "TOASTER",
+      Math.max(14, Math.min(20, w * 0.13)),
+      C.cream,
+      true,
+    );
+  }
+  private drawPlate(r: Rect) {
+    const g = this.graphics(),
+      x = r.x + r.width / 2,
+      y = r.y + r.height * 0.54;
+    g.fillStyle(0x5b392d, 0.35).fillEllipse(
+      x + 4,
+      y + 8,
+      r.width * 0.8,
+      r.height * 0.3,
+    );
+    g.fillStyle(0xf6eee0, 1)
+      .fillEllipse(x, y, r.width * 0.82, r.height * 0.3)
+      .lineStyle(4, 0x8cb5a0, 1)
+      .strokeEllipse(x, y, r.width * 0.82, r.height * 0.3);
+    g.fillStyle(0xd77b32, 1).fillEllipse(
+      x,
+      y - 2,
+      r.width * 0.38,
+      r.height * 0.13,
+    );
+    this.text(
+      x,
+      r.y + r.height * 0.9,
+      "PLATE",
+      Math.max(14, Math.min(20, r.width * 0.13)),
+      C.cream,
+      true,
+    );
+  }
+  private drawSocket(r: Rect, _kind: PieceKind, filled: boolean) {
+    const g = this.graphics();
+    g.fillStyle(filled ? 0x8e5840 : 0x72503f, 0.65).fillRoundedRect(r.x, r.y, r.width, r.height, 12);
+    g.lineStyle(5, filled ? 0xb77b4a : 0xffe28a, 1).strokeRoundedRect(r.x, r.y, r.width, r.height, 12);
+    g.lineStyle(4, 0xffe8a8, 0.95);
+    g.lineBetween(r.x + 8, r.y + 13, r.x + r.width - 8, r.y + 13);
+    g.lineBetween(r.x + 8, r.y + r.height - 13, r.x + r.width - 8, r.y + r.height - 13);
+    for (let i = 0; i < 3; i += 1) g.lineBetween(r.x + 18 + i * 18, r.y + 9, r.x + 18 + i * 18, r.y + r.height - 9);
+  }
+  private drawPiece(r: Rect, _kind: PieceKind, alpha = 1) {
+    const g = this.graphics().setAlpha(alpha);
+    g.fillStyle(0x573126, 1).fillRoundedRect(r.x, r.y, r.width, r.height, 10)
+      .lineStyle(4, 0x9a5a3d, 1).strokeRoundedRect(r.x, r.y, r.width, r.height, 10);
+    g.lineStyle(5, 0xffd76b, 1);
+    g.lineBetween(r.x + 7, r.y + 11, r.x + r.width - 7, r.y + 11);
+    g.lineBetween(r.x + 7, r.y + r.height - 11, r.x + r.width - 7, r.y + r.height - 11);
+    g.lineStyle(3, 0xfff0bd, 1);
+    for (let i = 0; i < 3; i += 1) g.lineBetween(r.x + 16 + i * 18, r.y + 7, r.x + 16 + i * 18, r.y + r.height - 7);
+    g.fillStyle(0xffd76b, 1).fillTriangle(r.x + r.width - 22, r.y + r.height / 2 - 7, r.x + r.width - 8, r.y + r.height / 2, r.x + r.width - 22, r.y + r.height / 2 + 7);
+    if (this.selected !== null && alpha === 1) {
+      g.lineStyle(6, 0xffff80, 1).strokeRoundedRect(r.x - 7, r.y - 7, r.width + 14, r.height + 14, 14);
+      g.setDepth(18);
+      this.tweens.add({ targets: g, y: "-=5", alpha: 0.7, duration: 500, yoyo: true, repeat: -1 });
+    }
+  }
+  private drawTilly(r: Rect) {
+    const g = this.graphics();
+    g.fillStyle(this.state.complete ? 0x9a6338 : 0x6b4033, 0.95).fillCircle(
+      r.x + r.width / 2,
+      r.y + r.height / 2,
+      Math.min(r.width, r.height) / 2,
+    );
+    const img = this.add
+      .image(r.x + r.width / 2, r.y + r.height / 2, "tilly-rabbit")
+      .setDisplaySize(
+        Math.min(r.width, r.height) * 0.92,
+        Math.min(r.width, r.height) * 0.92,
+      );
+    const mask = this.make.graphics({ x: 0, y: 0 });
+    mask
+      .fillStyle(0xffffff)
+      .fillCircle(
+        r.x + r.width / 2,
+        r.y + r.height / 2,
+        Math.min(r.width, r.height) / 2 - 3,
+      );
+    img.setMask(mask.createGeometryMask());
+    this.text(
+      r.x + r.width / 2,
+      r.y + r.height + 18,
+      "Tilly",
+      18,
+      C.cream,
+      true,
+    );
+  }
+  private drawToastOnPlate() {
+    const r = this.layout.plate;
+    const g = this.graphics();
+    const x = r.x + r.width / 2;
+    const y = r.y + r.height * 0.48;
+    g.fillStyle(0x8a4228, 1).fillRoundedRect(
+      x - r.width * 0.2,
+      y - r.height * 0.08,
+      r.width * 0.4,
+      r.height * 0.18,
+      8,
+    );
+    g.fillStyle(0xb95f2f, 1).fillRoundedRect(
+      x - r.width * 0.15,
+      y - r.height * 0.12,
+      r.width * 0.3,
+      r.height * 0.1,
+      5,
+    );
+    for (let i = -1; i <= 1; i += 1)
+      g.lineStyle(3, 0x6c321f, 0.8).lineBetween(
+        x + i * 8,
+        y - r.height * 0.09,
+        x + i * 6,
+        y + r.height * 0.01,
+      );
+  }
+  private drawNext() {
+    const r = this.layout.counter;
+    const b = { x: r.x + r.width * 0.72, y: r.y + r.height - 58, width: Math.min(190, r.width * 0.24), height: 44 };
+    const g = this.graphics();
+    g.fillStyle(C.red, 0.95).fillRoundedRect(b.x, b.y, b.width, b.height, 14).lineStyle(3, C.gold, 1).strokeRoundedRect(b.x, b.y, b.width, b.height, 14);
+    this.text(b.x + b.width / 2, b.y + b.height / 2, "PLAY AGAIN", 15, C.cream, true);
+    this.add.zone(b.x, b.y, b.width, b.height).setOrigin(0).setInteractive().on("pointerdown", () => this.reset());
+  }
+  private drawTray() {
+    const r = this.layout.tray,
+      g = this.graphics();
+    g.fillStyle(0xffe8a8, 0.98)
+      .fillRoundedRect(r.x, r.y, r.width, r.height, 18)
+      .lineStyle(5, C.gold, 1)
+      .strokeRoundedRect(r.x, r.y, r.width, r.height, 18);
+    this.text(r.x + 38, r.y + 12, "BELT TRAY", 11, C.dark, true);
+    const count = this.state.tray.length;
+    this.state.tray.forEach((kind, i) => {
+      const pieceR = {
+        x: r.x + 18 + (i * (r.width - 36)) / Math.max(1, count),
+        y: r.y + 24,
+        width: Math.max(72, Math.min(120, (r.width - 36) / Math.max(1, count) - 10)),
+        height: Math.max(44, r.height - 38),
+      };
+      this.drawPiece(pieceR, kind, this.selected === i ? 0.65 : 1);
+      if (this.wrongTray === i) {
+        const marker = this.graphics();
+        marker
+          .lineStyle(5, C.red, 1)
+          .strokeRoundedRect(
+            pieceR.x - 5,
+            pieceR.y - 5,
+            pieceR.width + 10,
+            pieceR.height + 10,
+            10,
+          );
+      }
+      const z = this.add
+        .zone(pieceR.x, pieceR.y, pieceR.width, pieceR.height)
+        .setOrigin(0)
+        .setInteractive();
+      z.on("pointerdown", (p: Phaser.Input.Pointer) => {
+        this.audioUnlock();
+        this.selected = i;
+        this.dragging = i;
+        this.moved = false;
+        this.dragStart = { x: p.x, y: p.y };
         this.redraw();
-        this.celebrate();
+      });
+    });
+  }
+  private select(i: number) {
+    if (i >= this.state.tray.length || this.running) return;
+    this.selected = i;
+    this.redraw();
+  }
+  private drop(x: number, y: number) {
+    const i = this.dragging ?? this.selected;
+    if (i === null || i === undefined || this.running) return;
+    this.dragging = null;
+    const socket = this.layout.sockets.findIndex(
+      (r) =>
+        x >= r.x - 34 &&
+        x <= r.x + r.width + 34 &&
+        y >= r.y - 34 &&
+        y <= r.y + r.height + 34,
+    );
+    if (socket < 0) {
+      this.message = "Help Tilly make toast!";
+      this.selected = null;
+      this.redraw();
+      return;
+    }
+    const result = placePiece(this.state, this.level, i, socket);
+    if (result.result !== "placed") {
+      this.selected = i;
+      this.wrongTray = i;
+      this.message = "That piece bounced back. Try the glowing gap.";
+      this.redraw();
+      this.tweenWrong(socket);
+      this.showGhost();
+      return;
+    }
+    this.state = result.state;
+    const ready = placementsReady(this.state);
+    this.selected = null;
+    this.wrongTray = null;
+    this.audioUnlock();
+    this.redraw();
+    if (ready) this.autoRun();
+    else this.showGhost();
+  }
+  private tweenWrong(socket: number) {
+    const r = this.layout.sockets[socket]!;
+    const ring = this.graphics();
+    ring
+      .lineStyle(7, C.red, 1)
+      .strokeRoundedRect(r.x - 5, r.y - 5, r.width + 10, r.height + 10, 12);
+    this.tweens.add({
+      targets: ring,
+      alpha: 0,
+      duration: 350,
+      yoyo: true,
+      repeat: 2,
+      onComplete: () => ring.destroy(),
+    });
+  }
+  private showGhost() {
+    this.ghostTween?.stop();
+    this.ghost?.destroy();
+    this.ghost = undefined;
+    if (this.running || this.state.complete || this.state.tray.length === 0)
+      return;
+    const i = 0;
+    const targetIndex = nextMatchingSocket(this.state, this.level, i);
+    const target = this.layout.sockets[targetIndex];
+    if (!target) return;
+    const p = {
+      x: this.layout.tray.x + this.layout.tray.width / 2,
+      y: this.layout.tray.y + this.layout.tray.height / 2,
+    };
+    const q = {
+      x: target.x + target.width / 2,
+      y: target.y + target.height / 2,
+    };
+    const ghost = this.graphics();
+    ghost.lineStyle(6, 0xffff8a, 0.95);
+    ghost.lineBetween(-34, -13, 34, -13);
+    ghost.lineBetween(-34, 13, 34, 13);
+    for (let n = -20; n <= 20; n += 20) ghost.lineBetween(n, -13, n, 13);
+    ghost.x = p.x;
+    ghost.y = p.y;
+    ghost.setDepth(25);
+    this.ghost = ghost;
+    this.ghostTween = this.tweens.add({
+      targets: ghost,
+      x: q.x,
+      y: q.y,
+      duration: this.reduced ? 450 : 1050,
+      delay: 200,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.inOut",
+    });
+  }
+  private autoRun() {
+    if (this.running) return;
+    this.running = true;
+    const runToken = ++this.token;
+    this.message = "";
+    this.redraw();
+    const l = this.layout;
+    const bread = this.add
+      .container(
+        l.pantry.x + l.pantry.width / 2,
+        l.pantry.y + l.pantry.height * 0.45,
+      )
+      .setDepth(20);
+    this.drawBread(bread);
+    const points = this.level.path.map((p) => ({
+      x: l.counter.x + l.counter.width * p.x,
+      y: l.counter.y + l.counter.height * p.y,
+    }));
+    let index = 0;
+    const step = () => {
+      if (runToken !== this.token || !this.running) {
+        bread.destroy();
+        return;
+      }
+      if (index >= points.length) {
+        this.toasting(bread, runToken);
+        return;
+      }
+      const pt = points[index++]!;
+      this.tweens.add({
+        targets: bread,
+        x: pt.x,
+        y: pt.y,
+        duration: this.reduced ? 140 : 430,
+        ease: "Sine.inOut",
+        onComplete: step,
+      });
+    };
+    step();
+  }
+  private drawBread(c: Phaser.GameObjects.Container) {
+    const g = this.add.graphics();
+    g.fillStyle(0xf0b45f, 1)
+      .fillRoundedRect(-24, -22, 48, 44, 13)
+      .lineStyle(3, 0x9b542d, 1)
+      .strokeRoundedRect(-24, -22, 48, 44, 13);
+    g.fillStyle(0xffd684, 1).fillRoundedRect(-15, -14, 30, 7, 4);
+    c.add(g);
+  }
+  private toasting(bread: Phaser.GameObjects.Container, t: number) {
+    if (t !== this.token) return;
+    const toaster = this.layout.toaster;
+    this.tweens.add({
+      targets: bread,
+      x: toaster.x + toaster.width / 2,
+      y: toaster.y + toaster.height * 0.38,
+      duration: this.reduced ? 100 : 300,
+      onComplete: () => {
+        if (t !== this.token) return;
+        this.tweens.add({
+          targets: bread,
+          angle: 3,
+          yoyo: true,
+          repeat: 3,
+          duration: 100,
+        });
+        this.time.delayedCall(this.reduced ? 180 : 850, () =>
+          this.finishRun(bread, t),
+        );
+      },
+    });
+  }
+  private finishRun(bread: Phaser.GameObjects.Container, t: number) {
+    if (t !== this.token) return;
+    if (this.pendingResize) {
+      this.pendingResize = false;
+      bread.destroy();
+      this.redraw();
+    } else {
+      bread.destroy();
+    }
+    const toast = this.add
+      .container(
+        this.layout.toaster.x + this.layout.toaster.width / 2,
+        this.layout.toaster.y + this.layout.toaster.height * 0.2,
+      )
+      .setDepth(20);
+    this.drawBread(toast);
+    toast.angle = -5;
+    this.tweens.add({
+      targets: toast,
+      y: "-=25",
+      duration: this.reduced ? 120 : 350,
+      yoyo: true,
+      onComplete: () => {
+        this.tweens.add({
+          targets: toast,
+          x: this.layout.plate.x + this.layout.plate.width / 2,
+          y: this.layout.plate.y + this.layout.plate.height * 0.48,
+          duration: this.reduced ? 120 : 500,
+          onComplete: () => {
+            if (t !== this.token) return;
+            toast.destroy();
+            this.running = false;
+            this.state = { ...this.state, complete: true };
+            this.redraw();
+            this.celebrate();
+          },
+        });
       },
     });
   }
   private celebrate() {
-    this.audio.ding();
-    const center =
-      this.layout.mode === "side"
-        ? {
-            x: this.layout.panel.x + this.layout.panel.width / 2,
-            y: this.layout.panel.y + 350,
-          }
-        : {
-            x: this.layout.panel.x + this.layout.panel.width / 2,
-            y: this.layout.panel.y + 95,
-          };
-    for (let i = 0; i < 10; i += 1) {
-      const star = this.add.star(center.x, center.y, 5, 8, 20, COLORS.gold);
+    const r = this.layout.customer;
+    for (let i = 0; i < 3; i++) {
+      const heart = this.text(
+        r.x + r.width * 0.35 + i * 18,
+        r.y + r.height * 0.18,
+        "♥",
+        20,
+        C.red,
+        true,
+      );
+      this.tweens.add({
+        targets: heart,
+        y: "-=24",
+        alpha: 0,
+        delay: i * 100,
+        duration: this.reduced ? 120 : 800,
+        onComplete: () => heart.destroy(),
+      });
+    }
+    for (let i = 0; i < 8; i++) {
+      const star = this.add.star(
+        r.x + r.width / 2,
+        r.y + r.height / 2,
+        5,
+        7,
+        18,
+        C.gold,
+      );
       this.tweens.add({
         targets: star,
-        y: center.y - 55 - i * 3,
+        y: "-=35",
         alpha: 0,
-        delay: i * 55,
-        duration: this.reduced ? 100 : 650,
+        delay: i * 45,
+        duration: this.reduced ? 120 : 600,
         onComplete: () => star.destroy(),
       });
     }
   }
-  private nextLevel() {
-    this.level = levelFor(this.level.id + 1);
-    this.belts.clear();
-    this.phase = "editing";
-    this.message = "Build a line to the toaster.";
+  private reset() {
+    this.token++;
+    this.tweens.killAll();
+    this.time.removeAllEvents();
+    this.running = false;
+    this.pendingResize = false;
+    this.state = freshKitchen(this.level);
+    this.selected = null;
+    this.message = "Help Tilly make toast!";
     this.redraw();
+    this.showGhost();
+  }
+  private audioUnlock() {
+    if (!this.audio) this.audio = new AudioContext();
+    if (this.audio.state === "suspended") void this.audio.resume();
   }
 }

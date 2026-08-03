@@ -1,211 +1,33 @@
-export interface Rect {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
+export interface Rect { readonly x:number; readonly y:number; readonly width:number; readonly height:number; }
 export interface KitchenLayout {
-  readonly mode: "side" | "stacked" | "compact";
-  readonly board: Rect;
-  readonly panel: Rect;
-  readonly cell: number;
-  readonly cells: readonly Rect[];
-  readonly buttons: Readonly<Record<"run" | "undo" | "clear" | "serve", Rect>>;
-  readonly directions: Readonly<Record<"right" | "down" | "left" | "up", Rect>>;
-  readonly instructions: Rect;
-  readonly status: Rect;
+  readonly mode: "landscape" | "tablet" | "portrait";
+  readonly counter: Rect; readonly title: Rect; readonly tray: Rect;
+  readonly pantry: Rect; readonly toaster: Rect; readonly plate: Rect; readonly customer: Rect;
+  readonly sockets: readonly Rect[];
 }
-
-const clamp = (value: number, min: number, max: number) =>
-  Math.min(max, Math.max(min, value));
-const rectInside = (rect: Rect, bounds: Rect) =>
-  rect.x >= bounds.x &&
-  rect.y >= bounds.y &&
-  rect.x + rect.width <= bounds.x + bounds.width &&
-  rect.y + rect.height <= bounds.y + bounds.height;
-
-export function createKitchenLayout(
-  width: number,
-  height: number,
-): KitchenLayout {
-  const margin = clamp(Math.min(width, height) * 0.025, 8, 22);
-  const gap = clamp(Math.min(width, height) * 0.016, 6, 14);
-  const side = width >= 820 && width > height && height >= 520;
-  const compact = width < 700 || height < 500;
-  const mode = side ? "side" : compact ? "compact" : "stacked";
-  const cols = 6;
-  const rows = 4;
-  let board: Rect;
-  let panel: Rect;
-
-  if (side) {
-    const panelWidth = clamp(width * 0.23, 230, 286);
-    const availableWidth = width - margin * 2 - panelWidth - gap;
-    const cell = Math.min(
-      (availableWidth - gap * (cols - 1)) / cols,
-      (height - margin * 2 - gap * (rows - 1)) / rows,
-      116,
-    );
-    const boardWidth = cell * cols + gap * (cols - 1);
-    const boardHeight = cell * rows + gap * (rows - 1);
-    board = {
-      x: margin + (availableWidth - boardWidth) / 2,
-      y: (height - boardHeight) / 2,
-      width: boardWidth,
-      height: boardHeight,
-    };
-    panel = {
-      x: width - margin - panelWidth,
-      y: margin,
-      width: panelWidth,
-      height: height - margin * 2,
-    };
-  } else {
-    const panelHeight = compact ? 276 : 276;
-    const availableHeight = height - margin * 2 - panelHeight - gap;
-    const cell = Math.min(
-      (width - margin * 2 - gap * (cols - 1)) / cols,
-      (availableHeight - gap * (rows - 1)) / rows,
-      compact ? 82 : 145,
-    );
-    const boardWidth = cell * cols + gap * (cols - 1);
-    const boardHeight = cell * rows + gap * (rows - 1);
-    panel = {
-      x: margin,
-      y: margin,
-      width: width - margin * 2,
-      height: panelHeight,
-    };
-    board = {
-      x: (width - boardWidth) / 2,
-      y: panel.y + panel.height + gap,
-      width: boardWidth,
-      height: boardHeight,
-    };
+const inside=(r:Rect,w:number,h:number)=>r.x>=0&&r.y>=0&&r.x+r.width<=w+.5&&r.y+r.height<=h+.5;
+export function createKitchenLayout(width:number,height:number):KitchenLayout {
+  const portrait=height>width, tablet=!portrait&&width<1100, mode=portrait?"portrait":tablet?"tablet":"landscape";
+  const m=Math.max(14,Math.min(30,Math.min(width,height)*.025));
+  if(!portrait){
+    const right=Math.min(310,Math.max(245,width*.23));
+    const counter={x:m,y:height*.25,width:width-right-m*2,height:height*.58};
+    const stationW=Math.min(145,counter.width*.16), stationH=Math.min(170,counter.height*.48);
+    const y=counter.y+counter.height*.43;
+    const pantry={x:counter.x+counter.width*.05,y:y-stationH/2,width:stationW,height:stationH};
+    const toaster={x:counter.x+counter.width*.43,y:y-stationH/2,width:stationW,height:stationH};
+    const plate={x:counter.x+counter.width*.75,y:y-stationH/2,width:stationW,height:stationH};
+    const gapW=Math.max(72,Math.min(110,counter.width*.13));
+    const straight=(x:number)=>({x,y:y-22,width:gapW,height:44});
+    return {mode,counter,title:{x:m,y:m,width:width-m*2,height:60},tray:{x:width-right-m+15,y:height*.67,width:right-30,height:92},pantry,toaster,plate,customer:{x:width-right-m+15,y:height*.16,width:right-30,height:height*.42},sockets:[straight(pantry.x+stationW+counter.width*.08),straight(toaster.x+stationW+counter.width*.08)]};
   }
-
-  const cell = (board.width - gap * (cols - 1)) / cols;
-  const cells = Array.from({ length: cols * rows }, (_, index) => ({
-    x: board.x + (index % cols) * (cell + gap),
-    y: board.y + Math.floor(index / cols) * (cell + gap),
-    width: cell,
-    height: cell,
-  }));
-
-  let buttons: KitchenLayout["buttons"];
-  let directions: KitchenLayout["directions"];
-  let instructions: Rect;
-  let status: Rect;
-  if (side) {
-    const inner = panel.width - 28;
-    const rowHeight = 48;
-    const buttonGap = 8;
-    const footerY = panel.y + panel.height - 190;
-    const half = (inner - buttonGap) / 2;
-    buttons = {
-      run: { x: panel.x + 14, y: footerY, width: inner, height: rowHeight },
-      serve: { x: panel.x + 14, y: footerY, width: inner, height: rowHeight },
-      undo: {
-        x: panel.x + 14,
-        y: footerY + rowHeight + buttonGap,
-        width: half,
-        height: rowHeight,
-      },
-      clear: {
-        x: panel.x + 14 + half + buttonGap,
-        y: footerY + rowHeight + buttonGap,
-        width: half,
-        height: rowHeight,
-      },
-    };
-    instructions = {
-      x: panel.x + 14,
-      y: footerY + rowHeight * 2 + 22,
-      width: inner,
-      height: 42,
-    };
-    status = { x: panel.x + 14, y: panel.y + 246, width: inner, height: 56 };
-    directions = {
-      right: {
-        x: panel.x + 14,
-        y: panel.y + 170,
-        width: (inner - 12) / 4,
-        height: 42,
-      },
-      down: {
-        x: panel.x + 14 + (inner - 12) / 4 + 4,
-        y: panel.y + 170,
-        width: (inner - 12) / 4,
-        height: 42,
-      },
-      left: {
-        x: panel.x + 14 + 2 * ((inner - 12) / 4 + 4),
-        y: panel.y + 170,
-        width: (inner - 12) / 4,
-        height: 42,
-      },
-      up: {
-        x: panel.x + 14 + 3 * ((inner - 12) / 4 + 4),
-        y: panel.y + 170,
-        width: (inner - 12) / 4,
-        height: 42,
-      },
-    };
-  } else {
-    const inner = width - margin * 2;
-    const buttonWidth = Math.min(150, (inner - 18) / 4);
-    const y = panel.y + 190;
-    buttons = {
-      run: { x: margin, y, width: buttonWidth, height: 40 },
-      serve: { x: margin, y, width: buttonWidth, height: 40 },
-      undo: { x: margin + buttonWidth + 6, y, width: buttonWidth, height: 40 },
-      clear: {
-        x: margin + (buttonWidth + 6) * 2,
-        y,
-        width: buttonWidth,
-        height: 40,
-      },
-    };
-    instructions = {
-      x: margin,
-      y: panel.y + panel.height - 38,
-      width: inner,
-      height: 28,
-    };
-    status = { x: margin, y: panel.y + 150, width: inner, height: 34 };
-    const directionWidth = Math.max(44, Math.min(54, (inner - 18) / 4));
-    const directionY = panel.y + 108;
-    directions = {
-      right: { x: margin, y: directionY, width: directionWidth, height: 38 },
-      down: { x: margin + directionWidth + 6, y: directionY, width: directionWidth, height: 38 },
-      left: { x: margin + (directionWidth + 6) * 2, y: directionY, width: directionWidth, height: 38 },
-      up: { x: margin + (directionWidth + 6) * 3, y: directionY, width: directionWidth, height: 38 },
-    };
-  }
-  return { mode, board, panel, cell, cells, buttons, directions, instructions, status };
+  const title={x:m,y:m,width:width-m*2,height:142};
+  const counter={x:m,y:height*.27,width:width-m*2,height:height*.6};
+  const stationW=Math.min(145,width*.21),stationH=Math.min(175,counter.height*.52),y=counter.y+counter.height*.48;
+  const pantry={x:counter.x+counter.width*.04,y:y-stationH/2,width:stationW,height:stationH};
+  const toaster={x:counter.x+counter.width*.4,y:y-stationH/2,width:stationW,height:stationH};
+  const plate={x:counter.x+counter.width*.76,y:y-stationH/2,width:stationW,height:stationH};
+  const gapW=Math.max(72,Math.min(92,counter.width*.14)),straight=(x:number)=>({x,y:y-20,width:gapW,height:40});
+  return {mode,counter,title,tray:{x:width*.06,y:title.y+88,width:width*.52,height:66},pantry,toaster,plate,customer:{x:width*.62,y:title.y+45,width:width*.32,height:90},sockets:[straight(pantry.x+stationW+counter.width*.04),straight(toaster.x+stationW+counter.width*.04)]};
 }
-
-export function layoutRectsAreSafe(
-  layout: KitchenLayout,
-  width: number,
-  height: number,
-): boolean {
-  const viewport = { x: 0, y: 0, width, height };
-  const controls = [
-    ...Object.values(layout.buttons),
-    ...Object.values(layout.directions),
-    layout.instructions,
-    layout.status,
-  ];
-  const overlaps = (a: Rect, b: Rect) =>
-    a.x < b.x + b.width && a.x + a.width > b.x &&
-    a.y < b.y + b.height && a.y + a.height > b.y;
-  const regions = [layout.status, layout.buttons.run, layout.buttons.undo, layout.buttons.clear, ...Object.values(layout.directions), layout.instructions];
-  const regionsDoNotOverlap = regions.every((region, index) =>
-    regions.slice(index + 1).every((other) => !overlaps(region, other)),
-  );
-  return [layout.board, layout.panel, ...layout.cells, ...controls].every(
-    (rect) => rectInside(rect, viewport),
-  ) && regionsDoNotOverlap;
-}
+export function layoutSafe(l:KitchenLayout,w:number,h:number){return [l.counter,l.title,l.tray,l.pantry,l.toaster,l.plate,l.customer,...l.sockets].every(r=>inside(r,w,h));}

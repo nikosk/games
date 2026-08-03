@@ -1,29 +1,47 @@
-import { describe, expect, it } from 'vitest';
-import { LEVELS, levelFor } from '../src/game/level';
-import { rotate, traceKitchenLine } from '../src/game/rules';
-
-describe('kitchen route rules', () => {
-  it('accepts every authored solution with implicit station exits', () => {
-    for (const level of LEVELS) {
-      const belts = new Map(level.cells.map((cell, index) => [`${cell.x},${cell.y}`, level.solution[index]! ]));
-      expect(traceKitchenLine(level, belts)).toMatchObject({ ok: true });
-    }
+import { describe, it, expect } from "vitest";
+import { LEVEL } from "../src/game/level";
+import {
+  beginRun,
+  finishRun,
+  freshKitchen,
+  freshRun,
+  nextMatchingSocket,
+  placePiece,
+  placementsReady,
+  removePiece,
+} from "../src/game/rules";
+describe("drag kitchen rules", () => {
+  it("starts with two matching straight pieces", () => {
+    const s=freshKitchen(LEVEL);
+    expect(s.tray).toEqual(["straight","straight"]);
+    expect(s.placements).toHaveLength(2);
+    expect(LEVEL.pieceKinds).toEqual(LEVEL.socketKinds);
   });
-  it('reports missing, wrong sequence, loops, and out-of-bounds', () => {
-    const level = LEVELS[0]!;
-    expect(traceKitchenLine(level, new Map()).ok).toBe(false);
-    expect(traceKitchenLine(level, new Map([['1,1', 'right'], ['2,1', 'right'], ['4,1', 'left']])).ok).toBe(false);
-    expect(traceKitchenLine(level, new Map([['1,1', 'left'], ['2,1', 'right'], ['4,1', 'right']])).ok).toBe(false);
-    expect(traceKitchenLine(level, new Map([['1,1', 'right'], ['2,1', 'right'], ['4,1', 'right']])).ok).toBe(true);
+  it("accepts both matching pieces and completes", () => {
+    const a=freshKitchen(LEVEL), b=placePiece(a,LEVEL,0,0);
+    expect(b.result).toBe("placed"); expect(b.state.complete).toBe(false);
+    const c=placePiece(b.state,LEVEL,0,1);
+    expect(c.result).toBe("placed");
+    expect(placementsReady(c.state)).toBe(true);
+    expect(c.state.complete).toBe(false);
   });
-  it('points a missing source exit at the first editable belt cell', () => {
-    const result = traceKitchenLine(LEVELS[0]!, new Map());
-    expect(result).toMatchObject({ ok: false, reason: 'missing-belt', cell: { x: 1, y: 1 } });
-    if (!result.ok) expect(result.message).toContain('glowing belt');
+  it("rejects outside socket without losing the tray", () => {
+    const s=freshKitchen(LEVEL), wrong=placePiece(s,LEVEL,0,8);
+    expect(wrong.result).toBe("rejected"); expect(wrong.state).toEqual(s);
   });
-  it('rotates and advances levels', () => {
-    expect(rotate('right')).toBe('down');
-    expect(levelFor(3).id).toBe(1);
-    expect(levelFor(2).customerKind).toBe('bear');
+  it("supports run phases", () => {
+    const editing=freshRun(); expect(editing.phase).toBe("editing");
+    expect(beginRun(editing).phase).toBe("running");
+    expect(finishRun(beginRun(editing)).phase).toBe("finished");
+  });
+  it("resets placed pieces for play again", () => {
+    const s=placePiece(freshKitchen(LEVEL),LEVEL,0,0).state;
+    expect(removePiece(s,0).tray).toHaveLength(2);
+  });
+  it("finds the next socket after placement", () => {
+    const s = freshKitchen(LEVEL);
+    expect(placementsReady(s)).toBe(false);
+    expect(nextMatchingSocket(s, LEVEL)).toBe(0);
+    const placed=placePiece(s,LEVEL,0,0).state; expect(nextMatchingSocket(placed,LEVEL)).toBe(1);
   });
 });
