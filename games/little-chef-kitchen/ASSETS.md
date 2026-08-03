@@ -1,13 +1,13 @@
 # Little Chef art
 
-Generated 2026-08-02 with ByteDance Seedream 4.5 through OpenRouter.
+Generated 2026-08-02 with ByteDance Seedream 4.5 through OpenRouter. Eight paid calls total, **$0.32** ($0.04 each). Prompt specifications remain under `assets/source/`.
 
-Runtime art:
-- `assets/images/kitchen-background.webp` — warm cookbook kitchen atmosphere; $0.04.
-- `assets/images/tilly-rabbit-display.png` — Tilly's warm portrait composite; $0.04.
+Runtime art includes the preserved `images/kitchen-background.webp`, plus locally cropped WebP files from the four new sheets: toaster, cutting board, plate; bread, tomato, cheese; toast states and completed toast; waiting/delighted Tilly, heart, and sparkle. Crops are made with ImageMagick; deterministic Phaser rectangles remain the hit geometry source of truth.
 
-The breadbox and toaster generations were rejected after inspection and are not shipped or loaded:
-- `kitchen-pantry` — malformed breadbox silhouette; charged call $0.04.
-- `kitchen-toaster` — incomplete toaster/face silhouette; charged call $0.04.
+New calls ($0.04 each):
+- `toast-recipe-equipment.webp`: toaster, child-safe cutting board/knife, ceramic plate, and unused ingredient tray cell.
+- `toast-recipe-ingredients.webp`: bread, whole tomato, cheese.
+- `toast-recipe-states.webp`: browned toast, sliced tomato, cheese toast, completed toast, and unused bitten/herb garnish cell.
+- `tilly-reactions.webp`: waiting Tilly, delighted Tilly, heart, sparkle.
 
-Total generation cost: **$0.16** across four calls. Prompt specifications remain in `assets/source/` for provenance. The two rejected calls are retained only as documentation, never as runtime assets. Stations are illustrated procedurally in Phaser so their geometry and appearance remain coherent with the puzzle.
+Earlier calls ($0.04 each): kitchen background and Tilly portrait display. The `kitchen-pantry` and `kitchen-toaster` generations were rejected/unused after inspection and are retained only as provenance; they are not loaded. No further generation calls were made.

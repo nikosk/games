@@ -1,47 +1,57 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { LEVEL } from "../src/game/level";
-import {
-  beginRun,
-  finishRun,
-  freshKitchen,
-  freshRun,
-  nextMatchingSocket,
-  placePiece,
-  placementsReady,
-  removePiece,
-} from "../src/game/rules";
-describe("drag kitchen rules", () => {
-  it("starts with two matching straight pieces", () => {
-    const s=freshKitchen(LEVEL);
-    expect(s.tray).toEqual(["straight","straight"]);
-    expect(s.placements).toHaveLength(2);
-    expect(LEVEL.pieceKinds).toEqual(LEVEL.socketKinds);
+import { beginCooking, connectionReady, finishCooking, freshKitchen, placeCard, readyToCook, readyToServe, serve, SOCKET, PLATE } from "../src/game/rules";
+
+function placeInOrder(order: readonly number[]) {
+  let state = freshKitchen(LEVEL);
+  for (const socket of order) {
+    const card = LEVEL.sockets[socket]!.accepts;
+    const result = placeCard(state, LEVEL, state.tray.indexOf(card), socket);
+    expect(result.result).toBe("placed");
+    state = result.state;
+  }
+  return state;
+}
+
+describe("recipe graph", () => {
+  it.each([{ order: [0, 1, 2, 3, 4] }, { order: [4, 3, 2, 1, 0] }, { order: [2, 4, 0, 3, 1] }, { order: [1, 3, 0, 4, 2] }])("accepts placement order $order", ({ order }) => {
+    expect(readyToCook(placeInOrder(order))).toBe(true);
   });
-  it("accepts both matching pieces and completes", () => {
-    const a=freshKitchen(LEVEL), b=placePiece(a,LEVEL,0,0);
-    expect(b.result).toBe("placed"); expect(b.state.complete).toBe(false);
-    const c=placePiece(b.state,LEVEL,0,1);
-    expect(c.result).toBe("placed");
-    expect(placementsReady(c.state)).toBe(true);
-    expect(c.state.complete).toBe(false);
+
+  it("retains a wrong card and exposes each edge only when its endpoints are ready", () => {
+    let state = freshKitchen(LEVEL);
+    const wrong = placeCard(state, LEVEL, 0, SOCKET.cheese);
+    expect(wrong.result).toBe("rejected");
+    expect(wrong.state).toEqual(state);
+    expect(connectionReady(state, SOCKET.bread, SOCKET.toaster)).toBe(false);
+    state = placeInOrder([SOCKET.bread, SOCKET.toaster]);
+    expect(connectionReady(state, SOCKET.bread, SOCKET.toaster)).toBe(true);
+    expect(connectionReady(state, SOCKET.toaster, PLATE)).toBe(true);
+    expect(connectionReady(state, SOCKET.board, PLATE)).toBe(false);
+    state = placeInOrder([SOCKET.tomato, SOCKET.board, SOCKET.cheese]);
+    expect(connectionReady(state, SOCKET.tomato, SOCKET.board)).toBe(true);
+    expect(connectionReady(state, SOCKET.board, PLATE)).toBe(true);
+    expect(connectionReady(state, SOCKET.cheese, PLATE)).toBe(true);
   });
-  it("rejects outside socket without losing the tray", () => {
-    const s=freshKitchen(LEVEL), wrong=placePiece(s,LEVEL,0,8);
-    expect(wrong.result).toBe("rejected"); expect(wrong.state).toEqual(s);
+
+  it("rejects incomplete cooking and serving", () => {
+    let state = freshKitchen(LEVEL);
+    expect(beginCooking(state).phase).toBe("building");
+    expect(readyToServe(state)).toBe(false);
+    state = placeInOrder([0, 1, 2, 3, 4]);
+    state = beginCooking(state);
+    expect(state.phase).toBe("cooking");
+    expect(serve(state)).toBe(state);
   });
-  it("supports run phases", () => {
-    const editing=freshRun(); expect(editing.phase).toBe("editing");
-    expect(beginRun(editing).phase).toBe("running");
-    expect(finishRun(beginRun(editing)).phase).toBe("finished");
-  });
-  it("resets placed pieces for play again", () => {
-    const s=placePiece(freshKitchen(LEVEL),LEVEL,0,0).state;
-    expect(removePiece(s,0).tray).toHaveLength(2);
-  });
-  it("finds the next socket after placement", () => {
-    const s = freshKitchen(LEVEL);
-    expect(placementsReady(s)).toBe(false);
-    expect(nextMatchingSocket(s, LEVEL)).toBe(0);
-    const placed=placePiece(s,LEVEL,0,0).state; expect(nextMatchingSocket(placed,LEVEL)).toBe(1);
+
+  it("finishes, serves exactly once, and replays", () => {
+    let state = finishCooking(placeInOrder([4, 2, 0, 3, 1]));
+    expect(state.phase).toBe("building");
+    state = finishCooking(beginCooking(placeInOrder([4, 2, 0, 3, 1])));
+    expect(state.phase).toBe("serving");
+    const served = serve(state);
+    expect(served.phase).toBe("served");
+    expect(serve(served)).toBe(served);
+    expect(freshKitchen(LEVEL).tray).toHaveLength(5);
   });
 });

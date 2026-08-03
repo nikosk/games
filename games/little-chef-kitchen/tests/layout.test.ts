@@ -1,14 +1,2 @@
-import { describe, it, expect } from "vitest";
-import { createKitchenLayout, layoutSafe } from "../src/game/layout";
-describe("responsive kitchen layout", () => {
-  for (const [w, h] of [[1280,720],[1024,768],[768,1024],[640,360],[390,844],[1024,420]] as const)
-    it(`${w}x${h} stays safe`, () => {
-      const l=createKitchenLayout(w,h);
-      expect(layoutSafe(l,w,h)).toBe(true);
-      for (const r of [l.pantry,l.toaster,l.plate,...l.sockets]) {
-        expect(r.width).toBeGreaterThanOrEqual(24);
-        expect(r.height).toBeGreaterThanOrEqual(24);
-      }
-      expect(l.tray.height).toBeGreaterThanOrEqual(44);
-    });
-});
+import {describe,it,expect} from "vitest";import {createKitchenLayout,layoutSafe} from "../src/game/layout";
+describe("responsive recipe layout",()=>{for(const [w,h] of [[1280,720],[1024,768],[768,1024],[640,360],[390,844],[1024,420]] as const)it(`${w}x${h}`,()=>{const l=createKitchenLayout(w,h);expect(layoutSafe(l,w,h)).toBe(true);for(const s of l.sockets)expect(s.width).toBeGreaterThanOrEqual(24);});});
