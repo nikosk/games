@@ -20,7 +20,7 @@ export function createKitchenLayout(w: number, h: number): KitchenLayout {
     { x: left, y: laneY(2), width: socketWidth, height: laneHeight },
   ];
   const plate = { x: board.x + board.width * (portrait ? .72 : .73), y: board.y + board.height * .34, width: Math.min(116, board.width * .2), height: Math.min(105, board.height * .3) };
-  const customer = portrait ? { x: w * .53, y: margin, width: w * .43 - margin, height: h * .15 } : { x: w * .73, y: margin, width: w * .24, height: h * .36 };
+  const customer = portrait ? { x: margin, y: h * .055, width: w - margin * 2, height: h * .115 } : { x: w * .73, y: margin, width: w * .24, height: h * .36 };
   const inventory = portrait ? { x: margin, y: h * .7, width: w - margin * 2, height: h * .26 } : { x: margin, y: h * .72, width: w * .68 - margin, height: h * .23 };
   return { mode, board, sockets, inventory, customer, plate };
 }
