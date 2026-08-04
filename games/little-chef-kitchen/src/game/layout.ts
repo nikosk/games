@@ -1,30 +1,5 @@
 export interface Rect { readonly x: number; readonly y: number; readonly width: number; readonly height: number; }
-export interface KitchenLayout { readonly mode: "landscape" | "tablet" | "portrait"; readonly board: Rect; readonly inventory: Rect; readonly customer: Rect; readonly plate: Rect; readonly sockets: readonly Rect[]; }
-const inside = (r: Rect, w: number, h: number) => r.x >= 0 && r.y >= 0 && r.x + r.width <= w + .5 && r.y + r.height <= h + .5;
-const overlap = (a: Rect, b: Rect) => a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
-export function createKitchenLayout(w: number, h: number): KitchenLayout {
-  const portrait = h > w;
-  const mode = portrait ? "portrait" : w < 1100 ? "tablet" : "landscape";
-  const margin = Math.max(10, Math.min(28, w * .02));
-  const board = portrait ? { x: margin, y: h * .19, width: w - margin * 2, height: h * .46 } : { x: margin, y: h * .16, width: w * .68 - margin, height: h * .52 };
-  const laneHeight = Math.min(76, Math.max(48, board.height * .17));
-  const left = board.x + board.width * .06;
-  const middle = board.x + board.width * (portrait ? .39 : .36);
-  const socketWidth = Math.min(108, Math.max(portrait ? 54 : 72, board.width * .17));
-  const laneY = (row: number) => board.y + board.height * (.23 + row * .27);
-  const sockets: Rect[] = [
-    { x: left, y: laneY(0), width: socketWidth, height: laneHeight },
-    { x: middle, y: laneY(0), width: socketWidth, height: laneHeight },
-    { x: left, y: laneY(1), width: socketWidth, height: laneHeight },
-    { x: middle, y: laneY(1), width: socketWidth, height: laneHeight },
-    { x: left, y: laneY(2), width: socketWidth, height: laneHeight },
-  ];
-  const plate = { x: board.x + board.width * (portrait ? .72 : .73), y: board.y + board.height * .34, width: Math.min(116, board.width * .2), height: Math.min(105, board.height * .3) };
-  const customer = portrait ? { x: margin, y: h * .055, width: w - margin * 2, height: h * .115 } : { x: w * .73, y: margin, width: w * .24, height: h * .36 };
-  const inventory = portrait ? { x: margin, y: h * .7, width: w - margin * 2, height: h * .26 } : { x: margin, y: h * .72, width: w * .68 - margin, height: h * .23 };
-  return { mode, board, sockets, inventory, customer, plate };
-}
-export function layoutSafe(l: KitchenLayout, w: number, h: number): boolean {
-  const all = [l.board, l.inventory, l.customer, l.plate, ...l.sockets];
-  return all.every((r) => inside(r, w, h)) && l.sockets.every((s, i) => l.sockets.every((other, j) => i === j || !overlap(s, other))) && l.plate.x >= l.board.x && l.plate.y >= l.board.y && l.plate.x + l.plate.width <= l.board.x + l.board.width && l.plate.y + l.plate.height <= l.board.y + l.board.height && !overlap(l.inventory, l.board) && !overlap(l.plate, l.inventory);
-}
+export interface KitchenLayout { readonly mode: "landscape" | "tablet" | "portrait"; readonly board: Rect; readonly inventory: Rect; readonly customer: Rect; readonly stations: Readonly<Record<"prep" | "oven" | "pan" | "freezer", Rect>>; }
+const inside = (r: Rect, w: number, h: number) => r.x >= 0 && r.y >= 0 && r.x + r.width <= w + 1 && r.y + r.height <= h + 1;
+export function createKitchenLayout(w: number, h: number): KitchenLayout { const portrait = h > w; const mode = portrait ? "portrait" : w < 1100 ? "tablet" : "landscape"; const m = Math.max(10, Math.min(26, w * .02)); const customer = portrait ? { x:m, y:h*.055, width:w-m*2, height:h*.115 } : { x:w*.73, y:m, width:w*.24, height:h*.36 }; const board = portrait ? { x:m, y:h*.19, width:w-m*2, height:h*.46 } : { x:m, y:h*.16, width:w*.68-m, height:h*.52 }; const inventory = portrait ? { x:m, y:h*.7, width:w-m*2, height:h*.26 } : { x:m, y:h*.72, width:w*.68-m, height:h*.23 }; const gap = board.width*.025; const sw = (board.width-gap*5)/4; const stationX = (index:number) => board.x + gap + index * (sw + gap); const stations = { prep:{x:stationX(0),y:board.y+board.height*.25,width:sw,height:board.height*.48}, oven:{x:stationX(1),y:board.y+board.height*.25,width:sw,height:board.height*.48}, pan:{x:stationX(2),y:board.y+board.height*.25,width:sw,height:board.height*.48}, freezer:{x:stationX(3),y:board.y+board.height*.25,width:sw,height:board.height*.48} }; return {mode,board,inventory,customer,stations}; }
+export function layoutSafe(l: KitchenLayout,w:number,h:number):boolean { return [l.board,l.inventory,l.customer,...Object.values(l.stations)].every(r=>inside(r,w,h)) && !([l.board,l.inventory,l.customer].some((a,i,all)=>all.some((b,j)=>i!==j&&a.x<b.x+b.width&&a.x+a.width>b.x&&a.y<b.y+b.height&&a.y+a.height>b.y))); }

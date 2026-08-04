@@ -1,69 +1,227 @@
 import Phaser from "phaser";
-import { LEVEL, type CardKind } from "../game/level";
-import { beginCooking, connectionReady, finishCooking, freshKitchen, placeCard, serve, SOCKET, PLATE, type KitchenState } from "../game/rules";
 import { createKitchenLayout, type KitchenLayout, type Rect } from "../game/layout";
+import { cancelPrep, freshKitchen, serve, useCard } from "../game/rules";
+import { orderTitle, type CustomerOrder, type Item, type ItemKind, type Station } from "../game/level";
 import bg from "../../assets/images/kitchen-background.webp";
-import toaster from "../../assets/images/toaster.webp"; import board from "../../assets/images/cutting-board.webp"; import plate from "../../assets/images/plate.webp";
-import bread from "../../assets/images/ingredient-0.webp"; import tomato from "../../assets/images/ingredient-1.webp"; import cheese from "../../assets/images/ingredient-2.webp";
-import toast from "../../assets/images/state-0.webp"; import sliced from "../../assets/images/state-1.webp"; import finished from "../../assets/images/state-3.webp";
-import waiting from "../../assets/images/tilly-waiting.webp"; import delighted from "../../assets/images/tilly-delighted.webp"; import heart from "../../assets/images/heart.webp"; import sparkle from "../../assets/images/sparkle.webp";
-const assets: Record<string, string> = { bg, toaster, board, plate, bread, tomato, cheese, toast, sliced, finished, waiting, delighted, heart, sparkle };
-const labels: Record<CardKind, string> = { bread: "BREAD", tomato: "TOMATO", cheese: "CHEESE", toaster: "TOASTER", board: "CUTTING BOARD" };
-const equipment: Partial<Record<CardKind, string>> = { toaster: "toaster", board: "board" };
+import waiting from "../../assets/images/tilly-waiting.webp";
+import delighted from "../../assets/images/tilly-delighted.webp";
+import heart from "../../assets/images/heart.webp";
+import sparkle from "../../assets/images/sparkle.webp";
+
+const art = { bg, waiting, delighted, heart, sparkle };
+const stationNames: Record<Station, string> = { prep: "PREP", oven: "OVEN", pan: "PAN", freezer: "FREEZER" };
+const stationColors: Record<Station, number> = { prep: 0xd79a57, oven: 0xffe7bd, pan: 0xffe7bd, freezer: 0xffe7bd };
+const familyName = (order: CustomerOrder) => order.family === "ice-cream" ? "ICE CREAM" : order.family.toUpperCase();
 
 export class KitchenScene extends Phaser.Scene {
-  private state: KitchenState = freshKitchen(LEVEL); private layout!: KitchenLayout; private selected: number | null = null;
-  private dragging: { index: number; image: Phaser.GameObjects.Image } | null = null; private pendingDrag: { index: number; x: number; y: number } | null = null; private busy = false; private pendingResize = false; private token = 0; private audio: AudioContext | undefined;
-  private message = "Build Tilly's tomato-cheese toast.";
-  constructor() { super("KitchenScene"); }
-  preload() { Object.entries(assets).forEach(([key, url]) => this.load.image(key, url)); }
-  create() { this.scale.on(Phaser.Scale.Events.RESIZE, this.resize, this); this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this); this.input.on("pointermove", this.onMove, this); this.input.on("pointerup", this.onUp, this); this.redraw(); }
-  shutdown() { this.audio?.close(); this.audio = undefined; this.scale.off(Phaser.Scale.Events.RESIZE, this.resize, this); this.input.off("pointermove", this.onMove, this); this.input.off("pointerup", this.onUp, this); this.tweens.killAll(); this.time.removeAllEvents(); }
-  private resize() { if (this.busy) this.pendingResize = true; else this.redraw(); }
-  private cue(frequency: number, duration = .08) { try { const AudioCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext; if (!AudioCtor) return; this.audio ??= new AudioCtor(); if (this.audio.state === "suspended") void this.audio.resume(); const oscillator = this.audio.createOscillator(); const gain = this.audio.createGain(); oscillator.frequency.value = frequency; gain.gain.setValueAtTime(.035, this.audio.currentTime); gain.gain.exponentialRampToValueAtTime(.001, this.audio.currentTime + duration); oscillator.connect(gain).connect(this.audio.destination); oscillator.start(); oscillator.stop(this.audio.currentTime + duration); } catch { /* audio is optional */ } }
-  private tx(x: number, y: number, text: string, size: number, color = "#493327", bold = false) { return this.add.text(x, y, text, { fontFamily: "Georgia", fontSize: `${size}px`, color, fontStyle: bold ? "bold" : "normal", align: "center", wordWrap: { width: 280 } }).setOrigin(.5); }
-  private panel(r: Rect, color: number) { const g = this.add.graphics(); g.fillStyle(color, .9).fillRoundedRect(r.x, r.y, r.width, r.height, 20).lineStyle(4, 0x8d5938, .8).strokeRoundedRect(r.x, r.y, r.width, r.height, 20); }
-  private redraw() { this.children.removeAll(true); this.layout = createKitchenLayout(this.scale.width, this.scale.height); const w = this.scale.width, h = this.scale.height; const background = this.add.image(w / 2, h / 2, "bg"); const source = background.texture.getSourceImage() as HTMLImageElement; background.setScale(Math.max(w / source.width, h / source.height)); this.add.rectangle(w / 2, h / 2, w, h, 0xffe6b0, .1); const banner = { x: Math.max(8, w * .02), y: 8, width: Math.min(w * .68, 560), height: 46 }; this.panel(banner, 0x4a2d29); this.tx(banner.x + banner.width / 2, 31, "Tilly's Tomato Toast", Math.min(23, w * .052), "#fff3d4", true); this.drawFullscreenButton(); this.drawCustomer(); this.drawBoard(); this.drawInventory(); if (this.state.phase !== "building") this.drawCookingOrServing(); this.updateStatus(); }
-  private updateStatus() { const element = document.getElementById("kitchen-status"); if (element) element.textContent = this.message; }
-  private drawFullscreenButton() { const size = 38, x = this.scale.width - size / 2 - 10, y = size / 2 + 8; const g = this.add.graphics(); g.fillStyle(0x4a2d29, .9).fillRoundedRect(x - size / 2, y - size / 2, size, size, 10).lineStyle(2, 0xffe2a5, .9).strokeRoundedRect(x - size / 2, y - size / 2, size, size, 10); this.tx(x, y + 1, "⛶", 25, "#fff3d4", true); this.add.zone(x - size / 2, y - size / 2, size, size).setOrigin(0).setInteractive().on("pointerdown", () => { if (this.scale.isFullscreen) this.scale.stopFullscreen(); else this.scale.startFullscreen(); }); }
-  private drawCustomer() { const r = this.layout.customer; this.panel(r, 0xffe8bd89); const portraitMode = this.layout.mode === "portrait"; const goalX = portraitMode ? r.x + r.width * .28 : r.x + r.width * .5; const goalY = r.y + r.height * .43; const toastRatio = 115 / 180; const goalH = r.height * .74; const goalW = goalH * toastRatio; this.add.ellipse(goalX, goalY, goalW * 1.08, goalH * 1.08, 0xfff2d2); this.add.image(goalX, goalY, "finished").setDisplaySize(goalW, goalH); const tillyX = portraitMode ? r.x + r.width * .76 : r.x + r.width * .79, tillyY = r.y + r.height * .43; const tillyH = r.height * .46, tillyW = tillyH * (237 / 240); const key = this.state.phase === "served" ? "delighted" : "waiting"; this.add.ellipse(tillyX, tillyY, tillyW * 1.08, tillyH * 1.08, 0xfff2d2); const tilly = this.add.image(tillyX, tillyY, key).setDisplaySize(tillyW, tillyH); const mask = this.make.graphics({ x: 0, y: 0 }); mask.fillEllipse(tillyX, tillyY, tillyW * .98, tillyH * .98); tilly.setMask(mask.createGeometryMask()); this.tx(goalX, r.y + r.height - 11, "TOAST", portraitMode ? 12 : 15, "#573126", true); this.tx(tillyX, r.y + r.height - 11, this.state.phase === "served" ? "YUM!" : "TILLY", portraitMode ? 12 : 15, "#573126", true); if (this.state.phase === "served") { this.add.image(tillyX - tillyW * .45, tillyY - tillyH * .35, "heart").setDisplaySize(28, 28); this.add.image(tillyX + tillyW * .45, tillyY - tillyH * .35, "sparkle").setDisplaySize(28, 28); } }
-  private drawBoard() { const r = this.layout.board; this.panel(r, 0xfff4ddb0); this.tx(r.x + r.width / 2, r.y + 24, "RECIPE MAP", 17, "#75442e", true); const c = this.layout.sockets.map((s) => ({ x: s.x + s.width / 2, y: s.y + s.height / 2 })); const edges: [0 | 1 | 2 | 3, 1 | 3][] = [[SOCKET.bread, SOCKET.toaster], [SOCKET.tomato, SOCKET.board]]; const g = this.add.graphics(); edges.forEach(([a, b]) => { const lit = connectionReady(this.state, a, b); g.lineStyle(5, lit ? 0xf7c65d : 0x9e795a, lit ? 1 : .3); g.lineBetween(c[a]!.x, c[a]!.y, c[b]!.x, c[b]!.y); if (!lit) for (let t = .1; t < .9; t += .18) g.fillCircle(c[a]!.x + (c[b]!.x - c[a]!.x) * t, c[a]!.y + (c[b]!.y - c[a]!.y) * t, 3); }); const p = this.layout.plate; const output = { x: p.x + p.width / 2, y: p.y + p.height / 2 }; [SOCKET.toaster, SOCKET.board, SOCKET.cheese].forEach((from) => { const lit = connectionReady(this.state, from, PLATE); g.lineStyle(5, lit ? 0xf7c65d : 0x9e795a, lit ? 1 : .3); g.lineBetween(c[from]!.x, c[from]!.y, output.x, output.y); });
-    LEVEL.sockets.forEach((socket, i) => { const s = this.layout.sockets[i]!; const filled = Boolean(this.state.placements[i]); const q = this.add.graphics(); q.fillStyle(filled ? 0xc78b56 : 0xfff8dc, .95).fillRoundedRect(s.x, s.y, s.width, s.height, 15).lineStyle(4, filled ? 0x8d5938 : 0xd4a04e, 1).strokeRoundedRect(s.x, s.y, s.width, s.height, 15); const kind = this.state.placements[i] ?? socket.accepts; const key = equipment[kind] ?? kind; this.add.image(s.x + s.width / 2, s.y + s.height / 2 - 7, key).setDisplaySize(s.width * .62, s.height * .62).setAlpha(filled ? 1 : .28); this.tx(s.x + s.width / 2, s.y + s.height - 9, socket.label, Math.min(12, s.width * .105), "#75442e", true); const z = this.add.zone(s.x - 12, s.y - 12, s.width + 24, s.height + 24).setOrigin(0).setInteractive(); z.on("pointerdown", () => this.place(i)); }); this.add.image(p.x + p.width / 2, p.y + p.height / 2, "plate").setDisplaySize(p.width, p.height); this.tx(p.x + p.width / 2, p.y + p.height + 14, "OUTPUT", 13, "#fff3d4", true); }
-  private drawInventory() { const r = this.layout.inventory; this.panel(r, 0x784b36); const gap = r.width / (this.state.tray.length + 1); const cardW = Math.min(100, Math.max(62, gap * .82)); this.state.tray.forEach((kind, index) => { const x = r.x + gap * (index + 1), y = r.y + r.height * .5, half = cardW / 2; const card = this.add.graphics(); card.fillStyle(this.selected === index ? 0xffe17c : 0x9d603e, .98).fillRoundedRect(x - half, y - 50, cardW, 100, 16).lineStyle(3, 0xffdfa0, 1).strokeRoundedRect(x - half, y - 50, cardW, 100, 16); this.add.image(x, y - 9, kind).setDisplaySize(Math.min(76, cardW - 10), 60); this.tx(x, y + 42, labels[kind], Math.min(11, cardW * .12), "#fff3d4", true).setWordWrapWidth(cardW - 6); const z = this.add.zone(x - half - 4, y - 54, cardW + 8, 108).setOrigin(0).setInteractive(); z.on("pointerdown", (pointer: Phaser.Input.Pointer) => this.beginDrag(index, pointer.x, pointer.y)); }); }
-  private beginDrag(index: number, x: number, y: number) { if (this.busy) return; this.selected = index; this.pendingDrag = { index, x, y }; this.redraw(); }
-  private onMove(pointer: Phaser.Input.Pointer) {
-    if (this.pendingDrag && Phaser.Math.Distance.Between(pointer.x, pointer.y, this.pendingDrag.x, this.pendingDrag.y) > 8) {
-      const kind = this.state.tray[this.pendingDrag.index]!;
-      this.dragging = { index: this.pendingDrag.index, image: this.add.image(pointer.x, pointer.y, kind).setDisplaySize(92, 82).setDepth(20) };
-      this.pendingDrag = null;
-    }
-    if (this.dragging) this.dragging.image.setPosition(pointer.x, pointer.y);
-  }
-  private onUp(pointer: Phaser.Input.Pointer) {
-    this.pendingDrag = null;
-    if (!this.dragging) return;
-    const drag = this.dragging; this.dragging = null; drag.image.destroy();
-    const socket = this.layout.sockets.findIndex((s) => pointer.x >= s.x - 25 && pointer.x <= s.x + s.width + 25 && pointer.y >= s.y - 25 && pointer.y <= s.y + s.height + 25);
-    if (socket >= 0) this.place(socket); else { this.selected = null; this.message = "That card bounced back."; this.redraw(); }
-  }
-  private place(socket: number) { if (this.busy) return; if (this.selected === null) { return; } const result = placeCard(this.state, LEVEL, this.selected, socket); if (result.result !== "placed") { this.cue(180); this.message = "Boing! That card needs a different shape."; this.flash(socket); this.selected = null; this.redraw(); return; } this.state = result.state; this.selected = null; this.cue(540); this.message = "Nice! The recipe branches from ingredients to the plate."; this.redraw(); if (this.state.tray.length === 0) this.runCooking(); }
-  private flash(socket: number) { const s = this.layout.sockets[socket]; if (!s) return; const ring = this.add.rectangle(s.x + s.width / 2, s.y + s.height / 2, s.width + 14, s.height + 14).setStrokeStyle(6, 0xd9544d).setDepth(30); this.tweens.add({ targets: ring, alpha: 0, duration: 110, yoyo: true, repeat: 2, onComplete: () => ring.destroy() }); }
+  private readonly seed = this.getSessionSeed();
+  private round = 0;
+  private state = freshKitchen(this.seed, this.round);
+  private layout!: KitchenLayout;
+  private selected: number | null = null;
+  private pending: { index: number; x: number; y: number } | null = null;
+  private dragging: Phaser.GameObjects.Container | null = null;
+  private busy = false;
+  private token = 0;
+  private audio: AudioContext | undefined;
 
-  private runCooking() { this.busy = true; this.state = beginCooking(this.state); this.message = "Cooking each branch of the recipe…"; this.redraw(); const run = ++this.token; const l = this.layout; const move = (key: string, from: Phaser.Math.Vector2, to: Phaser.Math.Vector2, done: () => void) => { const item = this.add.image(from.x, from.y, key).setDisplaySize(76, 68).setDepth(30); this.tweens.add({ targets: item, x: to.x, y: to.y, duration: 500, ease: "Sine.inOut", onComplete: () => { if (run !== this.token) { item.destroy(); return; } done(); } }); };
-    const center = (i: number) => { const s = l.sockets[i]!; return new Phaser.Math.Vector2(s.x + s.width / 2, s.y + s.height / 2); }; const output = new Phaser.Math.Vector2(l.plate.x + l.plate.width / 2, l.plate.y + l.plate.height / 2);
-    move("bread", center(0), center(1), () => {
-      move("toast", center(1), output, () => {
-        move("tomato", center(2), center(3), () => {
-          move("sliced", center(3), output, () => {
-            move("cheese", center(4), output, () => this.finishCooking(run));
-          });
-        });
-      });
-    });
+  constructor() { super("KitchenScene"); }
+
+  private getSessionSeed() {
+    const key = "little-chef-session-seed";
+    const stored = sessionStorage.getItem(key);
+    if (stored) return Number(stored);
+    const seed = Math.floor(Math.random() * 0x7fffffff);
+    sessionStorage.setItem(key, String(seed));
+    return seed;
   }
-  private finishCooking(run: number) { if (run !== this.token) return; this.state = finishCooking(this.state); this.busy = false; this.pendingResize = false; this.cue(880, .16); this.message = "Your toast is ready! Tap the finished plate for Tilly."; this.redraw(); }
-  private drawCookingOrServing() { if (this.state.phase === "serving") { const p = this.layout.plate; const dishW = Math.min(p.width * .8, p.height * .8 * (115 / 180)); const dishH = dishW / (115 / 180); this.add.image(p.x + p.width / 2, p.y + p.height / 2, "finished").setDisplaySize(dishW, dishH); const z = this.add.zone(p.x - 20, p.y - 20, p.width + 40, p.height + 40).setOrigin(0).setInteractive(); z.on("pointerdown", () => this.servePlate()); } }
-  private servePlate() { if (this.state.phase !== "serving") return; this.busy = true; const run = ++this.token; const p = this.layout.plate, c = this.layout.customer; const targetX = c.x + c.width * (this.layout.mode === "portrait" ? .76 : .79), targetY = c.y + c.height * .47; const dishW = Math.min(p.width * .8, p.height * .8 * (115 / 180)); const dishH = dishW / (115 / 180); const item = this.add.image(p.x + p.width / 2, p.y + p.height / 2, "finished").setDisplaySize(dishW, dishH).setDepth(30); this.tweens.add({ targets: item, x: targetX, y: targetY, scale: .35, duration: 700, ease: "Back.inOut", onComplete: () => { item.destroy(); if (run !== this.token) return; this.state = serve(this.state); this.busy = false; this.pendingResize = false; this.cue(1040, .18); this.message = "Tilly loved it!"; this.redraw(); this.celebrate(); } }); }
-  private celebrate() { const r = this.layout.customer; ["heart", "sparkle", "heart"].forEach((key, i) => { const item = this.add.image(r.x + r.width * (.25 + i * .25), r.y + r.height * .2, key).setDisplaySize(36, 36); this.tweens.add({ targets: item, y: "-=35", alpha: 0, delay: i * 90, duration: 650, onComplete: () => item.destroy() }); }); this.addButton(); }
-  private addButton() { const w = Math.min(280, this.scale.width * .35), x = this.scale.width / 2, y = this.scale.height * .9; const g = this.add.graphics(); g.fillStyle(0xc95c43, 1).fillRoundedRect(x - w / 2, y - 28, w, 56, 18); this.tx(x, y, "MAKE IT AGAIN", 21, "#fff3d4", true); this.add.zone(x - w / 2, y - 28, w, 56).setOrigin(0).setInteractive().on("pointerdown", () => { this.token++; this.state = freshKitchen(LEVEL); this.busy = false; this.selected = null; this.message = "Build Tilly's tomato-cheese toast."; this.redraw(); }); }
+
+  preload() { Object.entries(art).forEach(([key, url]) => this.load.image(key, url)); }
+
+  create() {
+    this.scale.on(Phaser.Scale.Events.RESIZE, this.resize, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.shutdown, this);
+    this.input.on("pointermove", this.onPointerMove, this);
+    this.input.on("pointerup", this.onPointerUp, this);
+    this.redraw();
+  }
+
+  shutdown() {
+    this.audio?.close(); this.audio = undefined;
+    this.scale.off(Phaser.Scale.Events.RESIZE, this.resize, this);
+    this.input.off("pointermove", this.onPointerMove, this);
+    this.input.off("pointerup", this.onPointerUp, this);
+    this.tweens.killAll(); this.time.removeAllEvents();
+  }
+
+  private resize() { if (!this.busy) this.redraw(); }
+
+  private tx(x: number, y: number, text: string, size: number, color = "#59362a", bold = false) {
+    return this.add.text(x, y, text, { fontFamily: "Georgia", fontSize: `${size}px`, color, fontStyle: bold ? "bold" : "normal", align: "center" }).setOrigin(.5);
+  }
+
+  private panel(r: Rect, color: number, alpha = .9) {
+    const g = this.add.graphics();
+    g.fillStyle(color, alpha).fillRoundedRect(r.x, r.y, r.width, r.height, 18);
+    g.lineStyle(3, 0x8d5938, .8).strokeRoundedRect(r.x, r.y, r.width, r.height, 18);
+  }
+
+  private redraw() {
+    this.children.removeAll(true);
+    this.layout = createKitchenLayout(this.scale.width, this.scale.height);
+    const w = this.scale.width, h = this.scale.height;
+    const background = this.add.image(w / 2, h / 2, "bg");
+    const source = background.texture.getSourceImage() as HTMLImageElement;
+    background.setScale(Math.max(w / source.width, h / source.height));
+    this.add.rectangle(w / 2, h / 2, w, h, 0xffe6b0, .1);
+    const banner = { x: Math.max(8, w * .02), y: 8, width: Math.min(w * .68, 560), height: 46 };
+    this.panel(banner, 0x4a2d29);
+    this.tx(banner.x + banner.width / 2, 31, `${familyName(this.state.order)} ORDER`, Math.min(21, w * .045), "#fff3d4", true);
+    this.drawFullscreen(); this.drawCustomer(); this.drawStations(); this.drawTray();
+    this.updateStatus();
+  }
+
+  private updateStatus() {
+    const el = document.getElementById("kitchen-status");
+    if (el) el.textContent = `${familyName(this.state.order)} order · ${this.state.phase}`;
+  }
+
+  private drawFullscreen() {
+    const size = 38, x = this.scale.width - size / 2 - 10, y = size / 2 + 8;
+    const g = this.add.graphics(); g.fillStyle(0x4a2d29, .9).fillRoundedRect(x - size / 2, y - size / 2, size, size, 10).lineStyle(2, 0xffe2a5, .9).strokeRoundedRect(x - size / 2, y - size / 2, size, size, 10);
+    this.tx(x, y + 1, "⛶", 25, "#fff3d4", true);
+    this.add.zone(x - size / 2, y - size / 2, size, size).setOrigin(0).setInteractive().on("pointerdown", () => this.scale.isFullscreen ? this.scale.stopFullscreen() : this.scale.startFullscreen());
+  }
+
+  private drawCustomer() {
+    const r = this.layout.customer, portrait = this.layout.mode === "portrait";
+    this.panel(r, 0xffe8bd89);
+    const goalX = r.x + r.width * (portrait ? .25 : .5), tillyX = r.x + r.width * (portrait ? .76 : .79), y = r.y + r.height * .43;
+    this.add.ellipse(goalX, y, portrait ? 110 : 180, portrait ? 86 : 132, 0xfff2d2);
+    this.drawItem(this.goalItem(), goalX, y, portrait ? 95 : 156, portrait ? 75 : 112);
+    this.tx(goalX, r.y + r.height - 10, "ORDER", portrait ? 11 : 14, "#573126", true);
+    const key = this.state.phase === "served" ? "delighted" : "waiting";
+    const tillyHeight = r.height * .52;
+    const tillyWidth = Math.min(r.width * (portrait ? .24 : .32), tillyHeight * (237 / 240));
+    const backing = this.add.ellipse(tillyX, y, tillyWidth * 1.12, tillyHeight * 1.08, 0xfff2d2).setDepth(5);
+    const tilly = this.add.image(tillyX, y, key).setDisplaySize(tillyWidth, tillyHeight).setDepth(6);
+    const mask = this.make.graphics({ x: 0, y: 0 }); mask.fillEllipse(tillyX, y, tillyWidth * .98, tillyHeight * .98); tilly.setMask(mask.createGeometryMask());
+    this.tx(tillyX, r.y + r.height - 10, this.state.phase === "served" ? "YUM!" : "TILLY", portrait ? 11 : 14, "#573126", true);
+    const zone = this.add.zone(goalX - r.width * .22, r.y, r.width * .44, r.height).setOrigin(0).setInteractive(); zone.on("pointerdown", () => this.serveSelected());
+    if (this.state.phase === "served") { this.add.image(tillyX - 25, y - 25, "heart").setDisplaySize(28, 28); this.add.image(tillyX + 25, y - 25, "sparkle").setDisplaySize(28, 28); }
+  }
+
+  private goalItem(): Item {
+    if (this.state.order.family === "pizza") return { kind: "pizza", label: "PIZZA", extras: this.state.order.toppings };
+    if (this.state.order.family === "pancakes") return { kind: "pancakes", label: "PANCAKES", extras: [this.state.order.fruit, this.state.order.syrup] };
+    return { kind: "ice-cream", label: "ICE CREAM", extras: [this.state.order.flavour, this.state.order.vessel, this.state.order.topping] };
+  }
+
+  private drawStations() {
+    const r = this.layout.board; this.panel(r, 0xfff4ddb0); this.tx(r.x + r.width / 2, r.y + 24, "KITCHEN", 17, "#75442e", true);
+    (Object.entries(this.layout.stations) as [Station, Rect][]).forEach(([station, s]) => {
+      this.panel(s, stationColors[station]); this.drawStationFace(station, s.x + s.width / 2, s.y + s.height * .32, Math.min(s.width, s.height) * .36);
+      this.tx(s.x + s.width / 2, s.y + s.height * .86, stationNames[station], Math.min(13, s.width * .14), "#75442e", true);
+      const zone = this.add.zone(s.x - 12, s.y - 12, s.width + 24, s.height + 24).setOrigin(0).setInteractive(); zone.on("pointerdown", () => this.process(station));
+    });
+    if (this.state.prep) {
+      const prep = this.layout.stations.prep;
+      this.drawItem(this.state.prep, prep.x + prep.width / 2, prep.y + prep.height * .65, Math.min(68, prep.width * .62), Math.min(42, prep.height * .18)).setDepth(8);
+    }
+  }
+
+  private drawStationFace(station: Station, x: number, y: number, size: number) {
+    const g = this.add.graphics(); g.lineStyle(3, 0x75442e, 1); g.fillStyle(0xfff7db, 1);
+    if (station === "prep") { g.fillCircle(x, y, size * .42); g.strokeCircle(x, y, size * .42); g.fillStyle(0xf4c880, 1).fillEllipse(x, y + size * .1, size * .55, size * .24); g.lineStyle(6, 0x8d5938, 1).lineBetween(x - size * .28, y - size * .22, x + size * .28, y - size * .22); }
+    if (station === "oven") { g.fillRoundedRect(x - size * .38, y - size * .35, size * .76, size * .7, 8); g.strokeRoundedRect(x - size * .38, y - size * .35, size * .76, size * .7, 8); g.fillStyle(0x7f4637, 1).fillRoundedRect(x - size * .27, y - size * .12, size * .54, size * .34, 5); g.fillStyle(0xffb85d, 1).fillCircle(x, y + size * .05, size * .1); }
+    if (station === "pan") { g.fillStyle(0x5b4b43, 1).fillEllipse(x, y + size * .05, size * .65, size * .3); g.lineStyle(8, 0x75442e, 1).lineBetween(x + size * .28, y, x + size * .53, y - size * .2); g.lineStyle(2, 0x332a26, 1).strokeEllipse(x, y + size * .05, size * .65, size * .3); }
+    if (station === "freezer") { g.fillStyle(0x8bbec1, 1).fillRoundedRect(x - size * .32, y - size * .4, size * .64, size * .8, 8); g.strokeRoundedRect(x - size * .32, y - size * .4, size * .64, size * .8, 8); g.lineStyle(3, 0xe5ffff, 1).lineBetween(x - size * .17, y - size * .15, x + size * .17, y + size * .15); g.lineBetween(x + size * .17, y - size * .15, x - size * .17, y + size * .15); }
+  }
+
+  private drawTray() {
+    const r = this.layout.inventory; this.panel(r, 0x784b36); const gap = r.width / (this.state.tray.length + 1); const cardW = Math.min(112, Math.max(70, gap * .84));
+    this.state.tray.forEach((item, index) => { const x = r.x + gap * (index + 1), y = r.y + r.height * .5; const g = this.add.graphics(); g.fillStyle(this.selected === index ? 0xffe17c : 0x9d603e).fillRoundedRect(x - cardW / 2, y - 50, cardW, 100, 15).lineStyle(3, 0xffdfa0).strokeRoundedRect(x - cardW / 2, y - 50, cardW, 100, 15); this.drawItem(item, x, y - 8, cardW - 14, 62); const z = this.add.zone(x - cardW / 2 - 5, y - 55, cardW + 10, 110).setOrigin(0).setInteractive(); z.on("pointerdown", (p: Phaser.Input.Pointer) => this.select(index, p.x, p.y)); });
+  }
+
+  private drawItem(item: Item, x: number, y: number, width: number, height: number) {
+    const c = this.add.container(x, y); const g = this.add.graphics(); const w = width, h = height; g.lineStyle(Math.max(2, w * .025), 0x75442e, 1);
+    const kind = item.kind as string;
+    if (kind === "dough" || kind === "bread") { g.fillStyle(0xf0be69, 1).fillRoundedRect(-w*.36, -h*.28, w*.72, h*.48, 10); g.strokeRoundedRect(-w*.36, -h*.28, w*.72, h*.48, 10); }
+    else if (kind === "tomato") { g.fillStyle(0xe5573e, 1).fillCircle(0, 0, Math.min(w, h) * .3); g.strokeCircle(0, 0, Math.min(w, h) * .3); g.fillStyle(0x638c4b, 1).fillTriangle(-8,-h*.25,0,-h*.4,8,-h*.25); }
+    else if (kind === "cheese") { g.fillStyle(0xffe79a, 1).fillRoundedRect(-w*.32, -h*.22, w*.64, h*.42, 5); g.strokeRoundedRect(-w*.32, -h*.22, w*.64, h*.42, 5); }
+    else if (kind === "mushroom") { g.fillStyle(0xd89a6a, 1).fillEllipse(0, -h*.12, w*.45, h*.28); g.fillStyle(0xf2d0a0, 1).fillRoundedRect(-w*.08, 0, w*.16, h*.25, 4); }
+    else if (kind === "pepper") { g.fillStyle(0x70a95d, 1).fillEllipse(0, 0, w*.58, h*.25); g.strokeEllipse(0, 0, w*.58, h*.25); }
+    else if (kind === "sauced-base" || kind === "pizza") { g.fillStyle(0xf0bd6c, 1).fillCircle(0, 0, Math.min(w,h)*.4); g.strokeCircle(0,0,Math.min(w,h)*.4); g.fillStyle(0xd9553d,1).fillCircle(0,0,Math.min(w,h)*.31); (item.extras ?? []).forEach((extra, i) => this.drawTopping(g, extra, -w*.2 + i*w*.2, h*.04, Math.min(w,h)*.1)); }
+    else if (kind === "flour") { g.fillStyle(0xfff5de, 1).fillRoundedRect(-w*.26,-h*.32,w*.52,h*.5,7); g.strokeRoundedRect(-w*.26,-h*.32,w*.52,h*.5,7); g.fillStyle(0xd98e62,1).fillEllipse(0,h*.05,w*.34,h*.08); }
+    else if (kind === "milk") { g.fillStyle(0xf5f1dc,1).fillRoundedRect(-w*.2,-h*.34,w*.4,h*.58,5); g.strokeRoundedRect(-w*.2,-h*.34,w*.4,h*.58,5); g.fillStyle(0x8eb9c9,1).fillRect(-w*.2,-h*.2,w*.4,h*.12); }
+    else if (kind === "strawberry" || kind === "berries" || kind === "blueberry") { g.fillStyle(kind === "blueberry" ? 0x566da9 : 0xe85a51,1).fillCircle(0,0,Math.min(w,h)*.24); g.fillStyle(0x638c4b,1).fillTriangle(-6,-h*.2,0,-h*.34,6,-h*.2); }
+    else if (kind === "banana") { g.lineStyle(Math.max(3,w*.05),0xf5cc53,1).beginPath(); g.arc(0,0,w*.3,0,Math.PI); g.strokePath(); }
+    else if (kind === "maple" || kind === "chocolate" || kind === "berry") { g.fillStyle(kind === "chocolate" ? 0x754632 : kind === "maple" ? 0xc87834 : 0xbd4f66,1).fillRoundedRect(-w*.15,-h*.35,w*.3,h*.56,5); g.strokeRoundedRect(-w*.15,-h*.35,w*.3,h*.56,5); }
+    else if (kind === "batter") { g.fillStyle(0xffe4a6,1).fillEllipse(0,0,w*.5,h*.3); g.strokeEllipse(0,0,w*.5,h*.3); }
+    else if (kind === "stack" || kind === "pancakes") { for(let i=0;i<3;i++){g.fillStyle(0xe6ad61,1).fillEllipse(0,h*.16-i*h*.14,w*.6,h*.2);g.strokeEllipse(0,h*.16-i*h*.14,w*.6,h*.2);} (item.extras??[]).forEach((e,i)=>this.drawTopping(g,e,-w*.16+i*w*.16,-h*.2,Math.min(w,h)*.09)); }
+    else if (kind === "cream" || kind === "mix") { g.fillStyle(0xfff0d2,1).fillEllipse(0,0,w*.48,h*.3); g.strokeEllipse(0,0,w*.48,h*.3); }
+    else if (kind === "mint" || kind === "scoop") { const flavour = item.extras?.[0]; g.fillStyle(flavour === "chocolate" ? 0x8a5a43 : flavour === "strawberry" ? 0xf07c72 : 0xa8d29e,1).fillCircle(0,0,Math.min(w,h)*.3); g.strokeCircle(0,0,Math.min(w,h)*.3); }
+    else if (kind === "cone" || kind === "bowl") { g.fillStyle(kind === "cone" ? 0xd8944d : 0xd8a47a,1); if(kind === "cone") g.fillTriangle(-w*.2,-h*.1,w*.2,-h*.1,0,h*.35); else g.fillEllipse(0,h*.08,w*.58,h*.28); g.strokePath(); }
+    else if (kind === "sprinkles" || kind === "wafer") { g.fillStyle(0xf1cf61,1).fillRoundedRect(-w*.25,-h*.1,w*.5,h*.18,3); g.strokeRoundedRect(-w*.25,-h*.1,w*.5,h*.18,3); }
+    else if (kind === "ice-cream") { const vessel = item.extras?.find(e => e === "cone" || e === "bowl"); if(vessel === "cone"){ g.fillStyle(0xd8944d,1).fillTriangle(-w*.22,h*.12,w*.22,h*.12,0,h*.42); g.strokeTriangle(-w*.22,h*.12,w*.22,h*.12,0,h*.42); } else if(vessel === "bowl"){ g.fillStyle(0xd8a47a,1).fillEllipse(0,h*.2,w*.58,h*.24); g.strokeEllipse(0,h*.2,w*.58,h*.24); } const flavour=item.extras?.find(e=>e === "chocolate" || e === "strawberry" || e === "mint"); const scoopColor=flavour === "chocolate" ? 0x8a5a43 : flavour === "strawberry" ? 0xf07c72 : 0xa8d29e; g.fillStyle(scoopColor,1).fillCircle(0,-h*.08,Math.min(w,h)*.28); g.strokeCircle(0,-h*.08,Math.min(w,h)*.28); const topping=item.extras?.find(e=>e === "sprinkles" || e === "berries" || e === "wafer"); if(topping) this.drawTopping(g,topping,0,-h*.2,Math.min(w,h)*.08); }
+    c.add(g); this.txIn(c, 0, h*.45, item.label, Math.max(9, Math.min(12, w*.095)), "#fff3d4", true); return c;
+  }
+
+  private drawTopping(g: Phaser.GameObjects.Graphics, kind: string, x: number, y: number, size: number) {
+    if (kind === "cheese") g.fillStyle(0xffe79a, 1).fillCircle(x, y, size);
+    else if (kind === "sprinkles") {
+      const colors = [0xe85a51, 0x5f86c8, 0xf0c54d, 0x68a85d];
+      for (let i = 0; i < 6; i++) { g.lineStyle(Math.max(2, size * .3), colors[i % colors.length]!, 1); g.lineBetween(x - size * .8 + (i % 3) * size * .7, y - size * .5 + Math.floor(i / 3) * size, x - size * .45 + (i % 3) * size * .7, y - size * .8 + Math.floor(i / 3) * size); }
+    } else if (kind === "mushroom") { g.fillStyle(0xf1d3a0, 1).fillRoundedRect(x - size * .22, y - size * .05, size * .44, size * 1.05, 3); g.fillStyle(0x9b6046, 1).fillEllipse(x, y - size * .35, size * 1.5, size * .85); }
+    else if (kind === "pepper") { g.fillStyle(0x70a95d, 1).fillEllipse(x, y, size * 2, size); }
+    else if (kind === "banana") { g.lineStyle(Math.max(2, size * .35), 0xf5cc53, 1).beginPath(); g.arc(x, y, size * 1.5, 0.15, Math.PI - 0.15); g.strokePath(); }
+    else if (kind === "strawberry") { g.fillStyle(0xe85a51, 1).fillTriangle(x - size, y - size * .6, x + size, y - size * .6, x, y + size * 1.25); g.fillStyle(0x638c4b, 1).fillTriangle(x - size * .65, y - size * .55, x, y - size * 1.2, x + size * .65, y - size * .55); }
+    else if (kind === "blueberry") { [0x566da9, 0x6e83bb, 0x4b609b].forEach((color, i) => { g.fillStyle(color, 1).fillCircle(x + (i - 1) * size * .9, y - (i === 1 ? size * .4 : 0), size * .78); }); }
+    else if (kind === "maple" || kind === "chocolate" || kind === "berry") { const color = kind === "maple" ? 0xd27b35 : kind === "chocolate" ? 0x754632 : 0xbd4f66; g.lineStyle(Math.max(2, size * .28), color, 1).beginPath(); g.moveTo(x - size * 1.3, y - size * .7); g.lineTo(x - size * .45, y + size * .4); g.lineTo(x + size * .2, y - size * .5); g.lineTo(x + size * 1.1, y + size * .4); g.strokePath(); }
+    else if (kind === "berries") { [0xe85a51, 0x566da9, 0xe85a51].forEach((color, i) => { g.fillStyle(color, 1).fillCircle(x + (i - 1) * size * .8, y - (i === 1 ? size * .35 : 0), size * .72); }); }
+    else if (kind === "wafer") { g.fillStyle(0xd8944d, 1).fillRect(x - size * .7, y - size * 2.6, size * 1.4, size * 5.2); g.lineStyle(Math.max(1, size * .16), 0xffe08a, 1); for (let i = -1; i <= 1; i++) g.lineBetween(x - size * .55, y + i * size * 1.4, x + size * .55, y + i * size * 1.4); }
+    else g.fillStyle(kind === "chocolate" ? 0x8a5a43 : 0xe85a51, 1).fillCircle(x, y, size);
+  }
+  private txIn(c: Phaser.GameObjects.Container, x:number,y:number,text:string,size:number,color:string,bold=false){ const t=this.add.text(x,y,text,{fontFamily:"Georgia",fontSize:`${size}px`,color,fontStyle:bold?"bold":"normal",align:"center",wordWrap:{width:140}}).setOrigin(.5); c.add(t); }
+
+  private select(index: number, x: number, y: number) { if(this.busy)return; this.selected=index; this.pending={index,x,y}; this.redraw(); }
+  private onPointerMove(pointer: Phaser.Input.Pointer) { if(this.pending && Phaser.Math.Distance.Between(pointer.x,pointer.y,this.pending.x,this.pending.y)>8){ const item=this.state.tray[this.pending.index]; if(item){this.dragging=this.drawItem(item,pointer.x,pointer.y,74,58).setDepth(30); this.pending=null;} } if(this.dragging)this.dragging.setPosition(pointer.x,pointer.y); }
+  private onPointerUp(pointer: Phaser.Input.Pointer) {
+    this.pending = null;
+    if (!this.dragging) return;
+    this.dragging.destroy(); this.dragging = null;
+    const customer = this.layout.customer;
+    if (pointer.x >= customer.x && pointer.x <= customer.x + customer.width && pointer.y >= customer.y && pointer.y <= customer.y + customer.height) { this.serveSelected(); return; }
+    const station = (Object.entries(this.layout.stations) as [Station, Rect][]).find(([, rect]) => pointer.x >= rect.x - 28 && pointer.x <= rect.x + rect.width + 28 && pointer.y >= rect.y - 28 && pointer.y <= rect.y + rect.height + 28);
+    if (station) { this.process(station[0]); return; }
+    this.selected = null; this.redraw();
+  }
+
+  private process(station: Station) {
+    if (this.busy) return;
+    if (this.selected === null) {
+      if (station === "prep" && this.state.prep) { this.state = cancelPrep(this.state); this.cue(360); this.redraw(); }
+      return;
+    }
+    const result = useCard(this.state, this.selected, station);
+    if (result.result === "rejected") {
+      this.cue(150); this.selected = null; this.redraw(); this.feedback(station, false); return;
+    }
+    this.state = result.state; this.selected = null; this.cue(result.result === "transformed" ? 720 : 420); this.animateTransform(result.result, station);
+  }
+
+  private feedback(station: Station, accepted: boolean) {
+    const rect = this.layout.stations[station];
+    const ring = this.add.rectangle(rect.x + rect.width / 2, rect.y + rect.height / 2, rect.width + 12, rect.height + 12).setStrokeStyle(6, accepted ? 0xffe079 : 0xd9534f).setDepth(25);
+    this.tweens.add({ targets: ring, x: "+=" + (accepted ? 0 : 8), alpha: 0, duration: 110, yoyo: true, repeat: accepted ? 1 : 2, onComplete: () => ring.destroy() });
+  }
+
+  private animateTransform(result: string, station: Station) {
+    this.redraw();
+    if (result !== "transformed") return;
+    this.feedback(station, true);
+  }
+  private serveSelected() { if(this.selected===null)return; const result=serve(this.state,this.selected); if(result.result!=="served"){this.cue(150);this.selected=null;this.redraw();return;} this.cue(920); this.busy=true; const item=this.state.tray[this.selected]!; const from=this.layout.inventory; const to=this.layout.customer; const mover=this.drawItem(item,from.x+from.width/2,from.y+from.height/2,80,60).setDepth(30); this.tweens.add({targets:mover,x:to.x+to.width*.5,y:to.y+to.height*.45,scale:.45,duration:650,ease:"Back.inOut",onComplete:()=>{mover.destroy();this.state=result.state;this.busy=false;this.redraw();this.celebrate();}}); }
+  private celebrate(){const r=this.layout.customer;["heart","sparkle","heart"].forEach((k,i)=>{const a=this.add.image(r.x+r.width*(.25+i*.25),r.y+r.height*.2,k).setDisplaySize(32,32);this.tweens.add({targets:a,y:"-=30",alpha:0,delay:i*80,duration:600,onComplete:()=>a.destroy()});});const w=Math.min(260,this.scale.width*.34),x=this.scale.width/2,y=this.scale.height*.9;const g=this.add.graphics();g.fillStyle(0xc95c43).fillRoundedRect(x-w/2,y-27,w,54,16);this.tx(x,y,"NEXT ORDER",20,"#fff3d4",true);this.add.zone(x-w/2,y-27,w,54).setOrigin(0).setInteractive().on("pointerdown",()=>{this.round++; this.selected = null; this.pending = null; this.dragging?.destroy(); this.dragging = null; this.state = freshKitchen(this.seed, this.round); this.redraw();});}
+  private cue(frequency:number){try{const A=window.AudioContext||((window as typeof window&{webkitAudioContext?:typeof AudioContext}).webkitAudioContext);if(!A)return;this.audio??=new A();const o=this.audio.createOscillator(),g=this.audio.createGain();o.frequency.value=frequency;g.gain.value=.03;o.connect(g).connect(this.audio.destination);o.start();o.stop(this.audio.currentTime+.1);}catch{}}
 }
