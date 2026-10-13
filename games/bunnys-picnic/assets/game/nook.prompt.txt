@@ -1,0 +1,4 @@
+Tool: built-in image_gen
+References: nook-before.png
+
+Edit the approved painted scene into a clean production game background. Remove Bunny, Hedgehog, the wicker basket and the three loose leaf piles completely. Preserve the EMPTY sleeping hollow at the right tree base, the puddle and both banks, path and trees. Do not add any bridge, bed or props. Keep the puddle clearly interrupting the path. Preserve camera, landscape dimensions, lighting and painted storybook palette. Quiet broad painted background forms, no extra tiny details. Seamlessly repaint removed objects, not blur. No characters, no movable props, no UI, no text.

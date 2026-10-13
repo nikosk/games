@@ -1,0 +1,19 @@
+Tool: built-in image_gen
+Reference: assets/concepts/characters-v1.png
+
+Use case: illustration-story.
+Asset type: eight-frame hand-drawn walk cycle sprite sheet, 4 equal columns by 2 equal rows, transparent background.
+Reference image: character identity and painted gouache style only. Use ONLY the cream Bunny with raspberry dungarees.
+Draw a technically coherent continuous eight-frame SIDE VIEW walk cycle facing RIGHT. Same bunny model, same face, same clothing, same scale, same head size, same facing direction in every frame. No facial expression changes. Gentle purposeful ordinary walking, not hopping.
+Read frames left to right, top then bottom:
+1 contact: near leg forward heel touching ground, far leg behind toe touching, near arm back.
+2 down: weight lowers onto forward near foot, far heel lifted as far knee starts swinging.
+3 passing: near leg vertical supporting body, far bent knee passing forward, arms passing sides.
+4 up: near heel rising behind, far knee forward and foot reaching ahead, body slightly raised.
+5 opposite contact: FAR leg forward heel touching, NEAR leg behind toe touching, near arm forward.
+6 opposite down: far foot bearing weight, near heel lifting and knee starting forward.
+7 opposite passing: far leg supporting vertically, near bent knee passing forward.
+8 opposite up: far heel lifting behind, near knee forward preparing contact frame1.
+Strongly differentiate the two alternating steps; do NOT repeat four poses twice. Far limbs slightly darker. Both feet must be anatomically plausible and attached; eyes, ears and overalls stay consistent. Arms swing opposite the legs. Restrained ear lag.
+Each of eight cells has identical camera and proportions, hip horizontally centered; supporting sole on exactly same ground baseline 90% down its cell. Whole bunny incl ears stays within 10%-90% of each cell. Only small natural vertical head changes, no size changes.
+Painted creamy fur, soft pencil edges, red raspberry cloth and two brass buttons, warm storybook watercolor gouache. Transparent blank gaps; no grid, labels, ground shadows, scenery, props, other characters or decorative elements.

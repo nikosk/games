@@ -1,0 +1,26 @@
+{
+  "samples": [
+    {
+      "id": "welcome",
+      "original": 0,
+      "text": "Έλα, πάμε για πικνίκ!"
+    },
+    {
+      "id": "duck",
+      "original": 10,
+      "text": "Ωχ, η μπάλα μου! Με βοηθάς;"
+    },
+    {
+      "id": "hedgehog",
+      "original": 8,
+      "text": "Αχ, τι μαλακά! Ευχαριστώ!"
+    }
+  ],
+  "rate": "+0%",
+  "pitch": "+0Hz",
+  "voices": [
+    "el-GR-AthinaNeural",
+    "el-GR-NestorasNeural"
+  ],
+  "tool": "edge-tts 7.2.8"
+}

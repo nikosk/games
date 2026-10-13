@@ -1,0 +1,8 @@
+Tool: built-in image_gen
+Reference for both: ../concepts/pond-v2.png
+
+pond-background.png
+Edit reference into a clean background plate for this same painted storybook game. Remove Bunny, Duck, ball and its reflection/ripples, inventory tray, upper right help button, and wooden sign completely. Seamlessly paint grass and water in their places. Preserve exactly composition, pond shoreline, path, soft trees, fence, two flowers, distant reeds, painterly palette and landscape dimensions. No characters, no UI, no objects added. Quiet broad painted shapes.
+
+poses.png
+Create a production painted sprite pose atlas with genuine transparent alpha background, no backdrop or ground shadows, matching Bunny and Duck in the reference. EXACT regular grid 4 columns x 2 rows, eight equal cells, landscape 1536x1024. Each subject fully contained inside its cell with generous transparent margin. Row 1 all SAME cream Bunny raspberry dungarees, facing RIGHT, same scale feet aligned: cell1 relaxed standing; cell2 stepping forward right foot; cell3 leaning forward with both paws extended towards right at waist height as if holding a separate net (NO NET drawn); cell4 happy with raised paws. Row 2: cell1 SAME golden Duck sage neckerchief standing facing RIGHT wing reaching; cell2 same Duck laughing wings raised; cell3 one coral cream striped beach ball centered; cell4 one long wooden handled scoop net with sage oval rim and mesh, angled from bottom LEFT handle end to top RIGHT net opening. All character designs faithful to reference, gouache texture, clear silhouettes. No scenery, no UI, no text, no grid lines, no labels. Actual transparency essential. Keep each sprite separate, never crossing its cell boundary. Bunny ears fully visible.

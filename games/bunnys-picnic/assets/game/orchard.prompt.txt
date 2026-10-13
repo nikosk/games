@@ -1,0 +1,4 @@
+Tool: built-in image_gen
+References: orchard-before.png
+
+Edit the approved painted scene into a clean production game background. Remove Bunny, Puppy, the wooden box and all four apples completely. Preserve the tree trunk, low branch and canopy, distant trees and open grass. No fruit remains on branches. Clear space below the low branch for separate box and basket sprites. Preserve camera, landscape dimensions, lighting and painted storybook palette. Quiet broad painted background forms, no extra tiny details. Seamlessly repaint removed objects, not blur. No characters, no movable props, no UI, no text.

@@ -1,0 +1,3 @@
+Built-in image_gen. References: pond-v2.png.
+
+Edit the approved pond scene by removing only these interface elements: bottom-left inventory tray including net icon; upper-right circular Bunny help portrait; wooden picnic sign at left. Seamlessly restore grass, sky/trees and path behind them. Preserve absolutely everything else: same Bunny, Duck pointing, ball floating, character sizes and positions, quiet background, pond shoreline and simple reflections. Do not change faces, poses, ball size or composition. Same landscape dimensions. No new objects or text.

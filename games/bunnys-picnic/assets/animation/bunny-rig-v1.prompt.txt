@@ -1,0 +1,15 @@
+Tool: built-in image_gen
+Reference: assets/concepts/characters-v1.png
+
+Use case: illustration-story. Asset: separated painted body parts for a 2D articulated animation rig of the cream Bunny in raspberry dungarees from reference. Pure transparent background. Exactly eight isolated PARTS, arranged 4 columns x 2 rows with wide transparent gaps. Do NOT draw eight whole characters. Consistent side view facing RIGHT, same gouache storybook painting and proportions. NO text or labels or background shadows.
+Top row:
+1 ONLY Bunny's head including both long ears, smiling closed mouth, eye looking right. Neck stub at bottom. No torso.
+2 ONLY raspberry dungaree torso with cream neck stub, round belly, brass buttons and a small cream tail protruding left. No head, no arms, NO legs. Torso ends in rounded hip bottom covered in red fabric.
+3 ONLY near upper leg: short thick red dungaree trouser segment, vertical downward, rounded hip joint at top, rounded knee at bottom, no foot. Same red fabric as torso.
+4 ONLY near lower leg and foot: cream furry shin vertical down, ankle and long rounded cream paw pointing RIGHT at bottom, like an L shape. Rounded knee connection at top. No red fabric.
+Bottom row:
+1 ONLY far upper leg matching top third, slightly darker red.
+2 ONLY far lower leg and right-pointing foot matching top fourth, slightly darker cream.
+3 ONLY near arm: cream furry shoulder and softly bent arm hanging down, mitten paw at bottom. No sleeves. Rounded shoulder at top.
+4 ONLY far arm matching bottom third, slightly darker cream.
+An animation artist will connect these pieces at shoulder, hip and knee. Each part must have rounded hidden overlap at joints, NO flat cut edges. Keep red pant legs broad enough to overlap the cream lower leg. Clean transparent padding around each isolated part. No other pieces.

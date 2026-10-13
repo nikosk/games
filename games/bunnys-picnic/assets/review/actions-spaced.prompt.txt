@@ -1,0 +1,3 @@
+Built-in image_gen. References: actions.png.
+
+Edit this transparent action pose sheet. Preserve all eight characters and their exact identities, poses, clothing and held objects. Keep the four-column two-row grid. Reduce the size of every pose within its own cell enough to give clear 8 percent transparent margins on all sides, especially above Bunny ears and Puppy raised paws. Restore any cut-off ear tips naturally. No pose may touch an image edge or a neighbouring cell. Preserve genuine transparent background, no black backdrop, no ground or shadows, no text. Same warm painted gouache art. Keep full bodies with intact paws and ears. This is a spacing and edge cleanup only.

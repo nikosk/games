@@ -1,0 +1,3 @@
+Built-in image_gen. References: shed-before.png.
+
+Edit this painted shed game scene to show the collected-tools state. Remove the leaning wooden plank and the scoop net entirely, leaving clear empty wall and floor where they were. Preserve exactly the camera, Bunny's design and position, lighting, pinwheel, watering can, pots and all scenery. Keep two empty wall hooks. Bunny looks pleased with one paw raised as a little wave, no tools in paws, no new objects. Same landscape dimensions and painted gouache finish. No UI, text or labels.

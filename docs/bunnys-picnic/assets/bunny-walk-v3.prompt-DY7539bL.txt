@@ -1,0 +1,9 @@
+Tool: built-in image_gen
+Reference: assets/animation/bunny-walk-v2.png
+
+Edit this walk-cycle sprite sheet. Keep the same 4-column 2-row layout, transparent background, exact character design, painted style, head size and scale. Preserve the top row. Correct ONLY the bottom row to depict the OPPOSITE STEP, with near and far legs exchanging roles.
+Bottom-left frame (frame5): the NEAR leg (viewer-facing red trouser leg) is stretched BACK to the LEFT, with toe touching ground at the LEFT. The FAR leg extends FORWARD to the RIGHT, its heel grounded at the RIGHT. Near arm stretched forward/right. This must be visibly opposite the top-left frame where the near leg extends right.
+Bottom second frame(frame6): NEAR leg behind on left, its knee bending, heel lifting high; FAR leg ahead/right planted bearing weight. Near arm forward.
+Bottom third frame(frame7): FAR leg planted directly beneath pelvis, NEAR knee swings forward toward right with its foot lifted.
+Bottom fourth frame(frame8): FAR leg extends BACK LEFT supporting on its toe, NEAR leg reaches FORWARD RIGHT with heel just above floor, about to become top-left frame1.
+Do not draw a hop. One foot supports the body in every frame. Keep supporting soles at consistent ground height per row. All 8 bunnies identical proportions and face, restrained natural motion only. No labels, lines, shadows or props.

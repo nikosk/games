@@ -1,0 +1,4 @@
+Tool: built-in image_gen
+References: shed-before.png
+
+Edit the supplied approved painted game scene into a clean production background plate. Remove Bunny, plank, scoop net, watering can, pinwheel and pots completely. Preserve the shed walls, floor, open doorway, shelf, two empty hooks and outside path. Empty uncluttered shelf and floor ready for separate prop sprites. Preserve exact camera, landscape dimensions, lighting, perspective and broad painted storybook forms. Simplify distracting small texture in grass and foliage into quieter washes. No characters, no movable props, no UI, no text. Seamless repainting, not blur. This background will sit behind separately animated character and prop art.

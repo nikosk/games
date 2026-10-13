@@ -1,0 +1,4 @@
+Tool: built-in image_gen
+References: assets/concepts/characters-v1.png
+
+Create a polished watercolor gouache storybook GAME PROP sprite sheet on genuine fully transparent background, matching soft hand-painted warm palette of reference. 4 columns by 2 rows, exactly 8 isolated objects, each centered within equal cell, lots of TRANSPARENT space between objects, no backdrop glow or ground plane, no text. TOP ROW: 1 mint green watering can with long spout, 2 coral sage yellow four-blade paper pinwheel on short wooden stick, 3 lavender and cream butterfly with wings open, 4 little robin bird orange breast. BOTTOM ROW: 1 open wicker picnic hamper with cream lining and stack of four cream plates inside; 2 tiny terracotta pot with single white daisy; 3 simple pale green watering droplets splash; 4 pink cream storybook flower head. Large clean readable silhouettes for toddler game.
