@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#e4ead4" />
+  <title>Bunny’s garden · Explore in 3D</title>
+  <meta name="description" content="A little painted garden to explore with Bunny. Tap the grass to hop there." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='50' font-size='50'%3E🐰%3C/text%3E%3C/svg%3E" />
+  <script type="module" crossorigin src="/games/bunny-3d/assets/garden-B5Pfsidk.js"></script>
+  <link rel="modulepreload" crossorigin href="/games/bunny-3d/assets/RoomEnvironment-Dtmav0R7.js">
+  <link rel="modulepreload" crossorigin href="/games/bunny-3d/assets/OrbitControls-BIv0FmjJ.js">
+  <link rel="modulepreload" crossorigin href="/games/bunny-3d/assets/garden-navigation-CbcQrFsG.js">
+  <link rel="stylesheet" crossorigin href="/games/bunny-3d/assets/garden-Dkm7a-X7.css">
+</head>
+<body>
+  <main id="garden-app">
+    <div id="garden-viewport" tabindex="0" aria-label="3D garden. Tap objects to play or the ground to move Bunny. The camera follows automatically. Arrow keys or W A S D also move Bunny."></div>
+    <div id="object-clues" aria-label="Things to play with"></div>
+    <header><span>BUNNY’S PICNIC</span><h1>A little garden</h1></header>
+    <nav aria-label="Garden controls">
+      <button id="look-around" aria-pressed="false">Look around</button>
+      <button id="art-toggle" aria-expanded="false" aria-controls="art-panel">The drawing</button>
+      <button id="sound-toggle" aria-pressed="false" aria-label="Mute sound" title="Sound"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4Z"/><path class="sound-waves" d="M16 8q5 4 0 8M19 5q8 7 0 14"/><path class="sound-off" d="m16 9 6 6m0-6-6 6"/></svg></button>
+      <button id="reset-view" aria-label="Bring Bunny into view" title="Bring Bunny into view">↺</button>
+      <button id="garden-fullscreen" aria-label="Fullscreen" title="Fullscreen">⛶</button>
+    </nav>
+    <div id="garden-loading" role="status"><span class="ears">🐰</span><p>Opening the garden…</p><progress max="2" value="0"></progress></div>
+    <aside id="art-panel" hidden>
+      <div><strong>From drawing to garden</strong><button id="art-close" aria-label="Close drawing">×</button></div>
+      <img id="garden-reference" alt="The original painted picnic garden: soft green trees, a cottage gate, four cushions and a wicker basket." />
+      <p>The garden from Bunny’s Picnic, rebuilt in three dimensions.</p>
+    </aside>
+    <footer><span id="move-hint">Tap a picture to play</span><span id="camera-hint" class="look-hint">Or tap the grass to hop</span></footer>
+    <a class="character-link" href="./">Meet Bunny ↗</a>
+    <span id="garden-status" class="sr-only" role="status" aria-live="polite"></span>
+  </main>
+</body>
+</html>

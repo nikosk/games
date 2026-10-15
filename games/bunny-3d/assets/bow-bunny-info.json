@@ -1,0 +1,16 @@
+{
+  "vertices": 315989,
+  "polygons": 313502,
+  "bones": 22,
+  "materials": 15,
+  "animations": [
+    "Idle",
+    "Wave",
+    "Hop",
+    "Curious",
+    "Talk"
+  ],
+  "mouth_control": "MouthOpen (0 = closed smile, 1 = open)",
+  "height": 3.115,
+  "glb_bytes": 27928092
+}

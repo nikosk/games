@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#e8e0cd"><link rel="icon" href="data:,"><title>Pip &amp; the Lost Colors · Bunny II</title>  <script type="module" crossorigin src="/games/bunny-3d/assets/adventure-Ch6RVVa0.js"></script>
+  <link rel="modulepreload" crossorigin href="/games/bunny-3d/assets/RoomEnvironment-Dtmav0R7.js">
+  <link rel="modulepreload" crossorigin href="/games/bunny-3d/assets/garden-navigation-CbcQrFsG.js">
+  <link rel="stylesheet" crossorigin href="/games/bunny-3d/assets/adventure-B9k6r_ia.css">
+</head>
+<body>
+<main id="app">
+  <div id="viewport" aria-label="Pip's three dimensional adventure"></div>
+  <div id="object-clues"></div><div id="ghost-hand" hidden aria-hidden="true">☝</div>
+  <header id="hud" hidden><div class="place-label"><small>BUNNY II</small><span id="place-name"></span></div><div id="colors" aria-label="Colors restored"></div><div class="tools"><button id="sound" aria-label="Mute sound" title="Sound"></button><button id="fullscreen" aria-label="Fullscreen" title="Fullscreen"></button><button id="pause" aria-label="Pause" title="Pause"></button></div></header>
+  <div id="bottom" hidden><button id="map-button" class="round" aria-label="Open meadow map"></button><div id="inventory"></div><button id="hint" class="round stone-button" aria-label="Rainbow stone hint"></button></div>
+  <div id="message" role="status" aria-live="polite"></div><div id="hint-picture" hidden></div>
+  <div id="fade"></div>
+  <section id="start-screen" class="screen"><div class="title-card"><small>A LITTLE ADVENTURE ABOUT KINDNESS</small><h1>Pip &amp; the<br><em>Lost Colors</em></h1><p>Help a friend. Bring a little color home.</p><div id="title-art" aria-hidden="true"></div><button id="start" class="primary" disabled>Growing the meadow…</button><button id="start-restart" class="secondary" hidden>Start over</button><progress id="load-progress" max="2" value="0"></progress><p id="load-error" hidden></p><button id="retry" hidden>Try again</button><small class="instruction">Tap to hop · Tap objects to help</small></div></section>
+  <section id="map-screen" class="screen" hidden aria-label="Meadow map"><div class="map-card"><button class="close" id="map-close" aria-label="Close map">×</button><small>FOLLOW THE LITTLE PATHS</small><h2>The meadow</h2><div id="map"><svg class="map-paths" viewBox="0 0 600 360" aria-hidden="true"><path d="M100 260 Q80 170 180 180 T300 265 Q380 270 450 180 T500 60 M180 180 Q270 140 290 70 M300 265 Q400 350 510 300"/></svg></div><p id="map-caption">A little kindness brings the colors back.</p></div></section>
+  <section id="pause-screen" class="screen" hidden><div class="small-card"><h2>A little rest</h2><button id="resume" class="primary">Keep playing</button><button id="restart">Start over</button></div></section>
+  <section id="ending" class="screen" hidden><div class="ending-card"><div><small>EVERY LITTLE KINDNESS COUNTS</small><h2>You brought the colors home.</h2><p>“Thank you for helping my friends.” — Pip</p></div><div class="ending-actions"><button id="keep-playing" class="primary">Keep playing</button><button id="ending-restart" class="secondary">Start over</button></div></div></section>
+  <section id="restart-confirm" class="screen" hidden role="dialog" aria-modal="true" aria-labelledby="restart-title" aria-describedby="restart-description"><div class="small-card"><h2 id="restart-title">A brand-new adventure?</h2><p id="restart-description">This replaces your saved adventure.<br>You’ll begin again in Pip’s bedroom.</p><button id="restart-no" class="primary">Keep this adventure</button><button id="restart-yes">Yes, start from the beginning</button></div></section>
+</main>
+</body></html>

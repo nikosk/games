@@ -1,0 +1,430 @@
+{
+  "groups": {
+    "landscape": {
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "parent": null
+    },
+    "sign": {
+      "position": [
+        4.8,
+        0,
+        2.6
+      ],
+      "parent": "landscape"
+    },
+    "bedroom": {
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "parent": null
+    },
+    "door": {
+      "position": [
+        3.5,
+        0,
+        -3.7
+      ],
+      "parent": "bedroom"
+    },
+    "rainbow-stone": {
+      "position": [
+        0.25,
+        1.03,
+        -1.8
+      ],
+      "parent": "bedroom"
+    },
+    "pond": {
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "parent": null
+    },
+    "pond-water": {
+      "position": [
+        2.1,
+        0.085,
+        -0.8
+      ],
+      "parent": "pond"
+    },
+    "stream-water": {
+      "position": [
+        -4.5,
+        0.105,
+        -1.15
+      ],
+      "parent": "pond"
+    },
+    "pond-branch": {
+      "position": [
+        -2.4,
+        0.25,
+        -1.15
+      ],
+      "parent": "pond"
+    },
+    "leaves": {
+      "position": [
+        -1.45,
+        0.15,
+        -1.15
+      ],
+      "parent": "pond"
+    },
+    "pond-decor": {
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "parent": "pond"
+    },
+    "can": {
+      "position": [
+        0.15,
+        0,
+        1.65
+      ],
+      "parent": "pond"
+    },
+    "haystack": {
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "parent": null
+    },
+    "nest": {
+      "position": [
+        2.9,
+        1.35,
+        -0.8
+      ],
+      "parent": "haystack"
+    },
+    "small-block": {
+      "position": [
+        -3.1,
+        0,
+        1.35
+      ],
+      "parent": "haystack"
+    },
+    "tall-block": {
+      "position": [
+        -1.4,
+        0,
+        1.55
+      ],
+      "parent": "haystack"
+    },
+    "step-low": {
+      "position": [
+        0.3,
+        0.025,
+        -0.1
+      ],
+      "parent": "haystack"
+    },
+    "step-high": {
+      "position": [
+        1.5,
+        0.025,
+        -0.1
+      ],
+      "parent": "haystack"
+    },
+    "log": {
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "parent": null
+    },
+    "fallen-log": {
+      "position": [
+        0,
+        0.0,
+        -1.1
+      ],
+      "parent": "log"
+    },
+    "ball": {
+      "position": [
+        0.4,
+        0.27,
+        -0.65
+      ],
+      "parent": "log"
+    },
+    "stone": {
+      "position": [
+        -3.6,
+        0,
+        0.7
+      ],
+      "parent": "log"
+    },
+    "lever": {
+      "position": [
+        3.4,
+        0.13,
+        1.5
+      ],
+      "parent": "log"
+    },
+    "fulcrum": {
+      "position": [
+        -0.9,
+        0.015,
+        0.4
+      ],
+      "parent": "log"
+    },
+    "meadow": {
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "parent": null
+    },
+    "basin": {
+      "position": [
+        -2.9,
+        0,
+        -0.75
+      ],
+      "parent": "meadow"
+    },
+    "spout": {
+      "position": [
+        -2.2,
+        0.65,
+        -0.75
+      ],
+      "parent": "meadow"
+    },
+    "trough-flow": {
+      "position": [
+        -2.2,
+        0.65,
+        -0.75
+      ],
+      "parent": "spout"
+    },
+    "outlet-flow": {
+      "position": [
+        0.42,
+        0.65,
+        -0.75
+      ],
+      "parent": "spout"
+    },
+    "spout-water": {
+      "position": [
+        -2.9,
+        0.94,
+        -0.75
+      ],
+      "parent": "meadow"
+    },
+    "flower-0": {
+      "position": [
+        1.1,
+        0,
+        -0.6
+      ],
+      "parent": "meadow"
+    },
+    "flower-1": {
+      "position": [
+        2.2,
+        0,
+        -1.4
+      ],
+      "parent": "meadow"
+    },
+    "flower-2": {
+      "position": [
+        3.25,
+        0,
+        -0.5
+      ],
+      "parent": "meadow"
+    },
+    "flower-3": {
+      "position": [
+        1.3,
+        0,
+        -1.65
+      ],
+      "parent": "meadow"
+    },
+    "flower-4": {
+      "position": [
+        3.2,
+        0,
+        -1.7
+      ],
+      "parent": "meadow"
+    },
+    "hill": {
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "parent": null
+    },
+    "pedestal": {
+      "position": [
+        0,
+        0,
+        -1.2
+      ],
+      "parent": "hill"
+    },
+    "hill-stone": {
+      "position": [
+        0,
+        0.89,
+        -1.2
+      ],
+      "parent": "hill"
+    },
+    "bell": {
+      "position": [
+        3,
+        0,
+        0.2
+      ],
+      "parent": "hill"
+    },
+    "frog": {
+      "position": [
+        3.6,
+        0,
+        0.8
+      ],
+      "parent": "pond"
+    },
+    "frog-eyes": {
+      "position": [
+        3.6,
+        1.2,
+        1.19
+      ],
+      "parent": "frog"
+    },
+    "chick": {
+      "position": [
+        -0.8,
+        0,
+        -0.6
+      ],
+      "parent": "haystack"
+    },
+    "chick-left": {
+      "position": [
+        -1.24,
+        0.65,
+        -0.6
+      ],
+      "parent": "chick"
+    },
+    "chick-right": {
+      "position": [
+        -0.36000000000000004,
+        0.65,
+        -0.6
+      ],
+      "parent": "chick"
+    },
+    "fox": {
+      "position": [
+        -2.8,
+        0,
+        -0.8
+      ],
+      "parent": "log"
+    },
+    "fox-tail": {
+      "position": [
+        -2.3499999999999996,
+        0.35,
+        -1.0
+      ],
+      "parent": "fox"
+    },
+    "hill-frog": {
+      "position": [
+        -2.7,
+        0,
+        -0.1
+      ],
+      "parent": "hill"
+    },
+    "hill-frog-eyes": {
+      "position": [
+        -2.7,
+        1.2,
+        0.29000000000000004
+      ],
+      "parent": "hill-frog"
+    },
+    "hill-chick": {
+      "position": [
+        -1.6,
+        0,
+        1.2
+      ],
+      "parent": "hill"
+    },
+    "hill-chick-left": {
+      "position": [
+        -2.04,
+        0.65,
+        1.2
+      ],
+      "parent": "hill-chick"
+    },
+    "hill-chick-right": {
+      "position": [
+        -1.1600000000000001,
+        0.65,
+        1.2
+      ],
+      "parent": "hill-chick"
+    },
+    "hill-fox": {
+      "position": [
+        2.2,
+        0,
+        1.3
+      ],
+      "parent": "hill"
+    },
+    "hill-fox-tail": {
+      "position": [
+        2.6500000000000004,
+        0.35,
+        1.1
+      ],
+      "parent": "hill-fox"
+    }
+  },
+  "vertices": 79140,
+  "meshes": 64
+}

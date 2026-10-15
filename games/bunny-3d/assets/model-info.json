@@ -1,0 +1,14 @@
+{
+  "vertices": 149374,
+  "polygons": 143295,
+  "bones": 20,
+  "materials": 20,
+  "animations": [
+    "Idle",
+    "Wave",
+    "Hop",
+    "Curious"
+  ],
+  "height": 3.175,
+  "glb_bytes": 14578220
+}

@@ -1,0 +1,137 @@
+{
+  "bounds": {
+    "minX": -7.0,
+    "maxX": 7.0,
+    "minZ": -5.65,
+    "maxZ": 5.6
+  },
+  "start": {
+    "x": -2.5,
+    "z": 3.6
+  },
+  "radius": 0.35,
+  "obstacles": [
+    {
+      "x": -7.2,
+      "z": -3.4,
+      "radius": 0.55
+    },
+    {
+      "x": 7.7,
+      "z": -2.8,
+      "radius": 0.49500000000000005
+    },
+    {
+      "x": -9,
+      "z": 4,
+      "radius": 0.49500000000000005
+    },
+    {
+      "x": 10,
+      "z": 4.8,
+      "radius": 0.4675
+    },
+    {
+      "x": -3,
+      "z": -9.5,
+      "radius": 0.385
+    },
+    {
+      "x": 0,
+      "z": -10.8,
+      "radius": 0.44000000000000006
+    },
+    {
+      "x": -1.25,
+      "z": -0.8,
+      "radius": 0.65
+    },
+    {
+      "x": 1.35,
+      "z": -1.1,
+      "radius": 0.65
+    },
+    {
+      "x": -1.1,
+      "z": 2.5,
+      "radius": 0.65
+    },
+    {
+      "x": 1.6,
+      "z": 2.4,
+      "radius": 0.65
+    },
+    {
+      "x": -3.1,
+      "z": 1.25,
+      "radius": 1.16
+    },
+    {
+      "x": 3.5,
+      "z": 1.25,
+      "radius": 0.85
+    }
+  ],
+  "interactions": [
+    {
+      "id": "cushion-sage",
+      "kind": "cushion",
+      "name": "sage cushion",
+      "node": "Cushion sage",
+      "x": -1.25,
+      "z": -0.8,
+      "radius": 0.65,
+      "height": 0.75
+    },
+    {
+      "id": "cushion-gold",
+      "kind": "cushion",
+      "name": "gold cushion",
+      "node": "Cushion gold",
+      "x": 1.35,
+      "z": -1.1,
+      "radius": 0.65,
+      "height": 0.75
+    },
+    {
+      "id": "cushion-rose",
+      "kind": "cushion",
+      "name": "rose cushion",
+      "node": "Cushion rose",
+      "x": -1.1,
+      "z": 2.5,
+      "radius": 0.65,
+      "height": 0.75
+    },
+    {
+      "id": "cushion-blue",
+      "kind": "cushion",
+      "name": "blue cushion",
+      "node": "Cushion blue",
+      "x": 1.6,
+      "z": 2.4,
+      "radius": 0.65,
+      "height": 0.75
+    },
+    {
+      "id": "cloth",
+      "kind": "cloth",
+      "name": "picnic cloth",
+      "node": "Picnic cloth",
+      "x": -3.1,
+      "z": 1.25,
+      "radius": 1.16,
+      "height": 0.65
+    },
+    {
+      "id": "basket",
+      "kind": "basket",
+      "name": "apple basket",
+      "node": "Picnic basket",
+      "x": 3.5,
+      "z": 1.25,
+      "radius": 0.85,
+      "height": 1.55
+    }
+  ]
+}

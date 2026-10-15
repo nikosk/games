@@ -1,0 +1,31 @@
+const drawings:Record<string,string>={
+  stone:'<path d="m16 5 13 6 6 14-16 10L5 23 7 11Z" fill="#c7b6d5"/><path d="m7 11 12 4-3-10M19 15l10-4 6 14-16 10Z" fill="#9fc6c3"/><path d="m7 11 12 4L5 23Z" fill="#e4ba88"/><path d="m19 15 16 10-16 10Z" fill="#dca3b0"/><path d="m19 15 10-4-13-6Z" fill="#ead38b"/><path d="m19 15 3 7-7-2Z" fill="#fff4dc"/>',
+  pond:'<ellipse cx="20" cy="26" rx="17" ry="9" fill="#9fc4cd"/><path d="M7 25q6-4 12 0t14 0M11 30q6-3 11 0" fill="none" stroke="#e3f0e7" stroke-width="2"/><ellipse cx="26" cy="19" rx="8" ry="4" fill="#9cb47e"/><path d="m26 19 7-3" stroke="#d4deb5" stroke-width="2"/><path d="M6 24V8m0 8-4-5m4 8 4-7" stroke="#91a477" stroke-width="3"/>',
+  hay:'<rect x="5" y="17" width="29" height="18" rx="5" fill="#d9bb72"/><rect x="13" y="7" width="18" height="13" rx="4" fill="#ead28c"/><path d="M12 18v17m15-17v17M19 7v12" stroke="#aa8b58" stroke-width="2.5"/>',
+  log:'<path d="M6 14q10-5 25 0v17H6Z" fill="#c2a07b"/><ellipse cx="7" cy="22" rx="5" ry="9" fill="#dfc29b"/><ellipse cx="7" cy="22" rx="2.5" ry="5" fill="#90795e"/><path d="m20 14 4-8 5-2M16 20h11m-12 7h16" stroke="#9e7d57" fill="none" stroke-width="2"/>',
+  flower:'<path d="M20 19v17m0-8q-12 1-12-8 9-1 12 8m0-2q10-9 14-4-3 8-14 4" fill="#a4b786" stroke="#8ca372" stroke-width="2"/><g fill="#dc969e"><ellipse cx="20" cy="10" rx="6" ry="8"/><ellipse cx="12" cy="17" rx="8" ry="6"/><ellipse cx="28" cy="17" rx="8" ry="6"/><ellipse cx="20" cy="23" rx="6" ry="8"/></g><circle cx="20" cy="17" r="6" fill="#e8c875"/>',
+  hill:'<path d="M2 36Q20 3 38 36Z" fill="#a9b994"/><path d="M8 24a12 12 0 0 1 24 0" stroke="#d79b9e" stroke-width="4" fill="none"/><path d="M12 24a8 8 0 0 1 16 0" stroke="#dfc779" stroke-width="4" fill="none"/><path d="M16 24a4 4 0 0 1 8 0" stroke="#8bb6ba" stroke-width="4" fill="none"/>',
+  home:'<path d="M7 18h26v18H7Z" fill="#edddbc"/><path d="m3 19 17-15 17 15Z" fill="#c7967b"/><rect x="15" y="23" width="9" height="13" rx="3" fill="#adad8b"/><rect x="8" y="22" width="5" height="6" rx="1" fill="#96b7bf"/>',
+  branch:'<path d="m7 34 18-27m-9 14-9-6m14 0 11-1" stroke="#bd976b" stroke-width="6" stroke-linecap="round" fill="none"/>',
+  leaf:'<path d="M8 33C-1 16 16 2 35 5c1 20-11 34-27 28" fill="#a6b180"/><path d="M7 34 29 11m-12 13-1-10m6 5 9-1" stroke="#d6d9a3" stroke-width="2" fill="none"/>',
+  can:'<path d="M11 17q-13-13-7-14 10-3 13 14" fill="none" stroke="#a6bcb7" stroke-width="4"/><path d="m24 22 10-12 4 5-9 17Z" fill="#98b4b9"/><rect x="7" y="15" width="23" height="20" rx="7" fill="#98b4b9"/><ellipse cx="18" cy="16" rx="10" ry="3" fill="#cbdad2"/>',
+  water:'<path d="M20 3C15 12 7 20 7 26a13 13 0 0 0 26 0c0-6-8-14-13-23" fill="#8ebfce"/><path d="M12 24q-2 7 6 9" fill="none" stroke="#d7e9e8" stroke-width="3" stroke-linecap="round"/>',
+  small:'<path d="m5 23 21-5 10 6-20 6Z" fill="#e7c99f"/><path d="M5 23v10l11 5V30Z" fill="#c9a57a"/><path d="m16 30 20-6v10l-20 4Z" fill="#b48f67"/>',
+  tall:'<path d="m5 9 21-5 10 6-20 6Z" fill="#e7c99f"/><path d="M5 9v24l11 5V16Z" fill="#c9a57a"/><path d="m16 16 20-6v24l-20 4Z" fill="#b48f67"/>',
+  step:'<path d="M3 34V24h11V14h11V4h12v30Z" fill="#cfb087"/><path d="M4 24h10V14h11V4h12" fill="none" stroke="#efd9ae" stroke-width="3"/>',
+  rock:'<path d="m4 30 4-15 13-8 11 8 5 15-15 6Z" fill="#b5b5a6"/><path d="m8 15 13-8-4 15-13 8Z" fill="#ceccbc"/>',
+  ball:'<circle cx="20" cy="20" r="15" fill="#e2c07a"/><path d="M20 5q-10 15 0 30A15 15 0 0 1 20 5" fill="#db9192"/><path d="M20 5q10 15 0 30a15 15 0 0 0 0-30" fill="#8fb9c1"/>',
+  frog:'<ellipse cx="20" cy="24" rx="16" ry="12" fill="#9bb77e"/><circle cx="11" cy="13" r="8" fill="#acc78d"/><circle cx="29" cy="13" r="8" fill="#acc78d"/><g fill="#faf1d8"><circle cx="11" cy="13" r="5"/><circle cx="29" cy="13" r="5"/></g><g fill="#4d514a"><circle cx="11" cy="13" r="2.5"/><circle cx="29" cy="13" r="2.5"/></g><path d="M12 26q8 6 16 0" fill="none" stroke="#64805a" stroke-width="2"/>',
+  chick:'<ellipse cx="20" cy="25" rx="13" ry="12" fill="#e4c473"/><circle cx="20" cy="16" r="12" fill="#edd58c"/><circle cx="15" cy="15" r="2" fill="#504c47"/><circle cx="25" cy="15" r="2" fill="#504c47"/><path d="m16 20 4-3 4 3-4 4Z" fill="#cf9466"/>',
+  fox:'<path d="m6 20-2-16 14 8h4L36 4l-2 16q-1 13-14 16Q7 33 6 20" fill="#d49a70"/><path d="M6 21q10 1 14 10 4-9 14-10-2 12-14 15Q8 33 6 21" fill="#f5e5c9"/><g fill="#584e47"><circle cx="13" cy="20" r="2"/><circle cx="27" cy="20" r="2"/><ellipse cx="20" cy="29" rx="3" ry="2"/></g>',
+  bell:'<path d="M9 29c5-4 2-18 11-18s6 14 11 18Z" fill="#d8b77a"/><path d="M6 30h28" stroke="#a99066" stroke-width="3" stroke-linecap="round"/><circle cx="20" cy="33" r="4" fill="#b7955e"/><path d="M20 11V5" stroke="#b7955e" stroke-width="3"/>',
+  turn:'<path d="M7 21a13 13 0 1 1 6 12M7 21 4 10m3 11 10-5" fill="none" stroke="#b89a70" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>',
+  map:'<path d="m3 9 11-5 12 5 11-5v27l-11 5-12-5-11 5Z" fill="#d4dfbd" stroke="#8b9f7b" stroke-width="2"/><path d="M14 4v27M26 9v27" stroke="#aabc97" stroke-width="2"/><path d="M9 26q17 1 20-11" stroke="#fff4d8" stroke-width="3" fill="none"/>',
+  sound:'<path d="M6 16h7l10-9v26l-10-9H6Z" fill="#87987b"/><path d="M28 12q10 8 0 16m-1-11q4 3 0 6" fill="none" stroke="#87987b" stroke-width="2.5" stroke-linecap="round"/>',
+  mute:'<path d="M6 16h7l10-9v26l-10-9H6Z" fill="#a8aa98"/><path d="m28 15 9 10m0-10-9 10" stroke="#a68074" stroke-width="3"/>',
+  pause:'<path d="M13 9v22M27 9v22" stroke="#87987b" stroke-width="6" stroke-linecap="round"/>',
+  full:'<path d="M6 15V6h9m10 0h9v9M6 25v9h9m10 0h9v-9" stroke="#87987b" stroke-width="3" fill="none"/>',
+};
+export function icon(name:string):string{return `<svg viewBox="0 0 40 40" aria-hidden="true">${drawings[name]??drawings.stone}</svg>`;}
+export const placeIcons={bedroom:'home',pond:'pond',haystack:'hay',log:'log',meadow:'flower',hill:'hill'};
+export const heldIcons={'pond-branch':'branch','small-block':'small','tall-block':'tall',stone:'rock',lever:'branch',can:'can'};
